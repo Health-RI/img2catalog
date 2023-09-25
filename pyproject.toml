@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "xnatdcat"
+version = "0.0.1"
+description = "This tool generates DCAT-AP from an XNAT instance"
+authors = ["Mark Janse <mark.janse@health-ri.nl>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+rdflib = "^7.0.0"
+tqdm = "^4.66"
+pydantic = "^2.3.0"
+xnat = "^0.5.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

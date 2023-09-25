@@ -12,7 +12,7 @@ VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")
 
 
 class VCard(BaseModel):
-    full_name: Optional[Literal]
+    full_name: Optional[Literal] = None
     uid: URIRef
 
 
@@ -31,24 +31,27 @@ class DCATDataSet(BaseModel):
     title: List[Literal]
     description: Literal
     creator: Union[List[URIRef], List[VCard]]
-    start_date: Optional[Literal]
-    end_date: Optional[Literal]
-    contact_point: Optional[Union[List[URIRef], List[VCard]]]
-    publisher: Optional[Union[List[URIRef], URIRef]]
+    start_date: Optional[Literal] = None
+    end_date: Optional[Literal] = None
+    contact_point: Optional[Union[List[URIRef], List[VCard]]] = None
+    publisher: Optional[Union[List[URIRef], URIRef]] = None
     keyword: Optional[List[Literal]] = Field(default_factory=list)
     theme: Optional[List[URIRef]] = Field(default_factory=list)
-    is_part_of: Optional[URIRef]
+    is_part_of: Optional[URIRef] = None
     has_version: Optional[
         URIRef
-    ]  # Should be dcat:version in the next version of the FDP release(aiming for 1.18.0)
-    landing: Optional[URIRef]
+    ] = None  # Should be dcat:version in the next version of the FDP release(aiming for 1.18.0)
+    landing: Optional[URIRef] = None
 
+    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
+    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
     @validator("creator", "contact_point")
     def validate_empty_nodes(cls, field_value, values, field):
         """Checks if a list contains empty BNodes and removes them"""
         if any(isinstance(creator_item, BNode) for creator_item in field_value):
             logger.warning(
-                f"One or more {field.name} instances are empty BNode objects {values['uri']}, removing"
+                f"One or more {field.name} instances are empty BNode objects"
+                f" {values['uri']}, removing"
             )
             field_value = [item for item in field_value if not isinstance(item, BNode)]
         return field_value
@@ -169,8 +172,8 @@ class DCATDistribution(BaseModel):
     uri: URIRef
     title: Literal
     description: Literal
-    distr_format: Optional[URIRef]
-    distr_license: Optional[URIRef]
+    distr_format: Optional[URIRef] = None
+    distr_license: Optional[URIRef] = None
     is_part_of: URIRef
     access_url: List[URIRef]
 

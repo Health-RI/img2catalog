@@ -8,7 +8,7 @@ from rdflib import DCAT, DCTERMS, FOAF, Graph, Namespace, URIRef
 from rdflib.term import Literal
 from tqdm import tqdm
 
-from dcat_model import DCATDataSet, VCard
+from .dcat_model import DCATDataSet, VCard
 
 VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")
 
@@ -88,7 +88,7 @@ def XNAT_to_DCAT(session) -> Graph:
     return export_graph
 
 
-def _parse_args():
+def __parse_cli_args():
     """Simple argument parser for commandline args"""
     parser = argparse.ArgumentParser(
         prog="XNAT to DCAT", description="This tool generates DCAT from XNAT"
@@ -144,7 +144,7 @@ def _parse_args():
     return args
 
 
-def _connect_xnat(args):
+def __connect_xnat(args):
     """Very simple function to connect to XNat and get a session"""
     session = xnat.connect(
         server=args.server, user=args.username, password=args.password
@@ -153,13 +153,17 @@ def _connect_xnat(args):
     return session
 
 
-if __name__ == "__main__":
-    args = _parse_args()
+def _cli_main():
+    args = __parse_cli_args()
 
-    session = _connect_xnat(args)
+    session = __connect_xnat(args)
     g = XNAT_to_DCAT(session)
 
     if args.output:
         g.serialize(destination=args.output, format=args.format)
     else:
         print(g.serialize(format=args.format))
+
+
+if __name__ == "__main__":
+    _cli_main()
