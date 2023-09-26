@@ -49,23 +49,18 @@ class DCATDataSet(BaseModel):
     def validate_empty_nodes(cls, field_value, values, field):
         """Checks if a list contains empty BNodes and removes them"""
         if any(isinstance(creator_item, BNode) for creator_item in field_value):
-            logger.warning(
-                f"One or more {field.name} instances are empty BNode objects"
-                f" {values['uri']}, removing"
-            )
+            logger.warning(f"One or more {field.name} instances are empty BNode objects {values['uri']}, removing")
             field_value = [item for item in field_value if not isinstance(item, BNode)]
         return field_value
 
     def to_graph(self, userinfo_format: str = None) -> Graph:
-        """Converts class instance to dcat dataset graph"""
+        """Converts class instance to DCAT dataset graph"""
         graph = Graph()
         subject = self.uri
         # For dcterms:identifier
         identifier = subject.rsplit("/", maxsplit=1)[-1]
 
-        graph.add(
-            (subject, DCTERMS.identifier, Literal(identifier, datatype=XSD.token))
-        )
+        graph.add((subject, DCTERMS.identifier, Literal(identifier, datatype=XSD.token)))
         graph.add((subject, RDF.type, DCAT.Dataset))
         for title in self.title:
             graph.add((subject, DCTERMS.title, title))
@@ -84,6 +79,8 @@ class DCATDataSet(BaseModel):
                 predicate=DCAT.contactPoint,
                 userinfo_format=userinfo_format,
             )
+
+        # This creates a blank date node, with corresponding start/end date if set
         date_node = BNode()
         graph.add((subject, DCTERMS.temporal, date_node))
         graph.add((date_node, RDF.type, DCTERMS.PeriodOfTime))
@@ -116,9 +113,7 @@ class DCATDataSet(BaseModel):
 
         return graph
 
-    def add_vcard_info(
-        self, attribute_name, graph, subject, predicate, userinfo_format: URIRef = None
-    ) -> None:
+    def add_vcard_info(self, attribute_name, graph, subject, predicate, userinfo_format: URIRef = None) -> None:
         """
         Adds person information as URIRef or VCard node
         Parameters
