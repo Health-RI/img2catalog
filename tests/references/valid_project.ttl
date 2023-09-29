@@ -1,0 +1,17 @@
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<http://localhost/data/archive/projects/test_xnatdcat> a dcat:Dataset ;
+    dcterms:creator [ a vcard:VCard ;
+            vcard:fn "prof. Albus Dumbledore" ;
+            vcard:hasUID <http://example.com> ] ;
+    dcterms:description "In this project, we test xnat and dcat and make sure a description appears." ;
+    dcterms:identifier "test_xnatdcat"^^xsd:token ;
+    dcterms:temporal [ a dcterms:PeriodOfTime ] ;
+    dcterms:title "Basic test project to test the xnatdcat" ;
+    dcat:keyword "dcat",
+        "demo",
+        "test" .
+
