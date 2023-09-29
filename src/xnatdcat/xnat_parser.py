@@ -32,21 +32,29 @@ def xnat_to_DCATDataset(project) -> DCATDataSet:
         DCATDataSet object with fields filled in
     """
     # First check if keywords field is not blank
+    # Specification from XNAT:  Optional: Enter searchable keywords. Each word, separated by a space,
+    # can be used independently as a search string.
+    keywords = None
     if xnat_keywords := project.keywords:
-        keywords = [Literal(kw.strip()) for kw in xnat_keywords.split(",")]
-    else:
-        keywords = None
+        keywords = [Literal(kw.strip()) for kw in xnat_keywords.split(" ")]
+
+    if not (project.pi.firstname or project.pi.lastname):
+        raise ValueError("Cannot have empty name of PI")
+
+    print(f"pi: {project.pi.firstname}, {project.pi.lastname}")
+
+    creator_vcard = [
+        VCard(
+            full_name=Literal(f"{project.pi.title or ''} {project.pi.firstname} {project.pi.lastname}".strip()),
+            uid=URIRef("http://example.com"),  # Should be ORCID?
+        )
+    ]
 
     project_dataset = DCATDataSet(
         uri=URIRef(project.external_uri()),
         title=[Literal(project.name)],
         description=Literal(project.description),
-        creator=[
-            VCard(
-                full_name=Literal(f"{project.pi.title} {project.pi.firstname} {project.pi.lastname}".strip()),
-                uid=URIRef("http://example.com"),  # Should be ORCID?
-            )
-        ],
+        creator=creator_vcard,
         keyword=keywords,
     )
 
@@ -76,7 +84,7 @@ def XNAT_to_DCAT(session) -> Graph:
     export_graph.bind("foaf", FOAF)
     export_graph.bind("vcard", VCARD)
 
-    graphs = [xnat_to_DCATDataset(p).to_graph() for p in tqdm(session.projects.values())]
+    graphs = [xnat_to_DCATDataset(p).to_graph(userinfo_format=VCARD.VCard) for p in tqdm(session.projects.values())]
     for d in graphs:
         export_graph += d
 
