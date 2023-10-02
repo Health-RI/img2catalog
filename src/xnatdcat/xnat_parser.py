@@ -40,6 +40,8 @@ def xnat_to_DCATDataset(project) -> DCATDataSet:
 
     if not (project.pi.firstname or project.pi.lastname):
         raise ValueError("Cannot have empty name of PI")
+    if not project.description:
+        raise ValueError("Cannot have empty description")
 
     print(f"pi: {project.pi.firstname}, {project.pi.lastname}")
 
