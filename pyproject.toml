@@ -23,7 +23,7 @@ classifiers = [
 ]
 dependencies = [
   "rdflib ~= 7.0.0",
-  "xnat ~= 0.5.1",
+  "xnat ~= 0.5.2",
   "pydantic ~=2.3.0",
   "tqdm>=4.21",
 ]
