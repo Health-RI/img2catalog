@@ -28,7 +28,7 @@ def test_empty_xnat(session, empty_graph):
 
 
 @patch("xnat.core.XNATBaseObject")
-def test_valid_project(project):
+def test_valid_project(project, empty_graph):
     """Test if a valid project generates valid output"""
     project.name = 'Basic test project to test the xnatdcat'
     project.description = 'In this project, we test xnat and dcat and make sure a description appears.'
@@ -38,14 +38,25 @@ def test_valid_project(project):
     project.pi.lastname = 'Dumbledore'
     project.pi.title = 'prof.'
 
-    ref = Graph()
-    ref = ref.parse(source='tests/references/valid_project.ttl')
+    empty_graph = empty_graph.parse(source='tests/references/valid_project.ttl')
     gen = xnat_to_DCATDataset(project).to_graph(userinfo_format=VCARD.VCard)
 
-    print(ref.serialize())
-    print(gen.serialize())
+    assert to_isomorphic(empty_graph) == to_isomorphic(gen)
 
-    assert to_isomorphic(ref) == to_isomorphic(gen)
+
+@patch("xnat.core.XNATBaseObject")
+def test_empty_description(project, empty_graph):
+    """Test if a valid project generates valid output"""
+    project.name = 'Basic test project to test the xnatdcat'
+    project.description = None
+    project.external_uri.return_value = 'http://localhost/data/archive/projects/test_xnatdcat'
+    project.keywords = 'test demo dcat'
+    project.pi.firstname = 'Albus'
+    project.pi.lastname = 'Dumbledore'
+    project.pi.title = 'prof.'
+
+    with pytest.raises(ValueError):
+        xnat_to_DCATDataset(project).to_graph(userinfo_format=VCARD.VCard)
 
 
 @patch("xnat.core.XNATBaseObject")
@@ -63,7 +74,7 @@ def test_invalid_PI(project):
 
 
 @patch("xnat.core.XNATBaseObject")
-def test_no_keywords(project):
+def test_no_keywords(project, empty_graph):
     """Valid project without keywords, make sure it is not defined in output"""
     project.name = 'Basic test project to test the xnatdcat'
     project.description = 'In this project, we test xnat and dcat and make sure a description appears.'
@@ -73,11 +84,10 @@ def test_no_keywords(project):
     project.pi.lastname = 'Dumbledore'
     project.pi.title = 'prof.'
 
-    ref = Graph()
-    ref = ref.parse(source='tests/references/no_keyword.ttl')
+    empty_graph = empty_graph.parse(source='tests/references/no_keyword.ttl')
     gen = xnat_to_DCATDataset(project).to_graph(userinfo_format=VCARD.VCard)
 
-    print(ref.serialize())
+    print(empty_graph.serialize())
     print(gen.serialize())
 
-    assert to_isomorphic(ref) == to_isomorphic(gen)
+    assert to_isomorphic(empty_graph) == to_isomorphic(gen)
