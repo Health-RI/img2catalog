@@ -2,10 +2,13 @@
 from rdflib import DCAT, DCTERMS, FOAF, Graph, Namespace, URIRef
 from rdflib.term import Literal
 from tqdm import tqdm
+import logging
 
 from .dcat_model import DCATDataSet, VCard
 
 VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")
+
+logger = logging.getLogger(__name__)
 
 
 def xnat_to_DCATDataset(project) -> DCATDataSet:
@@ -37,8 +40,6 @@ def xnat_to_DCATDataset(project) -> DCATDataSet:
         raise ValueError("Cannot have empty name of PI")
     if not project.description:
         raise ValueError("Cannot have empty description")
-
-    print(f"pi: {project.pi.firstname}, {project.pi.lastname}")
 
     creator_vcard = [
         VCard(
@@ -81,8 +82,18 @@ def XNAT_to_DCAT(session) -> Graph:
     export_graph.bind("foaf", FOAF)
     export_graph.bind("vcard", VCARD)
 
-    graphs = [xnat_to_DCATDataset(p).to_graph(userinfo_format=VCARD.VCard) for p in tqdm(session.projects.values())]
-    for d in graphs:
+    failure_counter = 0
+
+    for p in tqdm(session.projects.values()):
+        try:
+            d = xnat_to_DCATDataset(p).to_graph(userinfo_format=VCARD.VCard)
+        except ValueError as v:
+            logger.info(f"Project {p.name} could not be converted into DCAT: {v}")
+            failure_counter += 1
+            continue
         export_graph += d
+
+    if failure_counter > 0:
+        logger.warning("There were %d projects with invalid data for DCAT generation", failure_counter)
 
     return export_graph
