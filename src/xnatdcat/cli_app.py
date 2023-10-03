@@ -2,12 +2,13 @@ import argparse
 import xnat
 from .xnat_parser import XNAT_to_DCAT
 from pathlib import PurePath
+from .__about__ import __version__
 
 
 def __parse_cli_args():
     """Simple argument parser for commandline args"""
 
-    parser = argparse.ArgumentParser(prog="XNAT to DCAT", description="This tool generates DCAT from XNAT")
+    parser = argparse.ArgumentParser(prog="xnatdcat", description="This tool generates DCAT from XNAT")
     parser.add_argument(
         "server",
         type=str,
@@ -50,6 +51,7 @@ def __parse_cli_args():
             " \"json-ld\" and \"hext\". Defaults to \"turtle\"."
         ),
     )
+    parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
 
     args = parser.parse_args()
 
