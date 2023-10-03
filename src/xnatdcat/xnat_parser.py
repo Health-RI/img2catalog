@@ -1,9 +1,4 @@
 """Simple tool to query an XNAT instance and serialize projects as datasets"""
-import argparse
-from pathlib import PurePath
-from sys import stderr
-
-import xnat
 from rdflib import DCAT, DCTERMS, FOAF, Graph, Namespace, URIRef
 from rdflib.term import Literal
 from tqdm import tqdm
