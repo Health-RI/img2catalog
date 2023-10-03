@@ -8,6 +8,10 @@ to be a separate Dataset.
 Download a wheel file from releases and install using `pip install`. The tool can then be run by
 running the `xnatdcat` command from the commandline.
 
+## Usage
+
+Basic example: `xnatdcat https://xnat.bmia.nl`; output will appear at stdout.
+
 The tool supports both public and privat XNAT instances. For authentication, you can either supply
 a username and/or password at the commandline or use a `.netrc` file. For more information regarding
 this, see the [XNATpy documentation](https://xnat.readthedocs.io/en/latest/static/tutorial.html#credentials).
@@ -16,27 +20,30 @@ By default, output of the tool is in turtle format at stdout to make for easy pi
 written in a variety of formats to a file, too. For all options, see `xnatdcat --help`:
 
 ```text
-usage: XNAT to DCAT [-h] [-u USERNAME] [-p PASSWORD] [-o OUTPUT] [-f FORMAT] server
+usage: xnatdcat [-h] [-u USERNAME] [-p PASSWORD] [-o OUTPUT] [-f FORMAT] [-V] server
 
 This tool generates DCAT from XNAT
 
 positional arguments:
   server                URI of the server to connect to (including http:// or https://)
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -u USERNAME, --username USERNAME
                         Username to use, leave empty to use netrc entry or anonymous login.
   -p PASSWORD, --password PASSWORD
-                        Password to use with the username, leave empty when using netrc. If a username is given and no
-                        password, there will be a prompt on the console requesting the password.
+                        Password to use with the username, leave empty when using netrc. If a
+                        username is given and no password, there will be a prompt on the console
+                        requesting the password.
   -o OUTPUT, --output OUTPUT
-                        Destination file to write output to. If not set, the script will print serialized output to
-                        stdout.
+                        Destination file to write output to. If not set, the script will print
+                        serialized output to stdout.
   -f FORMAT, --format FORMAT
-                        The format that the output should be written in. This value references a Serializer plugin in
-                        RDFlib. Supportd values are: "xml", "n3", "turtle", "nt", "pretty-xml", "trix", "trig",
-                        "nquads", "json-ld" and "hext". Defaults to "turtle".
+                        The format that the output should be written in. This value references a
+                        Serializer plugin in RDFlib. Supportd values are: "xml", "n3", "turtle",
+                        "nt", "pretty-xml", "trix", "trig", "nquads", "json-ld" and "hext".
+                        Defaults to "turtle".
+  -V, --version         show program's version number and exit
 ```
 
 ## Development
