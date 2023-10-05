@@ -1,6 +1,6 @@
 # XNAT to DCAT-AP
 
-This tool queries an XNAT instance and generates DCAT-AP metadata. Every XNAT project is considered
+This tool queries an XNAT instance and generates DCAT-AP 3.0 metadata. Every XNAT project is considered
 to be a separate Dataset.
 
 ## Installation
@@ -63,4 +63,4 @@ we are open to any additions.
 
 Currently, only title, description, keywords and PI are set. There is no overarching Catalogue,
 Distribution, Dataset Series or anything else. The output does not conform to the Fair Data Point
-(FDP) specifications yet, but is DCAT-AP v3 compliant. The language of the fields also is not set.
+(FDP) specifications yet, but is DCAT-AP 3.0 compliant. The language of the fields also is not set.
