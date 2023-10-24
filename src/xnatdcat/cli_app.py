@@ -1,10 +1,15 @@
 import argparse
+import logging
 import tomllib
-from typing import Dict
-import xnat
-from .xnat_parser import xnat_to_DCAT
 from pathlib import Path, PurePath
+from typing import Dict
+
+import xnat
+
 from .__about__ import __version__
+from .xnat_parser import xnat_to_DCAT
+
+logger = logging.getLogger(__name__)
 
 
 def __parse_cli_args():
@@ -103,6 +108,7 @@ def load_configuration(config_path: Path = None) -> Dict:
     else:
         # Python 3.8 does not support slicing of paths yet :(
         config_path = Path(__file__).resolve().parent.parent.parent / 'config.toml'
+        logger.warning("No configuration file found or specified! xnatdcat will use the example file.")
 
     with open(config_path, 'rb') as f:
         config = tomllib.load(f)
