@@ -43,8 +43,22 @@ options:
                         Serializer plugin in RDFlib. Supportd values are: "xml", "n3", "turtle",
                         "nt", "pretty-xml", "trix", "trig", "nquads", "json-ld" and "hext".
                         Defaults to "turtle".
+  -c CONFIG, --config CONFIG
+                        Configuration file to use. If not set, will use ~/.xnatdcat/config.toml if
+                        it exists.
   -V, --version         show program's version number and exit
 ```
+
+## Configuration
+
+An example configuration file `config.toml` is supplied with this project. By default, `xnatdcat`
+will look for a configuration file in `~/.xnatdcat/config.toml`. The tool will not create the file
+or folder if it does not exist, you will have to do so manually. If the file does not exist, the
+example file will be used.
+
+A limited number of properties can be set in the configuration, including the title and name of the
+xnat (DCAT) catalog and the publisher of the catalog. We are still working on adding more default
+values for certain DCAT properties to the configuration.
 
 ## Development
 
