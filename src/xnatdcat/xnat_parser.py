@@ -1,17 +1,18 @@
 """Simple tool to query an XNAT instance and serialize projects as datasets"""
+import logging
+
 from rdflib import DCAT, DCTERMS, FOAF, Graph, Namespace, URIRef
 from rdflib.term import Literal
 from tqdm import tqdm
-import logging
 
-from .dcat_model import DCATDataSet, VCard
+from .dcat_model import DCATCatalog, DCATDataSet, VCard
 
 VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")
 
 logger = logging.getLogger(__name__)
 
 
-def xnat_to_DCATDataset(project) -> DCATDataSet:
+def xnat_to_DCATDataset(project, config) -> DCATDataSet:
     """This function populates a DCAT Dataset class from an XNat project
 
     Currently fills in the title, description and keywords. The first two are mandatory fields
@@ -59,10 +60,30 @@ def xnat_to_DCATDataset(project) -> DCATDataSet:
     return project_dataset
 
 
-def XNAT_to_DCAT(session) -> Graph:
-    """Creates a DCAT-AP compliant Catalog of Datasets from XNAT
+def xnat_to_catalog(session, config) -> DCATCatalog:
+    """Creates a DCAT-AP compliant Catalog from XNAT instance
 
-    Note: Catalog itself not generated yet
+    Parameters
+    ----------
+    session : XNATSession
+        An XNATSession of the XNAT instance that is going to be queried
+
+    Returns
+    -------
+    DCATCatalog
+        DCATCatalog object with fields filled in
+    """
+    catalog_uri = URIRef(session.url_for(session))
+    catalog = DCATCatalog(
+        uri=catalog_uri,
+        title=Literal(config['catalog']['title']),
+        description=Literal(config['catalog']['description']),
+    )
+    return catalog
+
+
+def xnat_to_DCAT(session, config) -> Graph:
+    """Creates a DCAT-AP compliant Catalog of Datasets from XNAT
 
     Parameters
     ----------
@@ -82,16 +103,23 @@ def XNAT_to_DCAT(session) -> Graph:
     export_graph.bind("foaf", FOAF)
     export_graph.bind("vcard", VCARD)
 
+    # We can kinda assume session always starts with /data/archive, see xnatpy/xnat/session.py L988
+    catalog = xnat_to_catalog(session, config)
+
     failure_counter = 0
 
     for p in tqdm(session.projects.values()):
         try:
-            d = xnat_to_DCATDataset(p).to_graph(userinfo_format=VCARD.VCard)
+            dcat_dataset = xnat_to_DCATDataset(p, config)
+            d = dcat_dataset.to_graph(userinfo_format=VCARD.VCard)
+            catalog.Dataset.append(dcat_dataset.uri)
         except ValueError as v:
             logger.info(f"Project {p.name} could not be converted into DCAT: {v}")
             failure_counter += 1
             continue
         export_graph += d
+
+    export_graph += catalog.to_graph()
 
     if failure_counter > 0:
         logger.warning("There were %d projects with invalid data for DCAT generation", failure_counter)
