@@ -75,6 +75,7 @@ we are open to any additions.
 
 ## Limitations
 
-Currently, only title, description, keywords and PI are set. There is no overarching Catalogue,
-Distribution, Dataset Series or anything else. The output does not conform to the Fair Data Point
-(FDP) specifications yet, but is DCAT-AP 3.0 compliant. The language of the fields also is not set.
+Currently, only title, description, keywords and PI are set as well as title, description and
+publisher of the catalogue. There is no Distribution, Dataset Series or anything else. The output
+does not conform to the Fair Data Point (FDP) specifications yet, but is DCAT-AP 3.0 compliant.
+The language of the fields also is not set.
