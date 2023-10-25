@@ -1,10 +1,12 @@
+from pathlib import Path
 import pytest
 from unittest.mock import patch
+import tomllib
 
 from rdflib import Graph, DCAT, DCTERMS
 from rdflib.compare import to_isomorphic
 
-from xnatdcat.xnat_parser import XNAT_to_DCAT, xnat_to_DCATDataset, VCARD
+from xnatdcat.xnat_parser import xnat_to_DCAT, xnat_to_DCATDataset, VCARD
 
 
 # Taken from cedar2fdp
@@ -17,18 +19,34 @@ def empty_graph():
     return graph
 
 
+@pytest.fixture()
+def config():
+    """Loads the default configuration TOML"""
+    config_path = Path(__file__).resolve().parent.parent / 'config.toml'
+
+    with open(config_path, 'rb') as f:
+        config = tomllib.load(f)
+
+    return config
+
+
 @patch("xnat.session.BaseXNATSession")
-def test_empty_xnat(session, empty_graph):
+def test_empty_xnat(session, empty_graph, config):
     """Test case for an XNAT with no projects at all"""
     # XNATSession is a key-value store so pretent it is a Dict
     session.projects = {}
-    expected = XNAT_to_DCAT(session)
-    # Compare to empty reference graph
+    session.url_for.return_value = 'https://xnat.bmia.nl'
+
+    empty_graph = empty_graph.parse(source='tests/references/empty_xnat.ttl')
+
+    expected = xnat_to_DCAT(session, config)
+
+    # Compare to reference graph
     assert to_isomorphic(expected) == to_isomorphic(empty_graph)
 
 
 @patch("xnat.core.XNATBaseObject")
-def test_valid_project(project, empty_graph):
+def test_valid_project(project, empty_graph, config):
     """Test if a valid project generates valid output"""
     project.name = 'Basic test project to test the xnatdcat'
     project.description = 'In this project, we test xnat and dcat and make sure a description appears.'
@@ -39,13 +57,13 @@ def test_valid_project(project, empty_graph):
     project.pi.title = 'prof.'
 
     empty_graph = empty_graph.parse(source='tests/references/valid_project.ttl')
-    gen = xnat_to_DCATDataset(project).to_graph(userinfo_format=VCARD.VCard)
+    gen = xnat_to_DCATDataset(project, config).to_graph(userinfo_format=VCARD.VCard)
 
     assert to_isomorphic(empty_graph) == to_isomorphic(gen)
 
 
 @patch("xnat.core.XNATBaseObject")
-def test_empty_description(project, empty_graph):
+def test_empty_description(project, config):
     """Test if a valid project generates valid output"""
     project.name = 'Basic test project to test the xnatdcat'
     project.description = None
@@ -56,11 +74,11 @@ def test_empty_description(project, empty_graph):
     project.pi.title = 'prof.'
 
     with pytest.raises(ValueError):
-        xnat_to_DCATDataset(project).to_graph(userinfo_format=VCARD.VCard)
+        xnat_to_DCATDataset(project, config).to_graph(userinfo_format=VCARD.VCard)
 
 
 @patch("xnat.core.XNATBaseObject")
-def test_invalid_PI(project):
+def test_invalid_PI(project, config):
     """Make sure if PI field is invalid, an exception is raised"""
     project.name = 'Basic test project to test the xnatdcat'
     project.description = 'In this project, we test xnat and dcat and make sure a description appears.'
@@ -70,11 +88,11 @@ def test_invalid_PI(project):
     project.pi.lastname = None
 
     with pytest.raises(ValueError):
-        xnat_to_DCATDataset(project)
+        xnat_to_DCATDataset(project, config)
 
 
 @patch("xnat.core.XNATBaseObject")
-def test_no_keywords(project, empty_graph):
+def test_no_keywords(project, empty_graph, config):
     """Valid project without keywords, make sure it is not defined in output"""
     project.name = 'Basic test project to test the xnatdcat'
     project.description = 'In this project, we test xnat and dcat and make sure a description appears.'
@@ -85,9 +103,6 @@ def test_no_keywords(project, empty_graph):
     project.pi.title = 'prof.'
 
     empty_graph = empty_graph.parse(source='tests/references/no_keyword.ttl')
-    gen = xnat_to_DCATDataset(project).to_graph(userinfo_format=VCARD.VCard)
-
-    print(empty_graph.serialize())
-    print(gen.serialize())
+    gen = xnat_to_DCATDataset(project, config).to_graph(userinfo_format=VCARD.VCard)
 
     assert to_isomorphic(empty_graph) == to_isomorphic(gen)
