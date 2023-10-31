@@ -26,6 +26,7 @@ dependencies = [
   "xnat ~= 0.5.2",
   "pydantic ~=2.3.0",
   "tqdm>=4.21",
+  "tomli >= 1.10; python_version < '3.11'",
 ]
 
 [project.urls]
