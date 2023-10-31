@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 import pytest
 from unittest.mock import patch
 import tomllib
@@ -7,6 +8,8 @@ from rdflib import Graph, DCAT, DCTERMS
 from rdflib.compare import to_isomorphic
 
 from xnatdcat.xnat_parser import xnat_to_RDF, xnat_to_DCATDataset, VCARD
+
+EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parent.parent / 'example-config.toml'
 
 
 # Taken from cedar2fdp
@@ -22,7 +25,7 @@ def empty_graph():
 @pytest.fixture()
 def config():
     """Loads the default configuration TOML"""
-    config_path = Path(__file__).resolve().parent.parent / 'config.toml'
+    config_path = EXAMPLE_CONFIG_PATH
 
     with open(config_path, 'rb') as f:
         config = tomllib.load(f)
@@ -31,7 +34,7 @@ def config():
 
 
 @patch("xnat.session.BaseXNATSession")
-def test_empty_xnat(session, empty_graph, config):
+def test_empty_xnat(session, empty_graph: Graph, config: dict[str, Any]):
     """Test case for an XNAT with no projects at all"""
     # XNATSession is a key-value store so pretent it is a Dict
     session.projects = {}
@@ -46,7 +49,7 @@ def test_empty_xnat(session, empty_graph, config):
 
 
 @patch("xnat.core.XNATBaseObject")
-def test_valid_project(project, empty_graph, config):
+def test_valid_project(project, empty_graph: Graph, config: dict[str, Any]):
     """Test if a valid project generates valid output"""
     project.name = 'Basic test project to test the xnatdcat'
     project.description = 'In this project, we test xnat and dcat and make sure a description appears.'
@@ -63,7 +66,7 @@ def test_valid_project(project, empty_graph, config):
 
 
 @patch("xnat.core.XNATBaseObject")
-def test_empty_description(project, config):
+def test_empty_description(project, config: dict[str, Any]):
     """Test if a valid project generates valid output"""
     project.name = 'Basic test project to test the xnatdcat'
     project.description = None
@@ -78,7 +81,7 @@ def test_empty_description(project, config):
 
 
 @patch("xnat.core.XNATBaseObject")
-def test_invalid_PI(project, config):
+def test_invalid_PI(project, config: dict[str, Any]):
     """Make sure if PI field is invalid, an exception is raised"""
     project.name = 'Basic test project to test the xnatdcat'
     project.description = 'In this project, we test xnat and dcat and make sure a description appears.'
@@ -92,7 +95,7 @@ def test_invalid_PI(project, config):
 
 
 @patch("xnat.core.XNATBaseObject")
-def test_no_keywords(project, empty_graph, config):
+def test_no_keywords(project, empty_graph: Graph, config: dict[str, Any]):
     """Valid project without keywords, make sure it is not defined in output"""
     project.name = 'Basic test project to test the xnatdcat'
     project.description = 'In this project, we test xnat and dcat and make sure a description appears.'
