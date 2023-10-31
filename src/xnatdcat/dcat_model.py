@@ -16,7 +16,7 @@ class VCard(BaseModel):
     uid: URIRef
 
 
-def add_empty_node_of_type(graph, subject, predicate, node_type=None):
+def add_empty_node_of_type(graph: Graph, subject, predicate, node_type=None):
     node = BNode()
     graph.add((subject, predicate, node))
     if node_type:
