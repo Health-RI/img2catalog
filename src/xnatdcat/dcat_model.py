@@ -211,7 +211,7 @@ class DCATCatalog(BaseModel):
         graph.bind("dcterms", DCTERMS)
 
         subject = self.uri
-        graph.add((subject, RDF.type, DCAT.catalog))
+        graph.add((subject, RDF.type, DCAT.Catalog))
         graph.add((subject, DCTERMS.title, self.title))
         graph.add((subject, DCTERMS.description, self.description))
 
