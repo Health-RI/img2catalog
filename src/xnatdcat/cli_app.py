@@ -9,12 +9,13 @@ try:
 except ModuleNotFoundError:
     import tomli as tomllib
 
-
 import xnat
 
 from .__about__ import __version__
 from .xnat_parser import xnat_to_DCAT
 
+# The location of this file (cli_app.py) is known, this leads to project root folder
+EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / 'example-config.toml'
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +115,7 @@ def load_configuration(config_path: Path = None) -> Dict:
         pass
     else:
         # Python 3.8 does not support slicing of paths yet :(
-        config_path = Path(__file__).resolve().parent.parent.parent / 'config.toml'
+        config_path = EXAMPLE_CONFIG_PATH
         logger.warning("No configuration file found or specified! xnatdcat will use the example file.")
 
     with open(config_path, 'rb') as f:
