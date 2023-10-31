@@ -6,13 +6,15 @@ from rdflib.term import Literal
 from tqdm import tqdm
 
 from .dcat_model import DCATCatalog, DCATDataSet, VCard
+from xnat.session import XNATSession
+from typing import Dict
 
 VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")
 
 logger = logging.getLogger(__name__)
 
 
-def xnat_to_DCATDataset(project, config) -> DCATDataSet:
+def xnat_to_DCATDataset(project: XNATSession, config: Dict) -> DCATDataSet:
     """This function populates a DCAT Dataset class from an XNat project
 
     Currently fills in the title, description and keywords. The first two are mandatory fields
@@ -60,7 +62,7 @@ def xnat_to_DCATDataset(project, config) -> DCATDataSet:
     return project_dataset
 
 
-def xnat_to_catalog(session, config) -> DCATCatalog:
+def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> DCATCatalog:
     """Creates a DCAT-AP compliant Catalog from XNAT instance
 
     Parameters
@@ -82,7 +84,7 @@ def xnat_to_catalog(session, config) -> DCATCatalog:
     return catalog
 
 
-def xnat_to_DCAT(session, config) -> Graph:
+def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
     """Creates a DCAT-AP compliant Catalog of Datasets from XNAT
 
     Parameters
@@ -104,7 +106,7 @@ def xnat_to_DCAT(session, config) -> Graph:
     export_graph.bind("vcard", VCARD)
 
     # We can kinda assume session always starts with /data/archive, see xnatpy/xnat/session.py L988
-    catalog = xnat_to_catalog(session, config)
+    catalog = xnat_to_DCATCatalog(session, config)
 
     failure_counter = 0
 

@@ -6,7 +6,7 @@ import tomllib
 from rdflib import Graph, DCAT, DCTERMS
 from rdflib.compare import to_isomorphic
 
-from xnatdcat.xnat_parser import xnat_to_DCAT, xnat_to_DCATDataset, VCARD
+from xnatdcat.xnat_parser import xnat_to_RDF, xnat_to_DCATDataset, VCARD
 
 
 # Taken from cedar2fdp
@@ -39,7 +39,7 @@ def test_empty_xnat(session, empty_graph, config):
 
     empty_graph = empty_graph.parse(source='tests/references/empty_xnat.ttl')
 
-    expected = xnat_to_DCAT(session, config)
+    expected = xnat_to_RDF(session, config)
 
     # Compare to reference graph
     assert to_isomorphic(expected) == to_isomorphic(empty_graph)

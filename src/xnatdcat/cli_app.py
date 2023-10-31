@@ -12,7 +12,7 @@ except ModuleNotFoundError:
 import xnat
 
 from .__about__ import __version__
-from .xnat_parser import xnat_to_DCAT
+from .xnat_parser import xnat_to_RDF
 
 # The location of this file (cli_app.py) is known, this leads to project root folder
 EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / 'example-config.toml'
@@ -129,7 +129,7 @@ def cli_main():
 
     session = __connect_xnat(args)
     config = load_configuration(args.config)
-    g = xnat_to_DCAT(session, config)
+    g = xnat_to_RDF(session, config)
 
     if args.output:
         g.serialize(destination=args.output, format=args.format)
