@@ -111,12 +111,14 @@ def load_configuration(config_path: Path = None) -> Dict:
     if config_path:
         if not config_path.exists():
             raise FileNotFoundError(f"Configuration file does not exist at {config_path}")
-    elif (config_path := Path("~/.xnatdcat/config.toml")).exists():
+    elif (config_path := Path.home() / ".xnatdcat" / "config.toml").exists():
         pass
     else:
         # Python 3.8 does not support slicing of paths yet :(
         config_path = EXAMPLE_CONFIG_PATH
         logger.warning("No configuration file found or specified! xnatdcat will use the example file.")
+
+    logger.info("Using configuration file %s", config_path)
 
     with open(config_path, 'rb') as f:
         config = tomllib.load(f)
