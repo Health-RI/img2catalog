@@ -75,7 +75,7 @@ def __parse_cli_args():
     )
     parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
 
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enables debugging mode.")
+    # parser.add_argument("-v", "--verbose", action="store_true", help="Enables debugging mode.")
 
     args = parser.parse_args()
 
@@ -130,8 +130,8 @@ def load_configuration(config_path: Path = None) -> Dict:
 
 def cli_main():
     args = __parse_cli_args()
-    if args.verbose:
-        logger.setLevel(logging.DEBUG)
+    # if args.verbose:
+    #     logger.setLevel(logging.DEBUG)
 
     session = __connect_xnat(args)
     config = load_configuration(args.config)
