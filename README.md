@@ -10,7 +10,8 @@ running the `xnatdcat` command from the commandline.
 
 ## Usage
 
-Basic example: `xnatdcat https://xnat.bmia.nl`; output will appear at stdout.
+Basic example: `xnatdcat https://xnat.bmia.nl`; output will appear at stdout. A log file `xnatdcat.log` will be 
+created in the directory from which you run this script.
 
 The tool supports both public and privat XNAT instances. For authentication, you can either supply
 a username and/or password at the commandline or use a `.netrc` file. For more information regarding

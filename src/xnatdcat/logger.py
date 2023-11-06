@@ -4,6 +4,14 @@ from logging import StreamHandler, FileHandler
 
 
 class Logger:
+    """Logging class that logs Warnings to STDOUT and Info to file.
+
+    Parameters
+    ----------
+    logger_name : str
+        Internal name of logger. This log file will be called './{logger_name}.log'.
+
+    """
     def __init__(self, logger_name: str):
         logger = logging.getLogger(logger_name)
         logger.setLevel(logging.INFO)
@@ -25,4 +33,5 @@ class Logger:
         self.start_run()
 
     def start_run(self) -> None:
+        """Prints a line in the logs signifying a new run."""
         self.logger.info('======== New run =========')
