@@ -1,0 +1,8 @@
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://xnat.bmia.nl> a dcat:Catalog ;
+    dcterms:title "Example XNAT catalog" ;
+    dcterms:description "This is an example XNAT catalog description" .
+

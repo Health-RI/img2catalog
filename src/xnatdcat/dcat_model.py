@@ -16,7 +16,7 @@ class VCard(BaseModel):
     uid: URIRef
 
 
-def add_empty_node_of_type(graph, subject, predicate, node_type=None):
+def add_empty_node_of_type(graph: Graph, subject, predicate, node_type=None):
     node = BNode()
     graph.add((subject, predicate, node))
     if node_type:
@@ -116,6 +116,7 @@ class DCATDataSet(BaseModel):
     def add_vcard_info(self, attribute_name, graph, subject, predicate, userinfo_format: URIRef = None) -> None:
         """
         Adds person information as URIRef or VCard node
+
         Parameters
         ----------
         attribute_name: String
@@ -128,6 +129,7 @@ class DCATDataSet(BaseModel):
             Target predicate
         userinfo_format: Optional, URIRef
             a format of a user record node, VCARD.VCard if "VCARD.VCard" is specified, default is not defined
+
         Returns
         ------
         None
@@ -190,5 +192,31 @@ class DCATDistribution(BaseModel):
 
         graph.bind("dcat", DCAT)
         graph.bind("dcterms", DCTERMS)
+
+        return graph
+
+
+class DCATCatalog(BaseModel):
+    """DCAT Catalog model"""
+
+    uri: URIRef
+    title: Literal
+    description: Literal
+    # publisher: FOAFAgent
+    Dataset: Optional[List[URIRef]] = Field(default_factory=list)
+
+    def to_graph(self) -> Graph:
+        graph = Graph()
+        graph.bind("dcat", DCAT)
+        graph.bind("dcterms", DCTERMS)
+
+        subject = self.uri
+        graph.add((subject, RDF.type, DCAT.Catalog))
+        graph.add((subject, DCTERMS.title, self.title))
+        graph.add((subject, DCTERMS.description, self.description))
+
+        if self.Dataset:
+            for ds in self.Dataset:
+                graph.add((subject, DCAT.dataset, ds))
 
         return graph

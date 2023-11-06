@@ -1,0 +1,11 @@
+[catalog]
+title = "Example XNAT catalog"
+description = "This is an example XNAT catalog description"
+
+[catalog.publisher]
+name = "Example publishing institution"
+homepage = "https://www.example.com"
+
+[distribution.default]
+title = "XNAT imaging distribution"
+description = "Link to XNAT instance where the imaging data can be accessed."
