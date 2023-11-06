@@ -7,11 +7,27 @@ from tqdm import tqdm
 
 from .dcat_model import DCATCatalog, DCATDataSet, VCard
 from xnat.session import XNATSession
-from typing import Dict
+from typing import Dict, List
 
 VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")
 
 logger = logging.getLogger(__name__)
+
+
+class XNATParserError(ValueError):
+    """Exception that can contain an list of errors from the XNAT parser. 
+
+    Parameters
+    ----------
+    message: str
+        Exception message
+    error_list: list
+        List of strings containing error messages.
+
+    """
+    def __init__(self, message: str, error_list: List[str]):
+        super().__init__(message)
+        self.error_list = error_list
 
 
 def xnat_to_DCATDataset(project: XNATSession, config: Dict) -> DCATDataSet:
@@ -39,10 +55,14 @@ def xnat_to_DCATDataset(project: XNATSession, config: Dict) -> DCATDataSet:
     if xnat_keywords := project.keywords:
         keywords = [Literal(kw.strip()) for kw in xnat_keywords.split(" ")]
 
+    error_list = []
     if not (project.pi.firstname or project.pi.lastname):
-        raise ValueError("Cannot have empty name of PI")
+        error_list.append("Cannot have empty name of PI")
     if not project.description:
-        raise ValueError("Cannot have empty description")
+        error_list.append("Cannot have empty description")
+
+    if error_list:
+        raise XNATParserError("Errors encountered during the parsing of XNAT.", error_list=error_list)
 
     creator_vcard = [
         VCard(
@@ -115,8 +135,10 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
             dcat_dataset = xnat_to_DCATDataset(p, config)
             d = dcat_dataset.to_graph(userinfo_format=VCARD.VCard)
             catalog.Dataset.append(dcat_dataset.uri)
-        except ValueError as v:
+        except XNATParserError as v:
             logger.info(f"Project {p.name} could not be converted into DCAT: {v}")
+            for err in v.error_list:
+                logger.info(f"- {err}")
             failure_counter += 1
             continue
         export_graph += d
