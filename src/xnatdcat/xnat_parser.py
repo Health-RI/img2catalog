@@ -37,7 +37,7 @@ def xnat_to_DCATDataset(project: XNATSession, config: Dict) -> DCATDataSet:
     # can be used independently as a search string.
     keywords = None
     if xnat_keywords := project.keywords:
-        keywords = [Literal(kw.strip()) for kw in xnat_keywords.split(" ")]
+        keywords = [Literal(kw.strip()) for kw in xnat_keywords.strip().split(" ")]
 
     if not (project.pi.firstname or project.pi.lastname):
         raise ValueError("Cannot have empty name of PI")
