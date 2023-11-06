@@ -11,7 +11,7 @@ from typing import Dict
 
 VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('xnatdcat')
 
 
 def xnat_to_DCATDataset(project: XNATSession, config: Dict) -> DCATDataSet:
