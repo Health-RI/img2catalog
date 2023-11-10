@@ -4,5 +4,6 @@
 
 <https://xnat.bmia.nl> a dcat:Catalog ;
     dcterms:title "Example XNAT catalog" ;
-    dcterms:description "This is an example XNAT catalog description" .
+    dcterms:description "This is an example XNAT catalog description" ;
+    dcterms:publisher <http://example.com> .
 
