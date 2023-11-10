@@ -80,6 +80,7 @@ def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> DCATCatalog:
         uri=catalog_uri,
         title=Literal(config['catalog']['title']),
         description=Literal(config['catalog']['description']),
+        publisher=URIRef(config['catalog']['publisher']['uri']),
     )
     return catalog
 

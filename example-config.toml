@@ -3,8 +3,7 @@ title = "Example XNAT catalog"
 description = "This is an example XNAT catalog description"
 
 [catalog.publisher]
-name = "Example publishing institution"
-homepage = "https://www.example.com"
+uri = "http://example.com"
 
 [distribution.default]
 title = "XNAT imaging distribution"

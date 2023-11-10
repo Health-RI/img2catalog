@@ -202,7 +202,7 @@ class DCATCatalog(BaseModel):
     uri: URIRef
     title: Literal
     description: Literal
-    # publisher: FOAFAgent
+    publisher: URIRef
     Dataset: Optional[List[URIRef]] = Field(default_factory=list)
 
     def to_graph(self) -> Graph:
@@ -214,6 +214,7 @@ class DCATCatalog(BaseModel):
         graph.add((subject, RDF.type, DCAT.Catalog))
         graph.add((subject, DCTERMS.title, self.title))
         graph.add((subject, DCTERMS.description, self.description))
+        graph.add((subject, DCTERMS.publisher, self.publisher))
 
         if self.Dataset:
             for ds in self.Dataset:
