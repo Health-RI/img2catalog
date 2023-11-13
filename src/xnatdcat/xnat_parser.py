@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class XNATParserError(ValueError):
-    """Exception that can contain an list of errors from the XNAT parser. 
+    """Exception that can contain an list of errors from the XNAT parser.
 
     Parameters
     ----------
@@ -25,6 +25,7 @@ class XNATParserError(ValueError):
         List of strings containing error messages.
 
     """
+
     def __init__(self, message: str, error_list: List[str]):
         super().__init__(message)
         self.error_list = error_list
@@ -42,6 +43,8 @@ def xnat_to_DCATDataset(project: XNATSession, config: Dict) -> DCATDataSet:
     ----------
     project : XNatListing
         An XNat project instance which is to be generated
+    config : Dict
+        A dictionary containing the configuration of xnatdcat
 
     Returns
     -------
@@ -89,6 +92,8 @@ def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> DCATCatalog:
     ----------
     session : XNATSession
         An XNATSession of the XNAT instance that is going to be queried
+    config : Dict
+        A dictionary containing the configuration of xnatdcat
 
     Returns
     -------
@@ -111,6 +116,8 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
     ----------
     session : XNATSession
         An XNATSession of the XNAT instance that is going to be queried
+    config : Dict
+        A dictionary containing the configuration of xnatdcat
 
     Returns
     -------
