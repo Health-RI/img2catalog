@@ -27,14 +27,18 @@ def __parse_cli_args():
     parser.add_argument(
         "server",
         type=str,
-        help="URI of the server to connect to (including http:// or https://)",
+        help=(
+            "URI of the server to connect to (including http:// or https://). If not set, will use "
+            "environment variables."
+        ),
+        nargs="?",
     )
     parser.add_argument(
         "-u",
         "--username",
         default=None,
         type=str,
-        help="Username to use, leave empty to use netrc entry or anonymous login.",
+        help="Username to use, leave empty to use netrc entry or anonymous login or environment variables.",
     )
     parser.add_argument(
         "-p",
@@ -43,7 +47,7 @@ def __parse_cli_args():
         type=str,
         help=(
             "Password to use with the username, leave empty when using netrc. If a"
-            " username is given and no password, there will be a prompt on the console"
+            " username is given and no password or environment variable, there will be a prompt on the console"
             " requesting the password."
         ),
     )
