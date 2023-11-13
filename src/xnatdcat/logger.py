@@ -16,14 +16,15 @@ class Logger:
         logger = logging.getLogger(logger_name)
         logger.setLevel(logging.INFO)
 
-        console_handler = StreamHandler(sys.stdout)
+        # output to stderr as to allow clean piping of output
+        console_handler = StreamHandler(sys.stderr)
         console_handler.setLevel(logging.WARNING)
 
         file_handler = FileHandler(f'./{logger_name}.log')
         file_handler.setLevel(logging.INFO)
         formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S')
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
+        )
         file_handler.setFormatter(formatter)
         console_handler.setFormatter(formatter)
 
@@ -35,3 +36,10 @@ class Logger:
     def start_run(self) -> None:
         """Prints a line in the logs signifying a new run."""
         self.logger.info('======== New run =========')
+
+    def setLevel(self, loglevel):
+        if self.logger.handlers:
+            for handler in self.logger.handlers:
+                handler.setLevel(loglevel)
+        else:
+            logging.basicConfig(level=loglevel)

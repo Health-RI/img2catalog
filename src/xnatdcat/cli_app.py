@@ -13,6 +13,7 @@ import xnat
 
 from .__about__ import __version__
 from .xnat_parser import xnat_to_RDF
+from . import log
 
 # The location of this file (cli_app.py) is known, this leads to project root folder
 EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / 'example-config.toml'
@@ -75,7 +76,7 @@ def __parse_cli_args():
     )
     parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
 
-    # parser.add_argument("-v", "--verbose", action="store_true", help="Enables debugging mode.")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enables debugging mode.")
 
     args = parser.parse_args()
 
@@ -130,8 +131,8 @@ def load_configuration(config_path: Path = None) -> Dict:
 
 def cli_main():
     args = __parse_cli_args()
-    # if args.verbose:
-    #     logger.setLevel(logging.DEBUG)
+    if args.verbose:
+        log.setLevel(logging.DEBUG)
 
     session = __connect_xnat(args)
     config = load_configuration(args.config)
