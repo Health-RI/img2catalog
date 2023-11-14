@@ -129,9 +129,10 @@ def load_configuration(config_path: Path = None) -> Dict:
 def cli_main():
     args = __parse_cli_args()
 
-    session = __connect_xnat(args)
     config = load_configuration(args.config)
-    g = xnat_to_RDF(session, config)
+
+    with __connect_xnat(args) as session:
+        g = xnat_to_RDF(session, config)
 
     if args.output:
         g.serialize(destination=args.output, format=args.format)
