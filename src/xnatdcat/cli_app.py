@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 from pathlib import Path, PurePath
 from typing import Dict
 
@@ -84,9 +85,30 @@ def __parse_cli_args():
     return args
 
 
-def __connect_xnat(args):
-    """Very simple function to connect to XNat and get a session"""
-    session = xnat.connect(server=args.server, user=args.username, password=args.password)
+def __connect_xnat(args: argparse.Namespace):
+    """This function collects credentials and connects to XNAT
+
+    Parameters
+    ----------
+    args : Namespace
+        Namespace containing commandline arguments
+
+    Returns
+    -------
+    XNATSession
+    """
+    if not (server := args.server):
+        if not (server := os.environ.get("XNAT_HOST")):
+            if not (server := os.environ.get("XNATPY_HOST")):
+                logger.error("No server set!")
+    if not (username := args.username):
+        if not (username := os.environ.get("XNAT_USER")):
+            logger.info("No username set, using anonymous/netrc login")
+    if not (password := args.password):
+        if not (password := os.environ.get("XNAT_PASS")):
+            logger.info("No password set, using anonymous/netrc login")
+
+    session = xnat.connect(server=server, user=username, password=password)
 
     return session
 
