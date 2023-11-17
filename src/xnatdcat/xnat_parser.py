@@ -9,13 +9,13 @@ from .dcat_model import DCATCatalog, DCATDataSet, VCard
 from xnat.session import XNATSession
 from typing import Dict, List
 
-VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")
+from .const import VCARD
 
 logger = logging.getLogger(__name__)
 
 
 class XNATParserError(ValueError):
-    """Exception that can contain an list of errors from the XNAT parser. 
+    """Exception that can contain an list of errors from the XNAT parser.
 
     Parameters
     ----------
@@ -25,6 +25,7 @@ class XNATParserError(ValueError):
         List of strings containing error messages.
 
     """
+
     def __init__(self, message: str, error_list: List[str]):
         super().__init__(message)
         self.error_list = error_list

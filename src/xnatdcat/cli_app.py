@@ -4,6 +4,8 @@ import os
 from pathlib import Path, PurePath
 from typing import Dict
 
+from xnatdcat.const import EXAMPLE_CONFIG_PATH, XNATPY_HOST_ENV, XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV
+
 # Python < 3.11 does not have tomllib, but tomli provides same functionality
 try:
     import tomllib
@@ -14,9 +16,6 @@ import xnat
 
 from .__about__ import __version__
 from .xnat_parser import xnat_to_RDF
-
-# The location of this file (cli_app.py) is known, this leads to project root folder
-EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / 'example-config.toml'
 
 logger = logging.getLogger(__name__)
 
@@ -98,15 +97,17 @@ def __connect_xnat(args: argparse.Namespace):
     XNATSession
     """
     if not (server := args.server):
-        if not (server := os.environ.get("XNAT_HOST")):
-            if not (server := os.environ.get("XNATPY_HOST")):
-                logger.error("No server set!")
+        if not (server := os.environ.get(XNATPY_HOST_ENV)):
+            if not (server := os.environ.get(XNAT_HOST_ENV)):
+                raise argparse.ArgumentError("server", "No server specified!")
     if not (username := args.username):
-        if not (username := os.environ.get("XNAT_USER")):
+        if not (username := os.environ.get(XNAT_USER_ENV)):
             logger.info("No username set, using anonymous/netrc login")
     if not (password := args.password):
-        if not (password := os.environ.get("XNAT_PASS")):
+        if not (password := os.environ.get(XNAT_PASS_ENV)):
             logger.info("No password set, using anonymous/netrc login")
+
+    logger.debug("Connecting to server %s using username %s", server, username)
 
     session = xnat.connect(server=server, user=username, password=password)
 
@@ -153,6 +154,14 @@ def load_configuration(config_path: Path = None) -> Dict:
 
 
 def cli_main():
+    try:
+        run_cli_app()
+    except Exception as e:
+        print(f"Error running xnatdcat\n{e}")
+        exit(-1)
+
+
+def run_cli_app():
     args = __parse_cli_args()
 
     session = __connect_xnat(args)

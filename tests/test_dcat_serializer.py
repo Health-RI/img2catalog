@@ -12,8 +12,7 @@ from rdflib import Graph, DCAT, DCTERMS
 from rdflib.compare import to_isomorphic
 
 from xnatdcat.xnat_parser import xnat_to_RDF, xnat_to_DCATDataset, VCARD
-
-EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parent.parent / 'example-config.toml'
+from xnatdcat.const import EXAMPLE_CONFIG_PATH
 
 
 # Taken from cedar2fdp
