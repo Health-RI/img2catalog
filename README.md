@@ -64,9 +64,11 @@ xnat (DCAT) catalog and the publisher of the catalog. We are still working on ad
 values for certain DCAT properties to the configuration.
 
 There is limited support for using environment variables. For setting the XNAT server, variables
-`XNAT_HOST` and `XNATPY_HOST` can be used. Authentication can be provided in `XNAT_USER` and
-`XNAT_PASS`. Commandline arguments take precedence over environment variables. Environment variables
-take precedence over `.netrc` login.
+`XNAT_HOST` or `XNATPY_HOST` can be used, with the latter taking preference. Authentication can be
+provided in `XNAT_USER` and `XNAT_PASS`.
+
+Commandline arguments take precedence over environment variables. Environment variables take
+precedence over `.netrc` login.
 
 ## Development
 
