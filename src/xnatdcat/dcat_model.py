@@ -6,9 +6,9 @@ from pydantic.v1 import BaseModel, Field, validator
 from rdflib import BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import DCAT, DCTERMS, RDF, XSD
 
-logger = logging.getLogger(__name__)
+from .const import VCARD
 
-VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")
+logger = logging.getLogger(__name__)
 
 
 class VCard(BaseModel):

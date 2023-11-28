@@ -9,7 +9,7 @@ from .dcat_model import DCATCatalog, DCATDataSet, VCard
 from xnat.session import XNATSession
 from typing import Dict, List
 
-VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")
+from .const import VCARD
 
 logger = logging.getLogger(__name__)
 
