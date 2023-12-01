@@ -78,6 +78,14 @@ def __parse_cli_args():
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enables debugging mode.")
 
+    parser.add_argument(
+        "-l",
+        "--logfile",
+        default="./xnatdcat.log",
+        type=Path,
+        help="Path of logfile to use. Default is xnatdcat.log in current directory",
+    )
+
     args = parser.parse_args()
 
     return args
@@ -131,6 +139,7 @@ def load_configuration(config_path: Path = None) -> Dict:
 
 def cli_main():
     args = __parse_cli_args()
+    log._add_file_handler(args.logfile)
     if args.verbose:
         log.setLevel(logging.DEBUG)
 
