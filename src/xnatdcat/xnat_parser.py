@@ -38,6 +38,7 @@ def xnat_to_DCATDataset(project: XNATSession, config: Dict) -> DCATDataSet:
     keywords = None
     if xnat_keywords := project.keywords:
         keywords = [Literal(kw.strip()) for kw in xnat_keywords.split(" ")]
+        logger.debug("Keywords split: %s", keywords)
 
     if not (project.pi.firstname or project.pi.lastname):
         raise ValueError("Cannot have empty name of PI")
@@ -112,6 +113,7 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
 
     for p in tqdm(session.projects.values()):
         try:
+            logger.debug("Going to process project %s", p)
             dcat_dataset = xnat_to_DCATDataset(p, config)
             d = dcat_dataset.to_graph(userinfo_format=VCARD.VCard)
             catalog.Dataset.append(dcat_dataset.uri)
