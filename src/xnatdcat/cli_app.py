@@ -18,7 +18,7 @@ from . import log
 # The location of this file (cli_app.py) is known, this leads to project root folder
 EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / 'example-config.toml'
 
-logger = logging.getLogger('xnatdcat')
+logger = logging.getLogger(__name__)
 
 
 def __parse_cli_args():
@@ -140,8 +140,10 @@ def load_configuration(config_path: Path = None) -> Dict:
 def cli_main():
     args = __parse_cli_args()
     log._add_file_handler(args.logfile)
+    logger.info("======= XNATDCAT New Run ========")
     if args.verbose:
         log.setLevel(logging.DEBUG)
+        logger.debug("Verbose mode enabled")
 
     session = __connect_xnat(args)
     config = load_configuration(args.config)
