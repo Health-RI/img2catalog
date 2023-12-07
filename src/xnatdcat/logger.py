@@ -13,6 +13,8 @@ class Logger:
     ----------
     logger_name : str
         Internal name of logger.
+    logger_path : str, PathLike
+        Path to the logfile
 
     """
 
@@ -35,24 +37,36 @@ class Logger:
         logger.addHandler(console_handler)
         # logger.addHandler(file_handler)
         self.logger = logger
+        self.logger_path = logger_path
 
     def _add_file_handler(self, logger_path: Union[str, PathLike] = None):
-        if logger_path is None:
-            logger_path = f"./{self.logger_name}.log"
+        """Adds a file handler to logging
 
-        file_handler = RotatingFileHandler(logger_path, maxBytes=1e6, backupCount=3)
+        Parameters
+        ----------
+        logger_path : Union[str, PathLike], optional
+            Location to store logfile. If not set, will use self.logger_path, if that isn't set
+            either, a logfile with the name of the logger will be stored in the current directory.
+        """
+        if logger_path is not None:
+            self.logger_path = logger_path
+        if self.logger_path is None:
+            self.logger_path = f"./{self.logger_name}.log"
+
+        file_handler = RotatingFileHandler(self.logger_path, maxBytes=1e6, backupCount=3)
         file_handler.setLevel(logging.INFO)
 
         file_handler.setFormatter(self.formatter)
         self.logger.addHandler(file_handler)
-        self.start_run()
-
-    def start_run(self) -> None:
-        """Prints a line in the logs signifying a new run."""
-
-        self.logger.info("======== New run =========")
 
     def setLevel(self, loglevel):
+        """Sets loglevel for both the logfile as well as stderr output
+
+        Parameters
+        ----------
+        loglevel : str, Int
+            Logging level, must be str or int.
+        """
         if self.logger.handlers:
             for handler in self.logger.handlers:
                 handler.setLevel(loglevel)
