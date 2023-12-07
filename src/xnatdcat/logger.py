@@ -5,6 +5,9 @@ from logging import FileHandler, StreamHandler
 from os import PathLike
 from typing import Union
 
+LOGGING_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+LOGGING_DATEFMT = '%Y-%m-%d %H:%M:%S'
+
 
 class Logger:
     """Logging class that logs Warnings to stderr and Info to file.
@@ -28,9 +31,7 @@ class Logger:
 
         # file_handler = FileHandler(f'./{logger_name}.log')
         # file_handler.setLevel(logging.INFO)
-        self.formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
-        )
+        self.formatter = logging.Formatter(LOGGING_FORMAT, datefmt=LOGGING_DATEFMT)
         # file_handler.setFormatter(formatter)
         console_handler.setFormatter(self.formatter)
 
@@ -67,6 +68,7 @@ class Logger:
         loglevel : str, Int
             Logging level, must be str or int.
         """
+        self.logger.setLevel(loglevel)
         if self.logger.handlers:
             for handler in self.logger.handlers:
                 handler.setLevel(loglevel)
