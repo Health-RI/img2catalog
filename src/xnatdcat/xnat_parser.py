@@ -22,11 +22,11 @@ class XNATParserError(ValueError):
     message: str
         Exception message
     error_list: list
-        List of strings containing error messages.
+        List of strings containing error messages. Default is None
 
     """
 
-    def __init__(self, message: str, error_list: List[str]):
+    def __init__(self, message: str, error_list: List[str] = None):
         super().__init__(message)
         self.error_list = error_list
 
@@ -139,15 +139,23 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
 
     for p in tqdm(session.projects.values()):
         try:
+            # Check if project is private. If it is, skip it
+            if xnat_private_project(p):
+                logger.debug("Project %s is private, skipping", p.id)
+                continue
+
             dcat_dataset = xnat_to_DCATDataset(p, config)
+
             d = dcat_dataset.to_graph(userinfo_format=VCARD.VCard)
             catalog.Dataset.append(dcat_dataset.uri)
         except XNATParserError as v:
             logger.info(f"Project {p.name} could not be converted into DCAT: {v}")
+
             for err in v.error_list:
                 logger.info(f"- {err}")
             failure_counter += 1
             continue
+        
         export_graph += d
 
     export_graph += catalog.to_graph()
@@ -156,3 +164,38 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
         logger.warning("There were %d projects with invalid data for DCAT generation", failure_counter)
 
     return export_graph
+
+
+def xnat_private_project(project) -> bool:
+    """This function checks if an XNAT project is a private project
+
+    Parameters
+    ----------
+    project : XNAT ProjectData
+        The project of which the permission status needs to be investigated
+
+    Returns
+    -------
+    bool
+        Returns True if the project is private, False if it is protected or public
+
+    Raises
+    ------
+    XNATParserError
+        If the XNAT API returns an unknown value for accessibility
+    """
+    # The API URI is documented as part of the XNAT Project Attributes API at
+    # https://wiki.xnat.org/xnat-api/project-attributes-api
+    # As it is not exposed as part of the XNAT XSD, XNATPy does not generate a field for it
+
+    # The API documentation says it should be Title case, in practice XNAT returns lowercase
+    # Therefore I consider the case to be unreliable
+    accessibility = project.xnat_session.get(f'{project.uri}/accessibility').text.casefold()
+    if accessibility == "private".casefold():
+        return True
+    elif accessibility == "public".casefold():
+        return False
+    elif accessibility == "protected".casefold():
+        return False
+    else:
+        raise XNATParserError(f"Unknown permissions of XNAT project: accessibility is '{accessibility}'")
