@@ -16,6 +16,7 @@ import xnat
 
 from .__about__ import __version__
 from .xnat_parser import xnat_to_RDF
+from . import log
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,16 @@ def __parse_cli_args():
         help="Configuration file to use. If not set, will use ~/.xnatdcat/config.toml if it exists.",
     )
     parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
+
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enables debugging mode.")
+
+    parser.add_argument(
+        "-l",
+        "--logfile",
+        default="./xnatdcat.log",
+        type=Path,
+        help="Path of logfile to use. Default is xnatdcat.log in current directory",
+    )
 
     args = parser.parse_args()
 
@@ -163,6 +174,11 @@ def cli_main():
 
 def run_cli_app():
     args = __parse_cli_args()
+    log._add_file_handler(args.logfile)
+    logger.info("======= XNATDCAT New Run ========")
+    if args.verbose:
+        log.setLevel(logging.DEBUG)
+        logger.debug("Verbose mode enabled")
 
     config = load_configuration(args.config)
 

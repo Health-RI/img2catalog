@@ -60,10 +60,12 @@ class DCATDataSet(BaseModel):
         # For dcterms:identifier
         identifier = subject.rsplit("/", maxsplit=1)[-1]
 
+        # First, add dataset identifier and dataset itself.
         graph.add((subject, DCTERMS.identifier, Literal(identifier, datatype=XSD.token)))
         graph.add((subject, RDF.type, DCAT.Dataset))
         for title in self.title:
             graph.add((subject, DCTERMS.title, title))
+
         self.add_vcard_info(
             attribute_name="creator",
             graph=graph,
@@ -140,6 +142,7 @@ class DCATDataSet(BaseModel):
             logger.warning(f"Items of '{attribute_name}' attribute are in VCard format")
         if attribute:
             if userinfo_format == VCARD.VCard:
+                logger.debug("User info is of VCARD type")
                 for item in attribute:
                     vcard_node = add_empty_node_of_type(
                         graph=graph,
