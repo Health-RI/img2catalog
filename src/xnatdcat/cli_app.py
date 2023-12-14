@@ -1,7 +1,10 @@
 import argparse
 import logging
+import os
 from pathlib import Path, PurePath
 from typing import Dict
+
+from xnatdcat.const import EXAMPLE_CONFIG_PATH, XNATPY_HOST_ENV, XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV
 
 # Python < 3.11 does not have tomllib, but tomli provides same functionality
 try:
@@ -15,9 +18,6 @@ from .__about__ import __version__
 from .xnat_parser import xnat_to_RDF
 from . import log
 
-# The location of this file (cli_app.py) is known, this leads to project root folder
-EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / 'example-config.toml'
-
 logger = logging.getLogger(__name__)
 
 
@@ -28,14 +28,18 @@ def __parse_cli_args():
     parser.add_argument(
         "server",
         type=str,
-        help="URI of the server to connect to (including http:// or https://)",
+        help=(
+            "URI of the server to connect to (including http:// or https://). If not set, will use "
+            "environment variables."
+        ),
+        nargs="?",
     )
     parser.add_argument(
         "-u",
         "--username",
         default=None,
         type=str,
-        help="Username to use, leave empty to use netrc entry or anonymous login.",
+        help="Username to use, leave empty to use netrc entry or anonymous login or environment variables.",
     )
     parser.add_argument(
         "-p",
@@ -44,7 +48,7 @@ def __parse_cli_args():
         type=str,
         help=(
             "Password to use with the username, leave empty when using netrc. If a"
-            " username is given and no password, there will be a prompt on the console"
+            " username is given and no password or environment variable, there will be a prompt on the console"
             " requesting the password."
         ),
     )
@@ -91,9 +95,32 @@ def __parse_cli_args():
     return args
 
 
-def __connect_xnat(args):
-    """Very simple function to connect to XNat and get a session"""
-    session = xnat.connect(server=args.server, user=args.username, password=args.password)
+def __connect_xnat(args: argparse.Namespace):
+    """This function collects credentials and connects to XNAT
+
+    Parameters
+    ----------
+    args : Namespace
+        Namespace containing commandline arguments
+
+    Returns
+    -------
+    XNATSession
+    """
+    if not (server := args.server):
+        if not (server := os.environ.get(XNATPY_HOST_ENV)):
+            if not (server := os.environ.get(XNAT_HOST_ENV)):
+                raise argparse.ArgumentError("server", "No server specified!")
+    if not (username := args.username):
+        if not (username := os.environ.get(XNAT_USER_ENV)):
+            logger.info("No username set, using anonymous/netrc login")
+    if not (password := args.password):
+        if not (password := os.environ.get(XNAT_PASS_ENV)):
+            logger.info("No password set, using anonymous/netrc login")
+
+    logger.debug("Connecting to server %s using username %s", server, username)
+
+    session = xnat.connect(server=server, user=username, password=password)
 
     return session
 
@@ -138,6 +165,14 @@ def load_configuration(config_path: Path = None) -> Dict:
 
 
 def cli_main():
+    try:
+        run_cli_app()
+    except Exception as e:
+        print(f"Error running xnatdcat\n{e}")
+        exit(-1)
+
+
+def run_cli_app():
     args = __parse_cli_args()
     log._add_file_handler(args.logfile)
     logger.info("======= XNATDCAT New Run ========")
@@ -145,9 +180,10 @@ def cli_main():
         log.setLevel(logging.DEBUG)
         logger.debug("Verbose mode enabled")
 
-    session = __connect_xnat(args)
     config = load_configuration(args.config)
-    g = xnat_to_RDF(session, config)
+
+    with __connect_xnat(args) as session:
+        g = xnat_to_RDF(session, config)
 
     if args.output:
         g.serialize(destination=args.output, format=args.format)
