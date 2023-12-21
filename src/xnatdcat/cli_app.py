@@ -90,6 +90,18 @@ def __parse_cli_args():
         help="Path of logfile to use. Default is xnatdcat.log in current directory",
     )
 
+    # Both opt-in and opt-out at the same time is not very logical, so it is not allowed.
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "--optin",
+        type=str,
+        help="Opt-in keyword. If set, only projects with this keyword will be included",
+        default=None,
+    )
+    group.add_argument(
+        "--optout", type=str, help="Opt-out keyword. If set, projects with this keyword will be excluded", default=None
+    )
+
     args = parser.parse_args()
 
     return args
@@ -110,7 +122,7 @@ def __connect_xnat(args: argparse.Namespace):
     if not (server := args.server):
         if not (server := os.environ.get(XNATPY_HOST_ENV)):
             if not (server := os.environ.get(XNAT_HOST_ENV)):
-                raise argparse.ArgumentError("server", "No server specified!")
+                raise RuntimeError("No server specified: no argument nor environment variable found")
     if not (username := args.username):
         if not (username := os.environ.get(XNAT_USER_ENV)):
             logger.info("No username set, using anonymous/netrc login")
@@ -165,11 +177,13 @@ def load_configuration(config_path: Path = None) -> Dict:
 
 
 def cli_main():
-    try:
-        run_cli_app()
-    except Exception as e:
-        print(f"Error running xnatdcat\n{e}")
-        exit(-1)
+    # try:
+    run_cli_app()
+
+
+# except Exception as e:
+#     print(f"Error running xnatdcat:\n{e}")
+#     exit(-1)
 
 
 def run_cli_app():
@@ -181,6 +195,13 @@ def run_cli_app():
         logger.debug("Verbose mode enabled")
 
     config = load_configuration(args.config)
+
+    if args.optin:
+        config['xnatdcat']['optin'] = args.optin
+        config['xnatdcat']['optout'] = None
+    if args.optout:
+        config['xnatdcat']['optout'] = args.optout
+        config['xnatdcat']['optin'] = None
 
     with __connect_xnat(args) as session:
         g = xnat_to_RDF(session, config)
