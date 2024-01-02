@@ -196,12 +196,9 @@ def run_cli_app():
 
     config = load_configuration(args.config)
 
-    if args.optin:
+    if args.optin or args.optout:
         config['xnatdcat']['optin'] = args.optin
-        config['xnatdcat']['optout'] = None
-    if args.optout:
         config['xnatdcat']['optout'] = args.optout
-        config['xnatdcat']['optin'] = None
 
     with __connect_xnat(args) as session:
         g = xnat_to_RDF(session, config)

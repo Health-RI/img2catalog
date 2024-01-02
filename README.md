@@ -11,7 +11,7 @@ running the `xnatdcat` command from the commandline.
 
 ## Usage
 
-Basic example: `xnatdcat https://xnat.bmia.nl`; output will appear at stdout. A log file `xnatdcat.log` will be 
+Basic example: `xnatdcat https://xnat.bmia.nl`; output will appear at stdout. A log file `xnatdcat.log` will be
 created in the directory from which you run this program.
 
 The tool supports both public and private XNAT instances. For authentication, you can either supply
@@ -70,6 +70,20 @@ provided in `XNAT_USER` and `XNAT_PASS`.
 
 Commandline arguments take precedence over environment variables. Environment variables take
 precedence over `.netrc` login.
+
+## Inclusion and exclusion of projects
+
+By default, all public and protected projects are indexed. Private projects are *not* indexed, even
+if you provide user credentials that have relevant permissions for them.
+
+Further granularity can be provided by using keywords. There is functionality for an opt-in keyword
+and an opt-out keyword, though only one of these at the time. If an opt-in keyword is set, only
+projects containing this magic keyword in their metadata will be indexed. All other projects will be
+ignored. If an opt-out keyword is set, all projects except for those containing the magic opt-out
+keyword will be indexed. The keywords can be configured in either the settings or the CLI, see the
+example configuration file.
+
+Note that private projects will never be indexed, not even if an opt-in keyword is set in them.
 
 ## Development
 

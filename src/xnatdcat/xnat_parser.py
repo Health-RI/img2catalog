@@ -1,5 +1,6 @@
 """Simple tool to query an XNAT instance and serialize projects as datasets"""
 import logging
+import re
 
 from rdflib import DCAT, DCTERMS, FOAF, Graph, Namespace, URIRef
 from rdflib.term import Literal
@@ -172,12 +173,12 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
 def split_keywords(xnat_keywords: Union[str, None]) -> List[str]:
     """Takes an XNAT keyword list and splits it up into a list of keywords
 
-    Removes periods, colons and semicolons from the keywords
+    Removes all non alphanumeric characters from the keywords
 
     Parameters
     ----------
     xnat_keywords : str
-        String containing all keywords (space-separated)
+        String containing all keywords. Space, comma or (semi-)colon-separated.
 
     Returns
     -------
@@ -189,7 +190,8 @@ def split_keywords(xnat_keywords: Union[str, None]) -> List[str]:
         if len(xnat_keywords.strip()) > 0:
             keyword_list = [
                 kw.strip()
-                for kw in xnat_keywords.strip().replace(".", " ").replace(",", " ").replace(";", " ").split(" ")
+                for kw in re.split("[\.,;: ]", xnat_keywords)
+                # for kw in xnat_keywords.strip().replace(".", " ").replace(",", " ").replace(";", " ").split(" ")
             ]
 
     # Filter out all empty strings, then return list
@@ -246,12 +248,19 @@ def _check_optin_optout(project, config: Dict) -> bool:
     bool
         Returns True if a project is elligible for indexing, False if it is not.
     """
-    if config.get('xnatdcat').get('optin'):
-        if not (config.get('xnatdcat').get('optin') in split_keywords(project.keywords)):
+    try:
+        optin_kw = config['xnatdcat'].get('optin')
+        optout_kw = config['xnatdcat'].get('optout')
+    except KeyError:
+        # If key not found, means config is not set, so no opt-in/opt-out set so always elligible.
+        return True
+
+    if optin_kw:
+        if not optin_kw in split_keywords(project.keywords):
             logger.debug("Project %s does not contain keyword on opt-in list, skipping", project)
             return False
-    elif config.get('xnatdcat').get('optout'):
-        if config.get('xnatdcat').get('optout') in split_keywords(project.keywords):
+    elif optout_kw:
+        if optout_kw in split_keywords(project.keywords):
             logger.debug("Project %s contains keyword on opt-out list, skipping", project)
             return False
 
