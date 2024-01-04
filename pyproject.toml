@@ -51,7 +51,7 @@ cov-report = ["- coverage combine", "coverage report"]
 cov = ["test-cov", "cov-report"]
 
 [tool.hatch.envs.test]
-dependencies = ["pytest", "pytest-mock", "requests-mock"]
+dependencies = ["pytest", "pytest-mock", "requests-mock", "pytest-cov"]
 
 [[tool.hatch.envs.test.matrix]]
 python = ["3.8", "3.9", "3.10", "3.11", "3.12"]

@@ -1,5 +1,6 @@
 """Simple tool to query an XNAT instance and serialize projects as datasets"""
 import logging
+import re
 
 from rdflib import DCAT, DCTERMS, FOAF, Graph, Namespace, URIRef
 from rdflib.term import Literal
@@ -7,7 +8,7 @@ from tqdm import tqdm
 
 from .dcat_model import DCATCatalog, DCATDataSet, VCard
 from xnat.session import XNATSession
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from .const import VCARD
 
@@ -51,13 +52,9 @@ def xnat_to_DCATDataset(project: XNATSession, config: Dict) -> DCATDataSet:
     DCATDataSet
         DCATDataSet object with fields filled in
     """
-    # First check if keywords field is not blank
     # Specification from XNAT:  Optional: Enter searchable keywords. Each word, separated by a space,
     # can be used independently as a search string.
-    keywords = None
-    if xnat_keywords := project.keywords:
-        keywords = [Literal(kw.strip()) for kw in xnat_keywords.strip().split(" ")]
-        logger.debug("Keywords split: %s", keywords)
+    keywords = [Literal(kw) for kw in split_keywords(project.keywords)]
 
     error_list = []
     if not (project.pi.firstname or project.pi.lastname):
@@ -146,6 +143,11 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
                 continue
 
             logger.debug("Going to process project %s", p)
+
+            if not _check_optin_optout(p, config):
+                logger.debug("Skipping project %s due to keywords", p.id)
+                continue
+
             dcat_dataset = xnat_to_DCATDataset(p, config)
 
             d = dcat_dataset.to_graph(userinfo_format=VCARD.VCard)
@@ -168,6 +170,34 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
     return export_graph
 
 
+def split_keywords(xnat_keywords: Union[str, None]) -> List[str]:
+    """Takes an XNAT keyword list and splits it up into a list of keywords
+
+    Removes all non alphanumeric characters from the keywords
+
+    Parameters
+    ----------
+    xnat_keywords : str
+        String containing all keywords. Space, comma or (semi-)colon-separated.
+
+    Returns
+    -------
+    List[str]
+        List of keywords, empty list if there are no keywords
+    """
+    keyword_list = []
+    if xnat_keywords:
+        if len(xnat_keywords.strip()) > 0:
+            keyword_list = [
+                kw.strip()
+                for kw in re.split("[\.,;: ]", xnat_keywords)
+                # for kw in xnat_keywords.strip().replace(".", " ").replace(",", " ").replace(";", " ").split(" ")
+            ]
+
+    # Filter out all empty strings, then return list
+    return list(filter(None, keyword_list))
+
+
 def xnat_private_project(project) -> bool:
     """This function checks if an XNAT project is a private project
 
@@ -177,7 +207,7 @@ def xnat_private_project(project) -> bool:
         The project of which the permission status needs to be investigated
 
     Returns
-    -------
+    --------
     bool
         Returns True if the project is private, False if it is protected or public
 
@@ -201,3 +231,37 @@ def xnat_private_project(project) -> bool:
         return True
     else:
         return False
+
+
+def _check_optin_optout(project, config: Dict) -> bool:
+    """This function checks if the project is elligible for indexing, given the opt-in/opt-out keywords
+
+    Parameters
+    ----------
+    project : XNAT
+        XNAT project of which the elligiblity needs to be determined
+    config : Dict
+        Configuration dictionary with the opt-in/opt-out keys
+
+    Returns
+    -------
+    bool
+        Returns True if a project is elligible for indexing, False if it is not.
+    """
+    try:
+        optin_kw = config['xnatdcat'].get('optin')
+        optout_kw = config['xnatdcat'].get('optout')
+    except KeyError:
+        # If key not found, means config is not set, so no opt-in/opt-out set so always elligible.
+        return True
+
+    if optin_kw:
+        if not optin_kw in split_keywords(project.keywords):
+            logger.debug("Project %s does not contain keyword on opt-in list, skipping", project)
+            return False
+    elif optout_kw:
+        if optout_kw in split_keywords(project.keywords):
+            logger.debug("Project %s contains keyword on opt-out list, skipping", project)
+            return False
+
+    return True

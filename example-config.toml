@@ -1,3 +1,7 @@
+[xnatdcat]
+# optin = "include_catalog"
+# optout = "exclude_catalog"
+
 [catalog]
 title = "Example XNAT catalog"
 description = "This is an example XNAT catalog description"
