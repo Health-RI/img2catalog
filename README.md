@@ -1,7 +1,7 @@
 # XNAT to DCAT-AP
 
 This tool queries an XNAT instance and generates DCAT-AP 3.0 metadata. Every XNAT project is considered
-to be a separate Dataset.
+to be a separate Dataset. Only 'public' and 'protected' datasets are queried.
 
 ## Installation
 

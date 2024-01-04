@@ -50,7 +50,7 @@ cov-report = ["- coverage combine", "coverage report"]
 cov = ["test-cov", "cov-report"]
 
 [tool.hatch.envs.test]
-dependencies = ["pytest", "pytest-mock"]
+dependencies = ["pytest", "pytest-mock", "requests-mock"]
 
 [[tool.hatch.envs.test.matrix]]
 python = ["3.8", "3.9", "3.10", "3.11"]
@@ -58,6 +58,7 @@ python = ["3.8", "3.9", "3.10", "3.11"]
 [tool.hatch.envs.lint]
 detached = true
 dependencies = ["black>=23.1.0", "mypy>=1.0.0", "ruff>=0.0.243"]
+
 [tool.hatch.envs.lint.scripts]
 typing = "mypy --install-types --non-interactive {args:src/xnatdcat tests}"
 style = ["ruff {args:.}", "black --check --diff {args:.}"]
