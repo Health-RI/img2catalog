@@ -155,7 +155,7 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
                 logger.info(f"- {err}")
             failure_counter += 1
             continue
-        
+
         export_graph += d
 
     export_graph += catalog.to_graph()
@@ -191,11 +191,11 @@ def xnat_private_project(project) -> bool:
     # The API documentation says it should be Title case, in practice XNAT returns lowercase
     # Therefore I consider the case to be unreliable
     accessibility = project.xnat_session.get(f'{project.uri}/accessibility').text.casefold()
+    known_accesibilities = ["public", "private", "protected"]
+    if accessibility.casefold() not in known_accesibilities:
+        raise XNATParserError(f"Unknown permissions of XNAT project: accessibility is '{accessibility}'")
+
     if accessibility == "private".casefold():
         return True
-    elif accessibility == "public".casefold():
-        return False
-    elif accessibility == "protected".casefold():
-        return False
     else:
-        raise XNATParserError(f"Unknown permissions of XNAT project: accessibility is '{accessibility}'")
+        return False
