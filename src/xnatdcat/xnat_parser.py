@@ -57,6 +57,7 @@ def xnat_to_DCATDataset(project: XNATSession, config: Dict) -> DCATDataSet:
     keywords = None
     if xnat_keywords := project.keywords:
         keywords = [Literal(kw.strip()) for kw in xnat_keywords.strip().split(" ")]
+        logger.debug("Keywords split: %s", keywords)
 
     error_list = []
     if not (project.pi.firstname or project.pi.lastname):
@@ -144,6 +145,7 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
                 logger.debug("Project %s is private, skipping", p.id)
                 continue
 
+            logger.debug("Going to process project %s", p)
             dcat_dataset = xnat_to_DCATDataset(p, config)
 
             d = dcat_dataset.to_graph(userinfo_format=VCARD.VCard)
