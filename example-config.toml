@@ -13,3 +13,16 @@ homepage = "https://www.example.com"
 [distribution.default]
 title = "XNAT imaging distribution"
 description = "Link to XNAT instance where the imaging data can be accessed."
+
+[dataset.publisher.default]
+name = "Example publishing institution"
+homepage = "https://www.example.com"
+
+[dataset.contact_point]
+override_xnat = true
+
+[dataset.contact_point.default]
+name = "Data management bureau of Example Institution"
+url = "https://www.example.com"
+email = "datamanagement@example.com"
+telephone = "+31612345678"
