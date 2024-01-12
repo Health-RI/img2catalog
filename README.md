@@ -1,5 +1,9 @@
 # XNAT to DCAT-AP
 
+![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FHealth-RI%2Fxnatdcat%2Fmain%2Fpyproject.toml)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Health-RI/xnatdcat/python-test-package.yml)
+![Codecov](https://img.shields.io/codecov/c/github/Health-RI/xnatdcat)
+
 This tool queries an XNAT instance and generates DCAT-AP 3.0 metadata. Every XNAT project is considered
 to be a separate Dataset. Only 'public' and 'protected' datasets are queried.
 

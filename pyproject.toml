@@ -47,7 +47,7 @@ dependencies = ["coverage[toml]>=6.5", "pytest"]
 [tool.hatch.envs.default.scripts]
 test = "pytest {args:tests}"
 test-cov = "coverage run -m pytest {args:tests}"
-cov-report = ["- coverage combine", "coverage report"]
+cov-report = ["- coverage combine", "coverage report", "coverage xml"]
 cov = ["test-cov", "cov-report"]
 
 [tool.hatch.envs.test]
@@ -136,7 +136,7 @@ ban-relative-imports = "all"
 source_pkgs = ["xnatdcat", "tests"]
 branch = true
 parallel = true
-omit = ["src/xnatdcat/__about__.py"]
+omit = ["src/xnatdcat/__about__.py", "src/xnatdcat/__main__.py"]
 
 [tool.coverage.paths]
 xnatdcat = ["src/xnatdcat", "*/xnatdcat/src/xnatdcat"]
