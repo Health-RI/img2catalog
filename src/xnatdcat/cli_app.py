@@ -24,7 +24,16 @@ logger = logging.getLogger(__name__)
 def __parse_cli_args():
     """Simple argument parser for commandline args"""
 
-    parser = argparse.ArgumentParser(prog="xnatdcat", description="This tool generates DCAT from XNAT")
+    parser = argparse.ArgumentParser(
+        prog="xnatdcat",
+        description="This tool generates DCAT from XNAT",
+        epilog=(
+            "This project is co-funded by the European Union under Grant Agreement 101100633. Views and opinions"
+            " expressed are however those of the author(s) only and do not necessarily reflect those of the European"
+            " Union or the European Commission. Neither the European Union nor the granting authority can be held"
+            " responsible for them."
+        ),
+    )
     parser.add_argument(
         "server",
         type=str,
