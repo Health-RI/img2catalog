@@ -149,8 +149,11 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
                 continue
 
             dcat_dataset = xnat_to_DCATDataset(p, config)
+            # Below is necessary for FDP
+            dcat_dataset.is_part_of = catalog.uri
 
             d = dcat_dataset.to_graph(userinfo_format=VCARD.VCard)
+
             catalog.Dataset.append(dcat_dataset.uri)
         except XNATParserError as v:
             logger.info(f"Project {p.name} could not be converted into DCAT: {v}")
