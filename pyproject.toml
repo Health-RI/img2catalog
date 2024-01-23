@@ -2,6 +2,7 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+
 [project]
 name = "xnatdcat"
 dynamic = ["version"]
@@ -44,6 +45,7 @@ path = "src/xnatdcat/__about__.py"
 [tool.hatch.envs.default]
 dependencies = ["coverage[toml]>=6.5", "pytest"]
 
+
 [tool.hatch.envs.default.scripts]
 test = "pytest {args:tests}"
 test-cov = "coverage run -m pytest {args:tests}"
@@ -54,7 +56,7 @@ cov = ["test-cov", "cov-report"]
 dependencies = ["pytest", "pytest-mock", "requests-mock", "pytest-cov"]
 
 [[tool.hatch.envs.test.matrix]]
-python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
+python = ["3.8", "3.9", "3.10", "3.11", "3.12", "pypy3.9", "pypy3.10"]
 
 [tool.hatch.envs.lint]
 detached = true
