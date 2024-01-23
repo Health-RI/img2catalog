@@ -2,6 +2,7 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+
 [project]
 name = "xnatdcat"
 dynamic = ["version"]
@@ -47,17 +48,18 @@ path = "src/xnatdcat/__about__.py"
 [tool.hatch.envs.default]
 dependencies = ["coverage[toml]>=6.5", "pytest"]
 
+
 [tool.hatch.envs.default.scripts]
 test = "pytest {args:tests}"
 test-cov = "coverage run -m pytest {args:tests}"
-cov-report = ["- coverage combine", "coverage report"]
+cov-report = ["- coverage combine", "coverage report", "coverage xml"]
 cov = ["test-cov", "cov-report"]
 
 [tool.hatch.envs.test]
 dependencies = ["pytest", "pytest-mock", "requests-mock", "pytest-cov"]
 
 [[tool.hatch.envs.test.matrix]]
-python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
+python = ["3.8", "3.9", "3.10", "3.11", "3.12", "pypy3.9", "pypy3.10"]
 
 [tool.hatch.envs.lint]
 detached = true
@@ -139,7 +141,7 @@ ban-relative-imports = "all"
 source_pkgs = ["xnatdcat", "tests"]
 branch = true
 parallel = true
-omit = ["src/xnatdcat/__about__.py"]
+omit = ["src/xnatdcat/__about__.py", "src/xnatdcat/__main__.py"]
 
 [tool.coverage.paths]
 xnatdcat = ["src/xnatdcat", "*/xnatdcat/src/xnatdcat"]

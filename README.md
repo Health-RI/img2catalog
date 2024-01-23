@@ -1,5 +1,9 @@
 # XNAT to DCAT-AP
 
+![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FHealth-RI%2Fxnatdcat%2Fmain%2Fpyproject.toml)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Health-RI/xnatdcat/python-test-package.yml)
+![Codecov](https://img.shields.io/codecov/c/github/Health-RI/xnatdcat)
+
 This tool queries an XNAT instance and generates DCAT-AP 3.0 metadata. Every XNAT project is considered
 to be a separate Dataset. Only 'public' and 'protected' datasets are queried.
 
@@ -104,3 +108,11 @@ Currently, only title, description, keywords and PI are set as well as title, de
 publisher of the catalogue. There is no Distribution, Dataset Series or anything else. The output
 does not conform to the Fair Data Point (FDP) specifications yet, but is DCAT-AP 3.0 compliant.
 The language of the fields also is not set.
+
+## Disclaimer
+
+![Emblem co-funded by the European Union](/ext/EN_Co-fundedbytheEU_RGB_POS.png)
+This project is co-funded by the European Union under Grant Agreement 101100633. Views and opinions
+expressed are however those of the author(s) only and do not necessarily reflect those of the
+European Union or the European Commission. Neither the European Union nor the granting authority can
+be held responsible for them.
