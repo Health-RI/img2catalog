@@ -4,6 +4,10 @@ import os
 from pathlib import Path, PurePath
 from typing import Dict
 
+import click
+from click_option_group import optgroup, MutuallyExclusiveOptionGroup
+from xnat.client.helpers import xnatpy_login_options, connect_cli
+
 from xnatdcat.const import EXAMPLE_CONFIG_PATH, XNATPY_HOST_ENV, XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV
 
 # Python < 3.11 does not have tomllib, but tomli provides same functionality
@@ -209,5 +213,68 @@ def run_cli_app():
         print(g.serialize(format=args.format))
 
 
+@click.command(name='dcat', help="Export XNAT to DCAT")
+@click.option('-o' , '--output', 'output', default=None, type=click.Path(writable=True, dir_okay=False),
+                help="Destination file to write output to. If not set, the script will print serialized output to stdout.",)
+@click.option(
+    "-f",
+    "--format",
+    default="turtle",
+    type=click.Choice(['xml', 'n3', 'turtle', 'nt', 'pretty-xml', 'trix', 'trig', 'nquads', 'json-ld', 'hext'], case_sensitive=False),
+    help=(
+        "The format that the output should be written in. This value references a"
+        " Serializer plugin in RDFlib. Supportd values are: "
+        " \"xml\", \"n3\", \"turtle\", \"nt\", \"pretty-xml\", \"trix\", \"trig\", \"nquads\","
+        " \"json-ld\" and \"hext\". Defaults to \"turtle\"."
+    ))
+@click.option(
+    "-c",
+    "--config",
+    default=None,
+    type=Path,
+    help="Configuration file to use. If not set, will use ~/.xnatdcat/config.toml if it exists.",
+)
+@click.option("-v", "--verbose", is_flag=True, default=False, help="Enables debugging mode.")
+@click.option(
+    "-l",
+    "--logfile",
+    default="./xnatdcat.log",
+    type=Path,
+    help="Path of logfile to use. Default is xnatdcat.log in current directory",
+)
+@optgroup(cls=MutuallyExclusiveOptionGroup)
+@optgroup.option(
+# Both opt-in and opt-out at the same time is not very logical, so it is not allowed.
+    "--optin",
+    type=str,
+    help="Opt-in keyword. If set, only projects with this keyword will be included",
+    default=None,
+)
+@optgroup.option(
+    "--optout", type=str, help="Opt-out keyword. If set, projects with this keyword will be excluded", default=None
+)
+@xnatpy_login_options
+def cli_click(output, format, config, verbose, logfile, optin, optout, **kwargs):
+    log._add_file_handler(logfile)
+    logger.info("======= XNATDCAT New Run ========")
+    if verbose:
+        log.setLevel(logging.DEBUG)
+        logger.debug("Verbose mode enabled")
+
+    config = load_configuration(config)
+
+    if optin or optout:
+        config['xnatdcat']['optin'] = optin
+        config['xnatdcat']['optout'] = optout
+
+    with connect_cli(cli=False, **kwargs) as session:
+        g = xnat_to_RDF(session, config)
+
+    if output:
+        g.serialize(destination=output, format=format)
+    else:
+        print(g.serialize(format=format))
+
+
 if __name__ == "__main__":
-    cli_main()
+    cli_click()

@@ -30,6 +30,9 @@ dependencies = [
   "tomli >= 1.10; python_version < '3.11'",
 ]
 
+[project.entry-points]
+"xnat.cli" = {xnatdcat = "xnatdcat.cli_app:cli_click"}
+
 [project.urls]
 Documentation = "https://github.com/health-ri/xnatdcat#readme"
 Issues = "https://github.com/health-ri/xnatdcat/issues"
