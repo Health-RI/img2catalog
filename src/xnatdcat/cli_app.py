@@ -58,7 +58,7 @@ def __connect_xnat(server: str, username, password):
     return session
 
 
-def load_configuration(config_path: Path = None) -> Dict:
+def load_xnatdcat_configuration(config_path: Path = None) -> Dict:
     """Loads a configuration file for XNATDCAT
 
     First, it checks if config_path is given. If not, it will look for ~/.xnatdcat/config.toml,
@@ -193,7 +193,7 @@ def cli_click(server, username, password, output, format, config, verbose, logfi
         log.setLevel(logging.DEBUG)
         logger.debug("Verbose mode enabled")
 
-    config = load_configuration(config)
+    config = load_xnatdcat_configuration(config)
 
     if optin or optout:
         config['xnatdcat']['optin'] = optin

@@ -137,16 +137,8 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
 
     for p in tqdm(session.projects.values()):
         try:
-            # Check if project is private. If it is, skip it
-            if xnat_private_project(p):
-                logger.debug("Project %s is private, skipping", p.id)
-                continue
-
-            logger.debug("Going to process project %s", p)
-
-            if not _check_optin_optout(p, config):
-                logger.debug("Skipping project %s due to keywords", p.id)
-                continue
+            if not _check_elligibility_project(p, config):
+                logger.debug("Project %s not elligible, skipping", p.id)
 
             dcat_dataset = xnat_to_DCATDataset(p, config)
             # Below is necessary for FDP
@@ -266,5 +258,34 @@ def _check_optin_optout(project, config: Dict) -> bool:
         if optout_kw in split_keywords(project.keywords):
             logger.debug("Project %s contains keyword on opt-out list, skipping", project)
             return False
+
+    return True
+
+
+def _check_elligibility_project(project, config: Dict) -> bool:
+    """Checks if a project is elligible for indexing given its properties and XNATDCAT config
+
+    Parameters
+    ----------
+    p : XNAT Project
+        The XNATpy project to be index4ed
+    config : Dict
+        Dictionairy containing xnatdcat config
+
+    Returns
+    -------
+    bool
+        Returns True if the project could be indexed, False if not.
+    """
+    # Check if project is private. If it is, skip it
+    if xnat_private_project(project):
+        logger.debug("Project %s is private, not elligible", project.id)
+        return False
+
+    logger.debug("Going to process project %s", project)
+
+    if not _check_optin_optout(project, config):
+        logger.debug("Skipping project %s due to keywords", project.id)
+        return False
 
     return True
