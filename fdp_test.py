@@ -213,6 +213,7 @@ def xnat_to_FDP(session: XNATSession, config: Dict, catalog_uri: URIRef, fdpclie
         try:
             if not _check_elligibility_project(project, config):
                 logger.debug("Project %s not elligible, skipping", project.id)
+                continue
 
             dcat_dataset = xnat_to_DCATDataset(project, config)
             # Below is necessary for FDP
