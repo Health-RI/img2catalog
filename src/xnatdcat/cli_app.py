@@ -6,7 +6,8 @@ from typing import Dict
 
 import click
 from click_option_group import optgroup, MutuallyExclusiveOptionGroup
-from xnat.client.helpers import xnatpy_login_options, connect_cli
+
+# from xnat.client.helpers import xnatpy_login_options, connect_cli
 
 from xnatdcat.const import EXAMPLE_CONFIG_PATH, XNATPY_HOST_ENV, XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV
 
@@ -25,106 +26,13 @@ from . import log
 logger = logging.getLogger(__name__)
 
 
-def __parse_cli_args():
-    """Simple argument parser for commandline args"""
-
-    parser = argparse.ArgumentParser(
-        prog="xnatdcat",
-        description="This tool generates DCAT from XNAT",
-        epilog=(
-            "This project is co-funded by the European Union under Grant Agreement 101100633. Views and opinions"
-            " expressed are however those of the author(s) only and do not necessarily reflect those of the European"
-            " Union or the European Commission. Neither the European Union nor the granting authority can be held"
-            " responsible for them."
-        ),
-    )
-    parser.add_argument(
-        "server",
-        type=str,
-        help=(
-            "URI of the server to connect to (including http:// or https://). If not set, will use "
-            "environment variables."
-        ),
-        nargs="?",
-    )
-    parser.add_argument(
-        "-u",
-        "--username",
-        default=None,
-        type=str,
-        help="Username to use, leave empty to use netrc entry or anonymous login or environment variables.",
-    )
-    parser.add_argument(
-        "-p",
-        "--password",
-        default=None,
-        type=str,
-        help=(
-            "Password to use with the username, leave empty when using netrc. If a"
-            " username is given and no password or environment variable, there will be a prompt on the console"
-            " requesting the password."
-        ),
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        default=None,
-        type=PurePath,
-        help="Destination file to write output to. If not set, the script will print serialized output to stdout.",
-    )
-    parser.add_argument(
-        "-f",
-        "--format",
-        default="turtle",
-        type=str,
-        help=(
-            "The format that the output should be written in. This value references a"
-            " Serializer plugin in RDFlib. Supportd values are: "
-            " \"xml\", \"n3\", \"turtle\", \"nt\", \"pretty-xml\", \"trix\", \"trig\", \"nquads\","
-            " \"json-ld\" and \"hext\". Defaults to \"turtle\"."
-        ),
-    )
-    parser.add_argument(
-        "-c",
-        "--config",
-        default=None,
-        type=Path,
-        help="Configuration file to use. If not set, will use ~/.xnatdcat/config.toml if it exists.",
-    )
-    parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
-
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enables debugging mode.")
-
-    parser.add_argument(
-        "-l",
-        "--logfile",
-        default="./xnatdcat.log",
-        type=Path,
-        help="Path of logfile to use. Default is xnatdcat.log in current directory",
-    )
-
-    # Both opt-in and opt-out at the same time is not very logical, so it is not allowed.
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument(
-        "--optin",
-        type=str,
-        help="Opt-in keyword. If set, only projects with this keyword will be included",
-        default=None,
-    )
-    group.add_argument(
-        "--optout", type=str, help="Opt-out keyword. If set, projects with this keyword will be excluded", default=None
-    )
-
-    args = parser.parse_args()
-
-    return args
-
-
-def __connect_xnat(args: argparse.Namespace):
+def __connect_xnat(server: str, username, password):
     """This function collects credentials and connects to XNAT
 
     Parameters
     ----------
+    server : str
+        XNAT server to connect (including https://)
     args : Namespace
         Namespace containing commandline arguments
 
@@ -132,16 +40,16 @@ def __connect_xnat(args: argparse.Namespace):
     -------
     XNATSession
     """
-    if not (server := args.server):
-        if not (server := os.environ.get(XNATPY_HOST_ENV)):
-            if not (server := os.environ.get(XNAT_HOST_ENV)):
-                raise RuntimeError("No server specified: no argument nor environment variable found")
-    if not (username := args.username):
-        if not (username := os.environ.get(XNAT_USER_ENV)):
-            logger.info("No username set, using anonymous/netrc login")
-    if not (password := args.password):
-        if not (password := os.environ.get(XNAT_PASS_ENV)):
-            logger.info("No password set, using anonymous/netrc login")
+    # if not (server):
+    #     if not (server := os.environ.get(XNATPY_HOST_ENV)):
+    #         if not (server := os.environ.get(XNAT_HOST_ENV)):
+    #             raise RuntimeError("No server specified: no argument nor environment variable found")
+    # if not (username):
+    #     if not (username := os.environ.get(XNAT_USER_ENV)):
+    #         logger.info("No username set, using anonymous/netrc login")
+    # if not (password):
+    #     if not (password := os.environ.get(XNAT_PASS_ENV)):
+    #         logger.info("No password set, using anonymous/netrc login")
 
     logger.debug("Connecting to server %s using username %s", server, username)
 
@@ -191,56 +99,68 @@ def load_configuration(config_path: Path = None) -> Dict:
 
 def cli_main():
     # try:
-    run_cli_app()
+    cli_click()
+    # except Exception as e:
+    #     print(f"Error running xnatdcat:\n{e}")
+    #     exit(-1)
 
 
-# except Exception as e:
-#     print(f"Error running xnatdcat:\n{e}")
-#     exit(-1)
-
-
-def run_cli_app():
-    args = __parse_cli_args()
-    log._add_file_handler(args.logfile)
-    logger.info("======= XNATDCAT New Run ========")
-    if args.verbose:
-        log.setLevel(logging.DEBUG)
-        logger.debug("Verbose mode enabled")
-
-    config = load_configuration(args.config)
-
-    if args.optin or args.optout:
-        config['xnatdcat']['optin'] = args.optin
-        config['xnatdcat']['optout'] = args.optout
-
-    with __connect_xnat(args) as session:
-        g = xnat_to_RDF(session, config)
-
-    if args.output:
-        g.serialize(destination=args.output, format=args.format)
-    else:
-        print(g.serialize(format=args.format))
-
-
-@click.command(name='dcat', help="Export XNAT to DCAT")
-@click.option('-o' , '--output', 'output', default=None, type=click.Path(writable=True, dir_okay=False),
-                help="Destination file to write output to. If not set, the script will print serialized output to stdout.",)
+# @click.command(name='dcat', help="Export XNAT to DCAT")
+# @optgroup.group('Server configuration', help='The configuration of the XNAT server', required=False)
+@click.command()
+@click.argument(
+    "server",
+    type=str,
+    envvar=[XNATPY_HOST_ENV, XNAT_HOST_ENV]
+    # help="URI of the server to connect to (including http:// or https://). If not set, will use environment variables.",
+)
+@click.option(
+    "-u",
+    "--username",
+    type=str,
+    default=None,
+    envvar=XNAT_USER_ENV,
+    help="Username to use, leave empty to use netrc entry or anonymous login or environment variables.",
+)
+@click.option(
+    "-p",
+    "--password",
+    type=str,
+    default=None,
+    envvar=XNAT_PASS_ENV,
+    help=(
+        "Password to use with the username, leave empty when using netrc. If a"
+        " username is given and no password or environment variable, there will be a prompt on the console"
+        " requesting the password."
+    ),
+)
+@click.option(
+    '-o',
+    '--output',
+    'output',
+    default=None,
+    type=click.Path(writable=True, dir_okay=False),
+    help="Destination file to write output to. If not set, the script will print serialized output to stdout.",
+)
 @click.option(
     "-f",
     "--format",
     default="turtle",
-    type=click.Choice(['xml', 'n3', 'turtle', 'nt', 'pretty-xml', 'trix', 'trig', 'nquads', 'json-ld', 'hext'], case_sensitive=False),
+    type=click.Choice(
+        ['xml', 'n3', 'turtle', 'nt', 'pretty-xml', 'trix', 'trig', 'nquads', 'json-ld', 'hext'], case_sensitive=False
+    ),
     help=(
         "The format that the output should be written in. This value references a"
         " Serializer plugin in RDFlib. Supportd values are: "
         " \"xml\", \"n3\", \"turtle\", \"nt\", \"pretty-xml\", \"trix\", \"trig\", \"nquads\","
         " \"json-ld\" and \"hext\". Defaults to \"turtle\"."
-    ))
+    ),
+)
 @click.option(
     "-c",
     "--config",
     default=None,
-    type=Path,
+    type=click.Path(exists=True, path_type=Path, readable=True),
     help="Configuration file to use. If not set, will use ~/.xnatdcat/config.toml if it exists.",
 )
 @click.option("-v", "--verbose", is_flag=True, default=False, help="Enables debugging mode.")
@@ -248,12 +168,12 @@ def run_cli_app():
     "-l",
     "--logfile",
     default="./xnatdcat.log",
-    type=Path,
+    type=click.Path(file_okay=True, dir_okay=False, path_type=Path, writable=True),
     help="Path of logfile to use. Default is xnatdcat.log in current directory",
 )
 @optgroup(cls=MutuallyExclusiveOptionGroup)
 @optgroup.option(
-# Both opt-in and opt-out at the same time is not very logical, so it is not allowed.
+    # Both opt-in and opt-out at the same time is not very logical, so it is not allowed.
     "--optin",
     type=str,
     help="Opt-in keyword. If set, only projects with this keyword will be included",
@@ -262,8 +182,11 @@ def run_cli_app():
 @optgroup.option(
     "--optout", type=str, help="Opt-out keyword. If set, projects with this keyword will be excluded", default=None
 )
-@xnatpy_login_options
-def cli_click(output, format, config, verbose, logfile, optin, optout, **kwargs):
+# @xnatpy_login_options
+def cli_click(server, username, password, output, format, config, verbose, logfile, optin, optout, **kwargs):
+    """This tool generates DCAT from XNAT server SERVER.
+
+    If SERVER is not specified, the environment variable [fixme] will be used"""
     log._add_file_handler(logfile)
     logger.info("======= XNATDCAT New Run ========")
     if verbose:
@@ -276,13 +199,20 @@ def cli_click(output, format, config, verbose, logfile, optin, optout, **kwargs)
         config['xnatdcat']['optin'] = optin
         config['xnatdcat']['optout'] = optout
 
-    with connect_cli(cli=False, **kwargs) as session:
+    # with connect_cli(cli=False, **kwargs) as session:
+    with __connect_xnat(server, username, password) as session:
+        logger.debug('Connected to XNAT server')
         g = xnat_to_RDF(session, config)
+        logger.debug('Finished acquiring RDF graph')
 
     if output:
+        logger.debug("Output option set, serializing output to file %s in %s format", output, format)
         g.serialize(destination=output, format=format)
     else:
+        logger.debug("Sending output to stdout")
         print(g.serialize(format=format))
+
+    # click.abort(0)
 
 
 if __name__ == "__main__":

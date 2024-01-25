@@ -29,10 +29,12 @@ dependencies = [
   "pydantic ~=2.3.0",
   "tqdm>=4.21",
   "tomli >= 1.10; python_version < '3.11'",
+  "click >= 8.0.0",
+  "click-option-group~=0.5.6",
 ]
 
 [project.entry-points]
-"xnat.cli" = {xnatdcat = "xnatdcat.cli_app:cli_click"}
+"xnat.cli" = { xnatdcat = "xnatdcat.cli_app:cli_click" }
 
 [project.urls]
 Documentation = "https://github.com/health-ri/xnatdcat#readme"
@@ -40,7 +42,8 @@ Issues = "https://github.com/health-ri/xnatdcat/issues"
 Source = "https://github.com/health-ri/xnatdcat"
 
 [project.scripts]
-xnatdcat = "xnatdcat.cli_app:cli_main"
+xnatdcat = "xnatdcat.cli_app:cli_click"
+# xnatdcat = "xnatdcat.cli_app:cli_main"
 
 [tool.hatch.version]
 path = "src/xnatdcat/__about__.py"
@@ -56,7 +59,13 @@ cov-report = ["- coverage combine", "coverage report", "coverage xml"]
 cov = ["test-cov", "cov-report"]
 
 [tool.hatch.envs.test]
-dependencies = ["pytest", "pytest-mock", "requests-mock", "pytest-cov"]
+dependencies = [
+  "pytest",
+  "pytest-mock",
+  "requests-mock",
+  "pytest-cov",
+  "pytest-click",
+]
 
 [[tool.hatch.envs.test.matrix]]
 python = ["3.8", "3.9", "3.10", "3.11", "3.12", "pypy3.9", "pypy3.10"]

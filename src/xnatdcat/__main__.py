@@ -1,4 +1,4 @@
-from .cli_app import cli_main
+from .cli_app import cli_click
 
 if __name__ == "__main__":
-    cli_main()
+    cli_click()
