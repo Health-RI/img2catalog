@@ -168,6 +168,7 @@ def xnat_list_datasets(session: XNATSession, config: Dict) -> List[DCATDataSet]:
         try:
             if not _check_elligibility_project(p, config):
                 logger.debug("Project %s not elligible, skipping", p.id)
+                continue
 
             dcat_dataset = xnat_to_DCATDataset(p, config)
             dataset_list.append(dcat_dataset)
