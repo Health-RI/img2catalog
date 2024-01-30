@@ -39,7 +39,7 @@ def config():
 @patch("xnat.session.BaseXNATSession")
 def test_empty_xnat(session, empty_graph: Graph, config: Dict[str, Any]):
     """Test case for an XNAT with no projects at all"""
-    # XNATSession is a key-value store so pretent it is a Dict
+    # XNATSession is a key-value store so pretend it is a Dict
     session.projects = {}
     session.url_for.return_value = 'https://xnat.bmia.nl'
 

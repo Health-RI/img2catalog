@@ -2,13 +2,14 @@
 import logging
 import re
 
-from rdflib import DCAT, DCTERMS, FOAF, Graph, Namespace, URIRef
+from rdflib import DCAT, DCTERMS, FOAF, Graph, URIRef
 from rdflib.term import Literal
 from tqdm import tqdm
 
 from .dcat_model import DCATCatalog, DCATDataSet, VCard
 from xnat.session import XNATSession
-from typing import Dict, List, Union
+from xnat.core import XNATBaseObject
+from typing import Dict, List, Tuple, Union
 
 from .const import VCARD
 
@@ -32,7 +33,7 @@ class XNATParserError(ValueError):
         self.error_list = error_list
 
 
-def xnat_to_DCATDataset(project: XNATSession, config: Dict) -> DCATDataSet:
+def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> DCATDataSet:
     """This function populates a DCAT Dataset class from an XNat project
 
     Currently fills in the title, description and keywords. The first two are mandatory fields
@@ -130,10 +131,38 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
     export_graph.bind("foaf", FOAF)
     export_graph.bind("vcard", VCARD)
 
-    # We can kinda assume session always starts with /data/archive, see xnatpy/xnat/session.py L988
     catalog = xnat_to_DCATCatalog(session, config)
 
+    dataset_list = xnat_list_datasets(session, config)
+
+    for dcat_dataset in dataset_list:
+        d = dcat_dataset.to_graph(userinfo_format=VCARD.VCard)
+        export_graph += d
+        catalog.Dataset.append(dcat_dataset.uri)
+
+    export_graph += catalog.to_graph()
+
+    return export_graph
+
+
+def xnat_list_datasets(session: XNATSession, config: Dict) -> List[DCATDataSet]:
+    """Acquires a list of elligible XNAT datasets
+
+    Parameters
+    ----------
+    session : XNATSession
+        An XNATSession of the XNAT instance that is going to be queried
+    config : Dict
+        A dictionary containing the configuration of xnatdcat
+
+    Returns
+    -------
+    List[DCATDataSet]
+        List of DCAT models of elligible datasets
+
+    """
     failure_counter = 0
+    dataset_list = []
 
     for p in tqdm(session.projects.values()):
         try:
@@ -141,12 +170,8 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
                 logger.debug("Project %s not elligible, skipping", p.id)
 
             dcat_dataset = xnat_to_DCATDataset(p, config)
-            # Below is necessary for FDP
-            dcat_dataset.is_part_of = catalog.uri
+            dataset_list.append(dcat_dataset)
 
-            d = dcat_dataset.to_graph(userinfo_format=VCARD.VCard)
-
-            catalog.Dataset.append(dcat_dataset.uri)
         except XNATParserError as v:
             logger.info(f"Project {p.name} could not be converted into DCAT: {v}")
 
@@ -155,14 +180,10 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
             failure_counter += 1
             continue
 
-        export_graph += d
-
-    export_graph += catalog.to_graph()
-
     if failure_counter > 0:
         logger.warning("There were %d projects with invalid data for DCAT generation", failure_counter)
 
-    return export_graph
+    return dataset_list
 
 
 def split_keywords(xnat_keywords: Union[str, None]) -> List[str]:
@@ -185,7 +206,7 @@ def split_keywords(xnat_keywords: Union[str, None]) -> List[str]:
         if len(xnat_keywords.strip()) > 0:
             keyword_list = [
                 kw.strip()
-                for kw in re.split("[\.,;: ]", xnat_keywords)
+                for kw in re.split(r"[\.,;: ]", xnat_keywords)
                 # for kw in xnat_keywords.strip().replace(".", " ").replace(",", " ").replace(";", " ").split(" ")
             ]
 
