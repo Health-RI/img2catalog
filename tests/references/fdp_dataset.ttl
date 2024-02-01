@@ -1,0 +1,49 @@
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix ldp: <http://www.w3.org/ns/ldp#> .
+
+<http://fdp.example.com/dataset/f1bcfd31-397e-4955-930c-663df8c2d9bf>
+  a dcat:Resource, dcat:Dataset;
+  <http://www.w3.org/2000/01/rdf-schema#label> "Test";
+  dcterms:title "Test";
+  <https://w3id.org/fdp/fdp-o#metadataIssued> "2023-11-10T12:33:32.981980787Z"^^xsd:dateTime;
+  <https://w3id.org/fdp/fdp-o#metadataModified> "2023-11-10T12:33:52.824187178Z"^^xsd:dateTime;
+  dcterms:license <http://rdflicense.appspot.com/rdflicense/cc-by-nc-nd3.0>;
+  dcterms:description "Test";
+  dcterms:language <http://id.loc.gov/vocabulary/iso639-1/en>;
+  <https://w3id.org/fdp/fdp-o#metadataIdentifier> <http://fdp.example.com/dataset/f1bcfd31-397e-4955-930c-663df8c2d9bf#identifier>;
+  dcterms:accessRights <http://fdp.example.com/dataset/f1bcfd31-397e-4955-930c-663df8c2d9bf#accessRights>;
+  <http://semanticscience.org/resource/SIO_000628> <http://fdp.example.com/dataset/f1bcfd31-397e-4955-930c-663df8c2d9bf/metrics/445c0a70d1e214e545b261559e2842f4>,
+    <http://fdp.example.com/dataset/f1bcfd31-397e-4955-930c-663df8c2d9bf/metrics/5d27e854a9e78eb3f663331cd47cdc13>;
+  dcterms:isPartOf <http://fdp.example.com/catalog/a58b6b9c-322f-445e-98b6-a4ff6430cd3e>;
+  dcat:distribution <http://fdp.example.com/distribution/44b8514c-2891-48c2-8a0b-b6e60032901c>;
+  dcterms:temporal [ a dcterms:PeriodOfTime
+    ];
+  dcterms:conformsTo <http://fdp.example.com/profile/2f08228e-1789-40f8-84cd-28e3288c3604> .
+
+<http://fdp.example.com/dataset/f1bcfd31-397e-4955-930c-663df8c2d9bf#identifier>
+  a <http://purl.org/spar/datacite/Identifier>;
+  dcterms:identifier "http://fdp.example.com/dataset/f1bcfd31-397e-4955-930c-663df8c2d9bf" .
+
+<http://fdp.example.com/dataset/f1bcfd31-397e-4955-930c-663df8c2d9bf#accessRights>
+  a dcterms:RightsStatement;
+  dcterms:description "This resource has no access restriction" .
+
+<http://fdp.example.com/dataset/f1bcfd31-397e-4955-930c-663df8c2d9bf/metrics/445c0a70d1e214e545b261559e2842f4>
+  <http://semanticscience.org/resource/SIO_000628> <https://www.ietf.org/rfc/rfc3986.txt>;
+  <http://semanticscience.org/resource/SIO_000332> <https://www.ietf.org/rfc/rfc3986.txt> .
+
+<http://fdp.example.com/dataset/f1bcfd31-397e-4955-930c-663df8c2d9bf/metrics/5d27e854a9e78eb3f663331cd47cdc13>
+  <http://semanticscience.org/resource/SIO_000628> <https://www.wikidata.org/wiki/Q8777>;
+  <http://semanticscience.org/resource/SIO_000332> <https://www.wikidata.org/wiki/Q8777> .
+
+<http://fdp.example.com/distribution/> a ldp:DirectContainer;
+  dcterms:title "Distributions";
+  ldp:membershipResource <http://fdp.example.com/dataset/f1bcfd31-397e-4955-930c-663df8c2d9bf>;
+  ldp:hasMemberRelation dcat:distribution;
+  ldp:contains <http://fdp.example.com/distribution/44b8514c-2891-48c2-8a0b-b6e60032901c> .
+
+<http://fdp.example.com/profile/2f08228e-1789-40f8-84cd-28e3288c3604>
+  <http://www.w3.org/2000/01/rdf-schema#label> "Dataset Profile" .

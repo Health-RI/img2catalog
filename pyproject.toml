@@ -9,7 +9,7 @@ dynamic = ["version"]
 description = 'This tool generates DCAT-AP from an XNAT instance'
 readme = "README.md"
 requires-python = ">=3.8"
-license = "MIT"
+license = { text = "MIT License" }
 keywords = []
 authors = [{ name = "Mark Janse", email = "mark.janse@health-ri.nl" }]
 classifiers = [
@@ -65,6 +65,7 @@ dependencies = [
   "requests-mock",
   "pytest-cov",
   "pytest-click",
+  "pytest-repeat",
 ]
 
 [[tool.hatch.envs.test.matrix]]
