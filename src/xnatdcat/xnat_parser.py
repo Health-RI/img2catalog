@@ -292,7 +292,7 @@ def _check_elligibility_project(project, config: Dict) -> bool:
     p : XNAT Project
         The XNATpy project to be index4ed
     config : Dict
-        Dictionairy containing xnatdcat config
+        Dictionary containing xnatdcat config
 
     Returns
     -------
@@ -304,10 +304,11 @@ def _check_elligibility_project(project, config: Dict) -> bool:
         logger.debug("Project %s is private, not elligible", project.id)
         return False
 
-    logger.debug("Going to process project %s", project)
 
     if not _check_optin_optout(project, config):
         logger.debug("Skipping project %s due to keywords", project.id)
         return False
+    
+    logger.debug("Project %s is elligible for indexing", project)
 
     return True
