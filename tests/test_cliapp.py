@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 import pytest
 from rdflib import DCAT, DCTERMS, Graph
 
-from xnatdcat.cli_app import cli_click, load_configuration
+from xnatdcat.cli_app import cli_click, load_xnatdcat_configuration
 from xnatdcat.const import VCARD, XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV, XNATPY_HOST_ENV
 
 
@@ -31,8 +31,6 @@ def test_cli_connect(xnat_to_RDF, connect, empty_graph, isolated_cli_runner):
     xnat_to_RDF.assert_called_once()
 
     assert result.exit_code == 0
-
-    # assert False
 
 
 @patch("xnat.connect")
@@ -90,6 +88,7 @@ def test_second_env_var(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, 
     assert result.exit_code == 0
 
 
+@pytest.mark.xfail(reason="Clearing password not implemented yet")
 @patch("xnat.connect")
 @patch("xnatdcat.cli_app.xnat_to_RDF")
 def test_user_pass_prio_env(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, monkeypatch):
@@ -105,7 +104,7 @@ def test_user_pass_prio_env(xnat_to_RDF, connect, empty_graph, isolated_cli_runn
 
     # FIXME Not sure if this is desired behavior. Ideally, if the username is set as an argument,
     # it should prompt for the password or at least ignore the environment variable.
-    connect.assert_called_once_with(server="http://test.example.com", user="pass_user", password="fail_password")
+    connect.assert_called_once_with(server="http://test.example.com", user="pass_user", password=None)
     xnat_to_RDF.assert_called_once()
 
     assert result.exit_code == 0
@@ -179,4 +178,4 @@ def test_config_loader_error():
     config_path.exists.return_value = False
 
     with pytest.raises(FileNotFoundError):
-        load_configuration(config_path)
+        load_xnatdcat_configuration(config_path)
