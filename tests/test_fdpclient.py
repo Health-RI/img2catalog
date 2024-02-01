@@ -59,7 +59,7 @@ def test_fdp_post_serialised(requests_mock):
     # pass
 
 
-@pytest.mark.repeat(10)
+# @pytest.mark.repeat(1)
 @patch("xnatdcat.fdpclient.FDPClient.post_serialized")
 @patch("xnatdcat.fdpclient.FDPClient.publish_record")
 def test_fdp_create_and_publish(publish_record, post_serialized, requests_mock):
@@ -71,6 +71,7 @@ def test_fdp_create_and_publish(publish_record, post_serialized, requests_mock):
     # load the reference file and return it as post_response text with code 201 ('Created')
     resp = requests.Response()
     resp.status_code = 201
+    resp.headers = {'Location': "http://fdp.example.com/dataset/f1bcfd31-397e-4955-930c-663df8c2d9bf"}
     with open(file='tests/references/fdp_dataset.ttl', mode='rb') as f:
         resp._content = f.read()
 

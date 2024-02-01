@@ -149,6 +149,7 @@ class FDPClient(BasicAPIClient):
         """
         self._change_content_type("text/turtle")
         path = f"{self.base_url}/{resource_type}"
+        logger.debug("Posting metadata to %s", path)
         response = self.post(path=path, data=metadata.serialize(format="turtle"))
         return response
 
@@ -189,10 +190,10 @@ class FDPClient(BasicAPIClient):
             URI of (subject of) published dataset
         """
         post_response = self.post_serialized(resource_type=resource_type, metadata=metadata)
-
         # Get FDP uuid (subject) (can we always assume it is the first? No we cannot)
         # fdp_subject = [x for x in Graph().parse(data=post_response.text).subjects() if isinstance(x, URIRef)][0]
-        fdp_subject = Graph().parse(data=post_response.text).value(predicate=RDF.type, object=DCAT.Resource, any=False)
+        # fdp_subject = Graph().parse(data=post_response.text).value(predicate=RDF.type, object=DCAT.Resource, any=False)
+        fdp_subject = post_response.headers['Location']
         fdp_path = urlparse(fdp_subject).path
 
         # Unclear what this is for?
@@ -202,6 +203,7 @@ class FDPClient(BasicAPIClient):
         fdp_subject = URIRef(f"{self.base_url}{fdp_path}")
 
         # Change status to 'published' so that metadata shows in catalog
+        logger.debug("New FDP subject: %s", fdp_subject)
         self.publish_record(fdp_subject)
 
         return fdp_subject
