@@ -259,5 +259,5 @@ if __name__ == "__main__":
     # Hardcoded, please forgive me.
     catalog_uri = URIRef("https://health-ri.sandbox.semlab-leiden.nl/catalog/e3faf7ad-050c-475f-8ce4-da7e2faa5cd0")
 
-    with __connect_xnat(args) as session:
+    with __connect_xnat(args.server, args.username, args.password) as session:
         xnat_to_FDP(session, config, catalog_uri, fdpclient)
