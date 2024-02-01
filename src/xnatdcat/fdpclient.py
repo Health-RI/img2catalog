@@ -1,12 +1,14 @@
 import logging
 from typing import Dict, Union
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
-from rdflib import Graph, URIRef
+from rdflib import DCAT, RDF, Graph, URIRef
 from requests import HTTPError, Response
 
 logger = logging.getLogger(__name__)
+
+# This file is taken from cedar2fdp
 
 
 class BasicAPIClient:
@@ -130,7 +132,21 @@ class FDPClient(BasicAPIClient):
         self.headers["Content-Type"] = content_type
         self._update_session_headers()
 
-    def post_serialised(self, resource_type: str, metadata: "Graph") -> Union[requests.Response, None]:
+    def post_serialized(self, resource_type: str, metadata: "Graph") -> requests.Response:
+        """Serializes and posts a graph to an FDP
+
+        Parameters
+        ----------
+        resource_type : str
+            Type of resource to push (e.g. 'dataset')
+        metadata : Graph
+            The graph with metadata to be pusshed
+
+        Returns
+        -------
+        requests.Response
+            The response from the FDP
+        """
         self._change_content_type("text/turtle")
         path = f"{self.base_url}/{resource_type}"
         response = self.post(path=path, data=metadata.serialize(format="turtle"))
@@ -170,20 +186,22 @@ class FDPClient(BasicAPIClient):
         Returns
         -------
         URIRef
-            _description_
+            URI of (subject of) published dataset
         """
-        post_response = self.post_serialised(resource_type=resource_type, metadata=metadata)
+        post_response = self.post_serialized(resource_type=resource_type, metadata=metadata)
 
-        # Get FDP uuid (subject)
-        fdp_subject = [x for x in Graph().parse(data=post_response.text).subjects() if isinstance(x, URIRef)][0]
+        # Get FDP uuid (subject) (can we always assume it is the first? No we cannot)
+        # fdp_subject = [x for x in Graph().parse(data=post_response.text).subjects() if isinstance(x, URIRef)][0]
+        fdp_subject = Graph().parse(data=post_response.text).value(predicate=RDF.type, object=DCAT.Resource, any=False)
         fdp_path = urlparse(fdp_subject).path
 
+        # Unclear what this is for?
         if fdp_path.count("/") > 2:
             fdp_path = fdp_path.rsplit("/", maxsplit=2)[0]
 
         fdp_subject = URIRef(f"{self.base_url}{fdp_path}")
 
-        # Change status to 'published'
+        # Change status to 'published' so that metadata shows in catalog
         self.publish_record(fdp_subject)
 
         return fdp_subject
