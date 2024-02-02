@@ -1,4 +1,5 @@
 """Simple test script to push stuff to a Fair Data Point"""
+
 import argparse
 import logging
 import os
@@ -16,8 +17,8 @@ from xnat.session import XNATSession
 from xnatdcat import log
 from xnatdcat.cli_app import __connect_xnat, load_xnatdcat_configuration
 from xnatdcat.const import VCARD
-from xnatdcat.fdpclient import FDPClient
-from xnatdcat.xnat_parser import XNATParserError, _check_elligibility_project, xnat_to_DCATDataset
+from xnatdcat.fdpclient import FDPClient, prepare_dataset_graph_for_fdp
+from xnatdcat.xnat_parser import XNATParserError, _check_elligibility_project, xnat_list_datasets, xnat_to_DCATDataset
 
 logger = logging.getLogger(__name__)
 
@@ -125,119 +126,10 @@ def fdp(fdp_uri, username, password, **kwargs):
     return fdpclient
 
 
-def remove_node_from_graph(node, graph: Graph):
-    """Completely removes a node and all references to it from a graph
-
-    Parameters
-    ----------
-    node : ...
-        Node to be removed
-    graph : Graph
-        Graph to remove it from
-    """
-    # Remove all triples with the node as a subject and an object
-    graph.remove((node, None, None))
-    graph.remove((None, None, node))
-
-
 # @click.command("doei")
 def graph(graph_file):
     graph = Graph().parse(graph_file)
     click.echo(f"G: {graph.serialize()}")
-
-
-def prepare_dataset_graph_for_fdp(dataset_graph: Graph, catalog_uri: URIRef):
-    """Mangles the graph of a dataset in such a way a FDP can take it
-
-    Adds the isPartOf property to point back to parent catalog and removes some blind VCard nodes
-    that it doens't seem to like.
-
-    Parameters
-    ----------
-    dataset_graph : Graph
-        RDFlib graph of the DCAT Dataset
-    catalog_uri : URIRef
-        URIRef of the Catalog to point back to
-
-    Raises
-    ------
-    TypeError
-        if the catalog_uri is not a URIRef (e.g. it is a string)
-    """
-    if type(catalog_uri) is not URIRef:
-        raise TypeError("catalog_uri is not a URIRef")
-
-    # For each dataset, find the creator node. If it is a VCard, get rid of it.
-    for dataset in dataset_graph.subjects(RDF.type, DCAT.Dataset):
-        creator_node = dataset_graph.value(subject=dataset, predicate=DCTERMS.creator, any=False)
-        if creator_node:
-            if dataset_graph.value(subject=creator_node, predicate=RDF.type, any=False) == VCARD.VCard:
-                remove_node_from_graph(creator_node, dataset_graph)
-
-        contactpoint_node = dataset_graph.value(subject=dataset, predicate=DCAT.contactPoint, any=False)
-        if contactpoint_node:
-            if dataset_graph.value(subject=contactpoint_node, predicate=RDF.type, any=False) == VCARD.VCard:
-                remove_node_from_graph(contactpoint_node, dataset_graph)
-
-        # This is FDP specific: Dataset points back to the Catalog
-        if not dataset_graph.value(subject=dataset, predicate=DCTERMS.isPartOf, any=False):
-            dataset_graph.add((dataset, DCTERMS.isPartOf, catalog_uri))
-
-
-def xnat_to_FDP(session: XNATSession, config: Dict, catalog_uri: URIRef, fdpclient: FDPClient) -> None:
-    """Pushes DCAT-AP compliant Datasets to FDP
-
-    Parameters
-    ----------
-    session : XNATSession
-        An XNATSession of the XNAT instance that is going to be queried
-    config : Dict
-        A dictionary containing the configuration of xnatdcat
-
-    Returns
-    -------
-    Graph
-        An RDF graph containing DCAT-AP
-    """
-    export_graph = Graph()
-
-    # To make output cleaner, bind these prefixes to namespaces
-    export_graph.bind("dcat", DCAT)
-    export_graph.bind("dcterms", DCTERMS)
-    export_graph.bind("foaf", FOAF)
-    export_graph.bind("vcard", VCARD)
-
-    failure_counter = 0
-
-    for project in tqdm(session.projects.values()):
-        try:
-            if not _check_elligibility_project(project, config):
-                logger.debug("Project %s not elligible, skipping", project.id)
-                continue
-
-            dcat_dataset = xnat_to_DCATDataset(project, config)
-            # Below is necessary for FDP
-            dcat_dataset.is_part_of = catalog_uri
-
-            dataset_graph = dcat_dataset.to_graph(userinfo_format=VCARD.VCard)
-
-        except XNATParserError as v:
-            logger.info(f"Project {project.name} could not be converted into DCAT: {v}")
-
-            for err in v.error_list:
-                logger.info(f"- {err}")
-            failure_counter += 1
-            continue
-
-        prepare_dataset_graph_for_fdp(dataset_graph, catalog_uri)
-
-        logger.debug("Going to push %s to FDP", project.id)
-        fdpclient.create_and_publish("dataset", dataset_graph)
-
-    if failure_counter > 0:
-        logger.warning("There were %d projects with invalid data for DCAT generation", failure_counter)
-
-    # return export_graph
 
 
 if __name__ == "__main__":
