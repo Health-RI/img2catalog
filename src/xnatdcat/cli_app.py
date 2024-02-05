@@ -118,7 +118,7 @@ def cli_main():
     type=str,
     envvar=[XNATPY_HOST_ENV, XNAT_HOST_ENV],
     required=True,
-    # help="URI of the server to connect to (including http:// or https://). If not set, will use environment variables.",
+    help=f"URI of the server to connect to (including http:// or https://). If not set, will use environment variables {XNATPY_HOST_ENV} or {XNAT_HOST_ENV}.",
 )
 @click.option(
     "-u",
@@ -126,7 +126,7 @@ def cli_main():
     type=str,
     default=None,
     envvar=XNAT_USER_ENV,
-    help="Username to use, leave empty to use netrc entry or anonymous login or environment variables.",
+    help=f"Username to use, leave empty to use netrc entry or anonymous login or environment variable {XNAT_USER_ENV}.",
 )
 @click.option(
     "-p",
@@ -137,7 +137,7 @@ def cli_main():
     help=(
         "Password to use with the username, leave empty when using netrc. If a"
         " username is given and no password or environment variable, there will be a prompt on the console"
-        " requesting the password."
+        f" requesting the password. Environment variable: {XNAT_PASS_ENV}"
     ),
 )
 @click.option(
@@ -168,10 +168,9 @@ def cli_main():
 )
 # @xnatpy_login_options
 @click.pass_context
+@click.version_option(__version__)
 def cli_click(ctx, server, username, password, config, verbose, logfile, optin, optout, **kwargs):
-    """This tool generates DCAT from XNAT server SERVER.
-
-    If SERVER is not specified, the environment variable [fixme] will be used"""
+    """This tool queries metadata from an XNAT server"""
     ctx.ensure_object(dict)
     log._add_file_handler(logfile)
     logger.info("======= XNATDCAT New Run ========")
@@ -194,6 +193,7 @@ def cli_click(ctx, server, username, password, config, verbose, logfile, optin, 
 
     ctx.obj['xnat_conn'] = __connect_xnat(server, username, password)
     ctx.obj['config'] = config
+
     # output_dcat(server, username, password, output, format, config)
 
 
@@ -238,21 +238,28 @@ def output_dcat(ctx, output, format):
         print(g.serialize(format=format))
 
 
-@click.option("--fdp", envvar='XNATDCAT_FDP', type=str, required=True, help="URL of FDP to push to")
-@click.option("--fdp_user", envvar='XNATDCAT_FDP_USER', type=str, required=True, help="Username of FDP to push to")
-@click.option("--fdp_pass", envvar='XNATDCAT_FDP_PASS', type=str, required=True, help="Password of FDP to push to")
-@click.option("-fdp_catalog", default=None, type=URIRef, help="Catalog URI of FDP")
+@click.option("-f", "--fdp", envvar='XNATDCAT_FDP', type=str, required=True, help="URL of FDP to push to")
+@click.option(
+    "-u", "--username", envvar='XNATDCAT_FDP_USER', type=str, required=True, help="Username of FDP to push to"
+)
+@click.option(
+    "-p", "--password", envvar='XNATDCAT_FDP_PASS', type=str, required=True, help="Password of FDP to push to"
+)
+@click.option("-c", "--catalog", default=None, type=URIRef, help="Catalog URI of FDP")
 @cli_click.command(name='fdp')
 @click.pass_context
-def output_fdp(ctx, fdp, fdp_user, fdp_pass, catalog_uri):
+def output_fdp(ctx, fdp, username, password, catalog):
     config = ctx.obj['config']
-    fdpclient = FDPClient(fdp, fdp_user, fdp_pass)
 
-    if not catalog_uri:
-        if not (catalog_uri := config['xnatdcat']['fdp']['catalog']):
+    # For some reason, in testing, execution doesn't progress beyond this line
+    fdpclient = FDPClient(fdp, username, password)
+
+    if not catalog:
+        if not (catalog := config['xnatdcat']['fdp']['catalog']):
             raise ValueError("No catalog uri set")
+
     with ctx.obj['xnat_conn'] as session:
-        xnat_to_FDP(session, config, catalog_uri, fdpclient)
+        xnat_to_FDP(session, config, catalog, fdpclient)
 
 
 if __name__ == "__main__":

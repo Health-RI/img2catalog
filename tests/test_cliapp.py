@@ -1,5 +1,5 @@
 import pathlib
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
 from rdflib import DCAT, DCTERMS, Graph
@@ -102,7 +102,7 @@ def test_user_pass_prio_env(xnat_to_RDF, connect, empty_graph, isolated_cli_runn
     monkeypatch.setenv(XNAT_PASS_ENV, "fail_password")
     # monkeypatch.setenv(XNAT_HOST_ENV, "http://fail_test.example.com")
     # Run isolated (to keep log files safe)
-    result = isolated_cli_runner.invoke(cli_click, ["-u", "pass_user", '-s', "http://test.example.com", "dcat"])
+    result = isolated_cli_runner.invoke(cli_click, ["-u", "pass_user", "-s", "http://test.example.com", "dcat"])
 
     # FIXME Not sure if this is desired behavior. Ideally, if the username is set as an argument,
     # it should prompt for the password or at least ignore the environment variable.
@@ -124,7 +124,7 @@ def test_user_pass_envvar(xnat_to_RDF, connect, empty_graph, isolated_cli_runner
     # Run isolated (to keep log files safe)
     result = isolated_cli_runner.invoke(
         cli_click,
-        ['-s', "http://test.example.com", "dcat"],
+        ["-s", "http://test.example.com", "dcat"],
     )
 
     connect.assert_called_once_with(server="http://test.example.com", user="pass_user", password="password")
@@ -198,3 +198,35 @@ def test_config_loader_error():
 
     with pytest.raises(FileNotFoundError):
         load_xnatdcat_configuration(config_path)
+
+
+@pytest.mark.xfail(reason="Mocking FDP client seems to halt execution")
+@patch("xnatdcat.xnat_parser.xnat_to_FDP")
+@patch("xnatdcat.fdpclient.FDPClient")
+@patch("xnat.connect")
+def test_fdp_cli222(connect, mock_FDPClient, xnat_to_FDP, isolated_cli_runner):
+    connect.__enter__.return_value = True
+
+    mock_FDPClient.return_value = None
+
+    result = isolated_cli_runner.invoke(
+        cli_click,
+        [
+            "--verbose",
+            "-s",
+            "http://example.com",
+            "fdp",
+            "--fdp",
+            "http://fdp.example.com",
+            "-u",
+            "test",
+            "-p",
+            "more_test",
+        ],
+    )
+    # print(xnat_connect.call_count)
+    # mock_FDPClient.assert_called()
+    print(str(result.stdout_bytes.decode()))
+    connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
+    xnat_to_FDP.assert_called_once()
+    pass
