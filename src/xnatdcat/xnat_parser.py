@@ -1,4 +1,5 @@
 """Simple tool to query an XNAT instance and serialize projects as datasets"""
+
 import logging
 import re
 from typing import Dict, List, Union
@@ -291,19 +292,12 @@ def contact_point_vcard_from_config(config: Dict) -> Union[VCard, None]:
     except KeyError:
         return None
 
-    # email should be URIRef
-    if contact_config.get("email"):
-        if not contact_config["email"].startswith("mailto:"):
-            contact_email = URIRef(f"mailto:{contact_config['email']}")
-        else:
-            contact_email = URIRef(contact_config["email"])
-    else:
-        contact_email = contact_config.get("email")
-        if contact_email:
-            if not contact_email.startswith("mailto:"):
-                contact_email = f"mailto:{contact_email}"
-            contact_email = URIRef(contact_email)
-        return contact_email
+    # email should be URIRef (but not path, https://stackoverflow.com/a/27151227)
+    contact_email = contact_config.get("email")
+    if contact_email:
+        if not contact_email.startswith("mailto:"):
+            contact_email = f"mailto:{contact_email}"
+        contact_email = URIRef(contact_email)
 
     contact_vcard = VCard(full_name=Literal(contact_config["full_name"]), email=contact_email)
 
