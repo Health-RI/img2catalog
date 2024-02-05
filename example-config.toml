@@ -2,6 +2,11 @@
 # optin = "include_catalog"
 # optout = "exclude_catalog"
 
+[dataset.contact_point]
+# override = true
+full_name = "Example Data Management office"
+email = "datamanager@example.com"
+
 [catalog]
 title = "Example XNAT catalog"
 description = "This is an example XNAT catalog description"

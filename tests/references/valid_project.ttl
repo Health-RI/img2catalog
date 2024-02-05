@@ -13,5 +13,7 @@
     dcterms:title "Basic test project to test the xnatdcat" ;
     dcat:keyword "dcat",
         "demo",
-        "test" .
-
+        "test" ;
+    dcat:contactPoint [ a vcard:VCard ;
+            vcard:fn "Example Data Management office" ;
+            vcard:hasEmail <mailto:datamanager@example.com> ] .

@@ -11,6 +11,6 @@
     dcterms:identifier "test_xnatdcat"^^xsd:token ;
     dcterms:temporal [ a dcterms:PeriodOfTime ] ;
     dcterms:title "Basic test project to test the xnatdcat" ;
-    dcat:contactPoint [ a vcard:VCard ;
-            vcard:fn "Example Data Management office" ;
-            vcard:hasEmail <mailto:datamanager@example.com> ] .
+    dcat:keyword "dcat",
+        "demo",
+        "test" .

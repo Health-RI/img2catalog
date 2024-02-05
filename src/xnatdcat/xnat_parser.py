@@ -1,14 +1,14 @@
 """Simple tool to query an XNAT instance and serialize projects as datasets"""
 import logging
 import re
+from typing import Dict, List, Union
 
 from rdflib import DCAT, DCTERMS, FOAF, Graph, Namespace, URIRef
 from rdflib.term import Literal
 from tqdm import tqdm
-
-from .dcat_model import DCATCatalog, DCATDataSet, VCard
 from xnat.session import XNATSession
-from typing import Dict, List, Union
+
+from xnatdcat.dcat_model import DCATCatalog, DCATDataSet, VCard
 
 from .const import VCARD
 
@@ -67,18 +67,24 @@ def xnat_to_DCATDataset(project: XNATSession, config: Dict) -> DCATDataSet:
 
     creator_vcard = [
         VCard(
-            full_name=Literal(f"{project.pi.title or ''} {project.pi.firstname} {project.pi.lastname}".strip()),
+            full_name=Literal(f"{project.pi.title +' ' or ''}{project.pi.firstname} {project.pi.lastname}".strip()),
             uid=URIRef("http://example.com"),  # Should be ORCID?
         )
     ]
 
-    project_dataset = DCATDataSet(
-        uri=URIRef(project.external_uri()),
-        title=[Literal(project.name)],
-        description=Literal(project.description),
-        creator=creator_vcard,
-        keyword=keywords,
-    )
+    dataset_dict = {
+        "uri": URIRef(project.external_uri()),
+        "title": [Literal(project.name)],
+        "description": Literal(project.description),
+        "creator": creator_vcard,
+        "keyword": keywords,
+    }
+
+    contact_point_vcard = [contact_point_vcard_from_config(config)]
+    if any(contact_point_vcard):
+        dataset_dict["contact_point"] = contact_point_vcard
+
+    project_dataset = DCATDataSet(**dataset_dict)
 
     return project_dataset
 
@@ -101,8 +107,8 @@ def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> DCATCatalog:
     catalog_uri = URIRef(session.url_for(session))
     catalog = DCATCatalog(
         uri=catalog_uri,
-        title=Literal(config['catalog']['title']),
-        description=Literal(config['catalog']['description']),
+        title=Literal(config["catalog"]["title"]),
+        description=Literal(config["catalog"]["description"]),
     )
     return catalog
 
@@ -190,7 +196,7 @@ def split_keywords(xnat_keywords: Union[str, None]) -> List[str]:
         if len(xnat_keywords.strip()) > 0:
             keyword_list = [
                 kw.strip()
-                for kw in re.split("[\.,;: ]", xnat_keywords)
+                for kw in re.split(r"[\.,;: ]", xnat_keywords)
                 # for kw in xnat_keywords.strip().replace(".", " ").replace(",", " ").replace(";", " ").split(" ")
             ]
 
@@ -222,7 +228,7 @@ def xnat_private_project(project) -> bool:
 
     # The API documentation says it should be Title case, in practice XNAT returns lowercase
     # Therefore I consider the case to be unreliable
-    accessibility = project.xnat_session.get(f'{project.uri}/accessibility').text.casefold()
+    accessibility = project.xnat_session.get(f"{project.uri}/accessibility").text.casefold()
     known_accesibilities = ["public", "private", "protected"]
     if accessibility.casefold() not in known_accesibilities:
         raise XNATParserError(f"Unknown permissions of XNAT project: accessibility is '{accessibility}'")
@@ -249,14 +255,14 @@ def _check_optin_optout(project, config: Dict) -> bool:
         Returns True if a project is elligible for indexing, False if it is not.
     """
     try:
-        optin_kw = config['xnatdcat'].get('optin')
-        optout_kw = config['xnatdcat'].get('optout')
+        optin_kw = config["xnatdcat"].get("optin")
+        optout_kw = config["xnatdcat"].get("optout")
     except KeyError:
         # If key not found, means config is not set, so no opt-in/opt-out set so always elligible.
         return True
 
     if optin_kw:
-        if not optin_kw in split_keywords(project.keywords):
+        if optin_kw not in split_keywords(project.keywords):
             logger.debug("Project %s does not contain keyword on opt-in list, skipping", project)
             return False
     elif optout_kw:
@@ -265,3 +271,35 @@ def _check_optin_optout(project, config: Dict) -> bool:
             return False
 
     return True
+
+
+def contact_point_vcard_from_config(config: Dict) -> Union[VCard, None]:
+    """Generates a VCard for contact_point of datasets
+
+    Parameters
+    ----------
+    config : Dict
+        xnatdcat configuration
+
+    Returns
+    -------
+    Union[VCARD, None]
+        VCard if info is present in configuration, None if not.
+    """
+    try:
+        contact_config = config["dataset"]["contact_point"]
+    except KeyError:
+        return None
+
+    # email should be URIRef
+    if contact_config.get("email"):
+        if not contact_config["email"].startswith("mailto:"):
+            contact_email = URIRef(f"mailto:{contact_config['email']}")
+        else:
+            contact_email = URIRef(contact_config["email"])
+    else:
+        contact_email = None
+
+    contact_vcard = VCard(full_name=Literal(contact_config["full_name"]), email=contact_email)
+
+    return contact_vcard

@@ -112,3 +112,58 @@ def test_no_keywords(project, empty_graph: Graph, config: Dict[str, Any]):
     gen = xnat_to_DCATDataset(project, config).to_graph(userinfo_format=VCARD.VCard)
 
     assert to_isomorphic(empty_graph) == to_isomorphic(gen)
+
+
+@patch("xnat.core.XNATBaseObject")
+def test_no_contactpoint(project, empty_graph: Graph, config: Dict[str, Any]):
+    """Test that there's no weird errors if there is no contactpoint"""
+    project.name = 'Basic test project to test the xnatdcat'
+    project.description = 'In this project, we test xnat and dcat and make sure a description appears.'
+    project.external_uri.return_value = 'http://localhost/data/archive/projects/test_xnatdcat'
+    project.keywords = 'test demo dcat'
+    project.pi.firstname = 'Albus'
+    project.pi.lastname = 'Dumbledore'
+    project.pi.title = 'prof.'
+
+    del config['dataset']['contact_point']
+
+    empty_graph = empty_graph.parse(source='tests/references/no_contactpoint.ttl')
+    gen = xnat_to_DCATDataset(project, config).to_graph(userinfo_format=VCARD.VCard)
+
+    assert to_isomorphic(empty_graph) == to_isomorphic(gen)
+
+
+@patch("xnat.core.XNATBaseObject")
+def test_email_uriref(project, empty_graph: Graph, config: Dict[str, Any]):
+    project.name = 'Basic test project to test the xnatdcat'
+    project.description = 'In this project, we test xnat and dcat and make sure a description appears.'
+    project.external_uri.return_value = 'http://localhost/data/archive/projects/test_xnatdcat'
+    project.keywords = 'test demo dcat'
+    project.pi.firstname = 'Albus'
+    project.pi.lastname = 'Dumbledore'
+    project.pi.title = 'prof.'
+
+    config['dataset']['contact_point']['email'] = 'mailto:datamanager@example.com'
+
+    empty_graph = empty_graph.parse(source='tests/references/valid_project.ttl')
+    gen = xnat_to_DCATDataset(project, config).to_graph(userinfo_format=VCARD.VCard)
+
+    assert to_isomorphic(empty_graph) == to_isomorphic(gen)
+
+
+@patch("xnat.core.XNATBaseObject")
+def test_no_email(project, empty_graph: Graph, config: Dict[str, Any]):
+    project.name = 'Basic test project to test the xnatdcat'
+    project.description = 'In this project, we test xnat and dcat and make sure a description appears.'
+    project.external_uri.return_value = 'http://localhost/data/archive/projects/test_xnatdcat'
+    project.keywords = 'test demo dcat'
+    project.pi.firstname = 'Albus'
+    project.pi.lastname = 'Dumbledore'
+    project.pi.title = 'prof.'
+
+    del config['dataset']['contact_point']['email']
+
+    empty_graph = empty_graph.parse(source='tests/references/no_contact_email.ttl')
+    gen = xnat_to_DCATDataset(project, config).to_graph(userinfo_format=VCARD.VCard)
+
+    assert to_isomorphic(empty_graph) == to_isomorphic(gen)
