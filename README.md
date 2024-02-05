@@ -65,8 +65,9 @@ or folder if it does not exist, you will have to do so manually. If the file doe
 example file will be used.
 
 A limited number of properties can be set in the configuration, including the title and name of the
-xnat (DCAT) catalog and the publisher of the catalog. We are still working on adding more default
-values for certain DCAT properties to the configuration.
+xnat (DCAT) catalog and the publisher of the catalog. A default contact point for datasets can also
+be provided and will be included in the Dataset properties.
+We are still working on adding more default values for certain DCAT properties to the configuration.
 
 There is limited support for using environment variables. For setting the XNAT server, variables
 `XNAT_HOST` or `XNATPY_HOST` can be used, with the latter taking preference. Authentication can be
