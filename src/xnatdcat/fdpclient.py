@@ -124,13 +124,13 @@ class FDPClient(BasicAPIClient):
         self.__token = token
         return token
 
-    def get_headers(self):
+    def get_headers(self) -> Dict:
         return {"Authorization": f"Bearer {self.__token}", "Content-Type": "text/turtle"}
 
     def _update_session_headers(self):
         self.session.headers.update(self.headers)
 
-    def _change_content_type(self, content_type):
+    def _change_content_type(self, content_type: str):
         self.headers["Content-Type"] = content_type
         self._update_session_headers()
 
@@ -195,7 +195,7 @@ class FDPClient(BasicAPIClient):
         # Get FDP uuid (subject) (can we always assume it is the first? No we cannot, will cause random test failures)
         # fdp_subject = [x for x in Graph().parse(data=post_response.text).subjects() if isinstance(x, URIRef)][0]
         # fdp_subject = Graph().parse(data=post_response.text).value(predicate=RDF.type, object=DCAT.Resource, any=False)
-        fdp_subject = post_response.headers['Location']
+        fdp_subject = post_response.headers["Location"]
         fdp_path = urlparse(fdp_subject).path
 
         # Unclear what this is for?

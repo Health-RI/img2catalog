@@ -169,7 +169,18 @@ def cli_main():
 # @xnatpy_login_options
 @click.pass_context
 @click.version_option(__version__)
-def cli_click(ctx, server, username, password, config, verbose, logfile, optin, optout, **kwargs):
+def cli_click(
+    ctx: click.Context,
+    server: str,
+    username: str,
+    password: str,
+    config: click.Path,
+    verbose: bool,
+    logfile: click.Path,
+    optin: str,
+    optout: str,
+    **kwargs,
+):
     """This tool queries metadata from an XNAT server"""
     ctx.ensure_object(dict)
     log._add_file_handler(logfile)
@@ -221,7 +232,7 @@ def cli_click(ctx, server, username, password, config, verbose, logfile, optin, 
     ),
 )
 @click.pass_context
-def output_dcat(ctx, output, format):
+def output_dcat(ctx: click.Context, output: click.Path, format: str):
     # , server, username, password, output, format, config):
     config = ctx.obj['config']
     with ctx.obj['xnat_conn'] as session:
@@ -248,7 +259,7 @@ def output_dcat(ctx, output, format):
 @click.option("-c", "--catalog", default=None, type=URIRef, help="Catalog URI of FDP")
 @cli_click.command(name='fdp')
 @click.pass_context
-def output_fdp(ctx, fdp, username, password, catalog):
+def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catalog: URIRef):
     config = ctx.obj['config']
 
     # For some reason, in testing, execution doesn't progress beyond this line
