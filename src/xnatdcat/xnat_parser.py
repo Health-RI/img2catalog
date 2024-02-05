@@ -298,7 +298,12 @@ def contact_point_vcard_from_config(config: Dict) -> Union[VCard, None]:
         else:
             contact_email = URIRef(contact_config["email"])
     else:
-        contact_email = None
+        contact_email = contact_config.get("email")
+        if contact_email:
+            if not contact_email.startswith("mailto:"):
+                contact_email = f"mailto:{contact_email}"
+            contact_email = URIRef(contact_email)
+        return contact_email
 
     contact_vcard = VCard(full_name=Literal(contact_config["full_name"]), email=contact_email)
 
