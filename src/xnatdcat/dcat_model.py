@@ -13,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 class VCard(BaseModel):
     full_name: Optional[Literal] = None
-    uid: URIRef
+    uid: Optional[URIRef] = None
+    email: Optional[URIRef] = None
 
 
 def add_empty_node_of_type(graph: Graph, subject, predicate, node_type=None):
@@ -151,8 +152,13 @@ class DCATDataSet(BaseModel):
                         node_type=userinfo_format,
                     )
                     graph.add((vcard_node, VCARD.fn, item.full_name))
-                    graph.add((vcard_node, VCARD.hasUID, item.uid))
+                    if item.uid:
+                        graph.add((vcard_node, VCARD.hasUID, item.uid))
+                    if item.email:
+                        graph.add((vcard_node, VCARD.hasEmail, item.email))
+
             else:
+                logger.debug("User info is NOT of VCARD type")
                 for item in attribute:
                     if isinstance(item, VCard):
                         item = item.uid
