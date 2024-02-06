@@ -26,35 +26,63 @@ By default, output of the tool is in turtle format at stdout to make for easy pi
 written in a variety of formats to a file, too. For all options, see `xnatdcat --help`:
 
 ```text
-usage: xnatdcat [-h] [-u USERNAME] [-p PASSWORD] [-o OUTPUT] [-f FORMAT] [-c CONFIG] [-V] [server]
+Usage: xnatdcat [OPTIONS] COMMAND [ARGS]...
 
-This tool generates DCAT from XNAT
+  This tool queries metadata from an XNAT server
 
-positional arguments:
-  server                URI of the server to connect to (including http:// or https://). If not
-                        set, will use environment variables.
+Options:
+  -s, --server TEXT      URI of the server to connect to (including http:// or
+                         https://). If not set, will use environment variables
+                         XNATPY_HOST or XNAT_HOST.  [required]
+  -u, --username TEXT    Username to use, leave empty to use netrc entry or
+                         anonymous login or environment variable XNAT_USER.
+  -p, --password TEXT    Password to use with the username, leave empty when
+                         using netrc. If a username is given and no password
+                         or environment variable, there will be a prompt on
+                         the console requesting the password. Environment
+                         variable: XNAT_PASS
+  -c, --config PATH      Configuration file to use. If not set, will use
+                         ~/.xnatdcat/config.toml if it exists.
+  -v, --verbose          Enables debugging mode.
+  -l, --logfile FILE     Path of logfile to use. Default is xnatdcat.log in
+                         current directory
+  [mutually_exclusive]:
+    --optin TEXT         Opt-in keyword. If set, only projects with this
+                         keyword will be included
+    --optout TEXT        Opt-out keyword. If set, projects with this keyword
+                         will be excluded
+  --version              Show the version and exit.
+  --help                 Show this message and exit.
 
-options:
-  -h, --help            show this help message and exit
-  -u USERNAME, --username USERNAME
-                        Username to use, leave empty to use netrc entry or anonymous login or
-                        environment variables.
-  -p PASSWORD, --password PASSWORD
-                        Password to use with the username, leave empty when using netrc. If a
-                        username is given and no password or environment variable, there will be a
-                        prompt on the console requesting the password.
-  -o OUTPUT, --output OUTPUT
-                        Destination file to write output to. If not set, the script will print
-                        serialized output to stdout.
-  -f FORMAT, --format FORMAT
-                        The format that the output should be written in. This value references a
-                        Serializer plugin in RDFlib. Supportd values are: "xml", "n3", "turtle",
-                        "nt", "pretty-xml", "trix", "trig", "nquads", "json-ld" and "hext".
-                        Defaults to "turtle".
-  -c CONFIG, --config CONFIG
-                        Configuration file to use. If not set, will use ~/.xnatdcat/config.toml if
-                        it exists.
-  -V, --version         show program's version number and exit
+Commands:
+  dcat
+  fdp
+
+
+Usage: xnatdcat dcat [OPTIONS]
+
+Options:
+  -o, --output FILE               Destination file to write output to. If not
+                                  set, the script will print serialized output
+                                  to stdout.
+  -f, --format [xml|n3|turtle|nt|pretty-xml|trix|trig|nquads|json-ld|hext]
+                                  The format that the output should be written
+                                  in. This value references a Serializer
+                                  plugin in RDFlib. Supportd values are:
+                                  "xml", "n3", "turtle", "nt", "pretty-xml",
+                                  "trix", "trig", "nquads", "json-ld" and
+                                  "hext". Defaults to "turtle".
+  --help                          Show this message and exit.
+
+Usage: xnatdcat fdp [OPTIONS]
+
+Options:
+  -c, --catalog URIREF  Catalog URI of FDP
+  -p, --password TEXT   Password of FDP to push to  [required]
+  -u, --username TEXT   Username of FDP to push to  [required]
+  -f, --fdp TEXT        URL of FDP to push to  [required]
+  --help                Show this message and exit.
+
 ```
 
 ## Configuration
@@ -106,8 +134,8 @@ we are open to any additions.
 ## Limitations
 
 Currently, only title, description, keywords and PI are set as well as title, description and
-publisher of the catalogue. There is no Distribution, Dataset Series or anything else. The output
-does not conform to the Fair Data Point (FDP) specifications yet, but is DCAT-AP 3.0 compliant.
+publisher of the catalogue. There is no Distribution, Dataset Series or anything else.
+Datasets can be pushed to a FAIR Data Point, but not updated - this may result in duplicates.
 The language of the fields also is not set.
 
 ## Disclaimer

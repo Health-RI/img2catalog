@@ -2,14 +2,17 @@
 
 import logging
 import re
-from typing import Dict, List, Union
 
-from rdflib import DCAT, DCTERMS, FOAF, Graph, Namespace, URIRef
+from rdflib import DCAT, DCTERMS, FOAF, Graph, URIRef
 from rdflib.term import Literal
 from tqdm import tqdm
-from xnat.session import XNATSession
 
-from xnatdcat.dcat_model import DCATCatalog, DCATDataSet, VCard
+from xnatdcat.fdpclient import FDPClient, prepare_dataset_graph_for_fdp
+
+from .dcat_model import DCATCatalog, DCATDataSet, VCard
+from xnat.session import XNATSession
+from xnat.core import XNATBaseObject
+from typing import Dict, List, Tuple, Union
 
 from .const import VCARD
 
@@ -33,7 +36,7 @@ class XNATParserError(ValueError):
         self.error_list = error_list
 
 
-def xnat_to_DCATDataset(project: XNATSession, config: Dict) -> DCATDataSet:
+def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> DCATDataSet:
     """This function populates a DCAT Dataset class from an XNat project
 
     Currently fills in the title, description and keywords. The first two are mandatory fields
@@ -68,7 +71,7 @@ def xnat_to_DCATDataset(project: XNATSession, config: Dict) -> DCATDataSet:
 
     creator_vcard = [
         VCard(
-            full_name=Literal(f"{project.pi.title +' ' or ''}{project.pi.firstname} {project.pi.lastname}".strip()),
+            full_name=Literal(f"{project.pi.title or ''} {project.pi.firstname} {project.pi.lastname}".strip()),
             uid=URIRef("http://example.com"),  # Should be ORCID?
         )
     ]
@@ -108,8 +111,8 @@ def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> DCATCatalog:
     catalog_uri = URIRef(session.url_for(session))
     catalog = DCATCatalog(
         uri=catalog_uri,
-        title=Literal(config["catalog"]["title"]),
-        description=Literal(config["catalog"]["description"]),
+        title=Literal(config['catalog']['title']),
+        description=Literal(config['catalog']['description']),
     )
     return catalog
 
@@ -137,28 +140,72 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
     export_graph.bind("foaf", FOAF)
     export_graph.bind("vcard", VCARD)
 
-    # We can kinda assume session always starts with /data/archive, see xnatpy/xnat/session.py L988
     catalog = xnat_to_DCATCatalog(session, config)
 
+    dataset_list = xnat_list_datasets(session, config)
+
+    for dcat_dataset in dataset_list:
+        d = dcat_dataset.to_graph(userinfo_format=VCARD.VCard)
+        export_graph += d
+        catalog.Dataset.append(dcat_dataset.uri)
+
+    export_graph += catalog.to_graph()
+
+    return export_graph
+
+
+def xnat_to_FDP(session: XNATSession, config: Dict, catalog_uri: URIRef, fdpclient: FDPClient) -> None:
+    """Pushes DCAT-AP compliant Datasets to FDP
+
+    Parameters
+    ----------
+    session : XNATSession
+        An XNATSession of the XNAT instance that is going to be queried
+    config : Dict
+        A dictionary containing the configuration of xnatdcat
+
+    Returns
+    -------
+    Graph
+        An RDF graph containing DCAT-AP
+    """
+    dataset_list = xnat_list_datasets(session, config)
+
+    for dataset in tqdm(dataset_list):
+        dataset_graph = dataset.to_graph(userinfo_format=VCARD.VCard)
+        prepare_dataset_graph_for_fdp(dataset_graph, catalog_uri)
+        logger.debug("Going to push %s to FDP", dataset.title)
+        fdpclient.create_and_publish("dataset", dataset_graph)
+
+
+def xnat_list_datasets(session: XNATSession, config: Dict) -> List[DCATDataSet]:
+    """Acquires a list of elligible XNAT datasets
+
+    Parameters
+    ----------
+    session : XNATSession
+        An XNATSession of the XNAT instance that is going to be queried
+    config : Dict
+        A dictionary containing the configuration of xnatdcat
+
+    Returns
+    -------
+    List[DCATDataSet]
+        List of DCAT models of elligible datasets
+
+    """
     failure_counter = 0
+    dataset_list = []
 
     for p in tqdm(session.projects.values()):
         try:
-            # Check if project is private. If it is, skip it
-            if xnat_private_project(p):
-                logger.debug("Project %s is private, skipping", p.id)
-                continue
-
-            logger.debug("Going to process project %s", p)
-
-            if not _check_optin_optout(p, config):
-                logger.debug("Skipping project %s due to keywords", p.id)
+            if not _check_elligibility_project(p, config):
+                logger.debug("Project %s not elligible, skipping", p.id)
                 continue
 
             dcat_dataset = xnat_to_DCATDataset(p, config)
+            dataset_list.append(dcat_dataset)
 
-            d = dcat_dataset.to_graph(userinfo_format=VCARD.VCard)
-            catalog.Dataset.append(dcat_dataset.uri)
         except XNATParserError as v:
             logger.info(f"Project {p.name} could not be converted into DCAT: {v}")
 
@@ -167,14 +214,10 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
             failure_counter += 1
             continue
 
-        export_graph += d
-
-    export_graph += catalog.to_graph()
-
     if failure_counter > 0:
         logger.warning("There were %d projects with invalid data for DCAT generation", failure_counter)
 
-    return export_graph
+    return dataset_list
 
 
 def split_keywords(xnat_keywords: Union[str, None]) -> List[str]:
@@ -229,7 +272,7 @@ def xnat_private_project(project) -> bool:
 
     # The API documentation says it should be Title case, in practice XNAT returns lowercase
     # Therefore I consider the case to be unreliable
-    accessibility = project.xnat_session.get(f"{project.uri}/accessibility").text.casefold()
+    accessibility = project.xnat_session.get(f'{project.uri}/accessibility').text.casefold()
     known_accesibilities = ["public", "private", "protected"]
     if accessibility.casefold() not in known_accesibilities:
         raise XNATParserError(f"Unknown permissions of XNAT project: accessibility is '{accessibility}'")
@@ -256,20 +299,49 @@ def _check_optin_optout(project, config: Dict) -> bool:
         Returns True if a project is elligible for indexing, False if it is not.
     """
     try:
-        optin_kw = config["xnatdcat"].get("optin")
-        optout_kw = config["xnatdcat"].get("optout")
+        optin_kw = config['xnatdcat'].get('optin')
+        optout_kw = config['xnatdcat'].get('optout')
     except KeyError:
         # If key not found, means config is not set, so no opt-in/opt-out set so always elligible.
         return True
 
     if optin_kw:
-        if optin_kw not in split_keywords(project.keywords):
+        if not optin_kw in split_keywords(project.keywords):
             logger.debug("Project %s does not contain keyword on opt-in list, skipping", project)
             return False
     elif optout_kw:
         if optout_kw in split_keywords(project.keywords):
             logger.debug("Project %s contains keyword on opt-out list, skipping", project)
             return False
+
+    return True
+
+
+def _check_elligibility_project(project, config: Dict) -> bool:
+    """Checks if a project is elligible for indexing given its properties and XNATDCAT config
+
+    Parameters
+    ----------
+    p : XNAT Project
+        The XNATpy project to be index4ed
+    config : Dict
+        Dictionary containing xnatdcat config
+
+    Returns
+    -------
+    bool
+        Returns True if the project could be indexed, False if not.
+    """
+    # Check if project is private. If it is, skip it
+    if xnat_private_project(project):
+        logger.debug("Project %s is private, not elligible", project.id)
+        return False
+
+    if not _check_optin_optout(project, config):
+        logger.debug("Skipping project %s due to keywords", project.id)
+        return False
+
+    logger.debug("Project %s is elligible for indexing", project)
 
     return True
 

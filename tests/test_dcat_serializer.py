@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import Any, Dict
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -9,11 +9,18 @@ try:
 except ModuleNotFoundError:
     import tomli as tomllib
 
+import xnat
 from rdflib import DCAT, DCTERMS, Graph
 from rdflib.compare import to_isomorphic
 
 from xnatdcat.const import EXAMPLE_CONFIG_PATH
-from xnatdcat.xnat_parser import VCARD, xnat_to_DCATDataset, xnat_to_RDF
+from xnatdcat.xnat_parser import (
+    VCARD,
+    _check_elligibility_project,
+    xnat_list_datasets,
+    xnat_to_DCATDataset,
+    xnat_to_RDF,
+)
 
 
 # Taken from cedar2fdp
@@ -40,7 +47,7 @@ def config():
 @patch("xnat.session.BaseXNATSession")
 def test_empty_xnat(session, empty_graph: Graph, config: Dict[str, Any]):
     """Test case for an XNAT with no projects at all"""
-    # XNATSession is a key-value store so pretent it is a Dict
+    # XNATSession is a key-value store so pretend it is a Dict
     session.projects = {}
     session.url_for.return_value = "https://xnat.bmia.nl"
 
@@ -114,57 +121,38 @@ def test_no_keywords(project, empty_graph: Graph, config: Dict[str, Any]):
 
     assert to_isomorphic(empty_graph) == to_isomorphic(gen)
 
-
+@pytest.mark.parametrize("private, optin, expected",
+                         [(False, True, True), (True, True, False), (False, False, False), (True, False, False)])
 @patch("xnat.core.XNATBaseObject")
-def test_no_contactpoint(project, empty_graph: Graph, config: Dict[str, Any]):
-    """Test that there's no weird errors if there is no contactpoint"""
-    project.name = "Basic test project to test the xnatdcat"
-    project.description = "In this project, we test xnat and dcat and make sure a description appears."
-    project.external_uri.return_value = "http://localhost/data/archive/projects/test_xnatdcat"
-    project.keywords = "test demo dcat"
-    project.pi.firstname = "Albus"
-    project.pi.lastname = "Dumbledore"
-    project.pi.title = "prof."
+@patch("xnatdcat.xnat_parser._check_optin_optout")
+@patch("xnatdcat.xnat_parser.xnat_private_project")
+def test_project_elligiblity(xnat_private_project, _check_optin_optout, project, private, optin, expected):
+    project.__str__.return_value = "test project"
+    project.id = "test"
+    xnat_private_project.return_value = private
+    _check_optin_optout.return_value = optin
 
-    del config["dataset"]["contact_point"]
+    assert _check_elligibility_project(project, None) == expected
+    # pass
 
-    empty_graph = empty_graph.parse(source="tests/references/no_contactpoint.ttl")
-    gen = xnat_to_DCATDataset(project, config).to_graph(userinfo_format=VCARD.VCard)
+@patch("xnatdcat.xnat_parser._check_elligibility_project")
+@patch("xnatdcat.xnat_parser.xnat_to_DCATDataset")
+def test_xnat_lister(xnat_to_DCATDataset, _check_elligibility_project):
+    class SimpleProject:
+        def __init__(self, id):
+            self.id = None
 
-    assert to_isomorphic(empty_graph) == to_isomorphic(gen)
+    # xnat_list_datasets
+    session = MagicMock(spec=xnat.session.XNATSession)
+    session.projects.values.return_value = [SimpleProject("p1"), SimpleProject("p2"), SimpleProject("p3")]
 
-
-@patch("xnat.core.XNATBaseObject")
-def test_email_uriref(project, empty_graph: Graph, config: Dict[str, Any]):
-    project.name = "Basic test project to test the xnatdcat"
-    project.description = "In this project, we test xnat and dcat and make sure a description appears."
-    project.external_uri.return_value = "http://localhost/data/archive/projects/test_xnatdcat"
-    project.keywords = "test demo dcat"
-    project.pi.firstname = "Albus"
-    project.pi.lastname = "Dumbledore"
-    project.pi.title = "prof."
-
-    config["dataset"]["contact_point"]["email"] = "mailto:datamanager@example.com"
-
-    empty_graph = empty_graph.parse(source="tests/references/valid_project.ttl")
-    gen = xnat_to_DCATDataset(project, config).to_graph(userinfo_format=VCARD.VCard)
-
-    assert to_isomorphic(empty_graph) == to_isomorphic(gen)
+    _check_elligibility_project.side_effect = [True, False, True]
+    xnat_to_DCATDataset.side_effect = ["project_1", "project_3", RuntimeError("Only two projects should be converted")]
 
 
-@patch("xnat.core.XNATBaseObject")
-def test_no_email(project, empty_graph: Graph, config: Dict[str, Any]):
-    project.name = "Basic test project to test the xnatdcat"
-    project.description = "In this project, we test xnat and dcat and make sure a description appears."
-    project.external_uri.return_value = "http://localhost/data/archive/projects/test_xnatdcat"
-    project.keywords = "test demo dcat"
-    project.pi.firstname = "Albus"
-    project.pi.lastname = "Dumbledore"
-    project.pi.title = "prof."
+    list_result = xnat_list_datasets(session, {})
 
-    del config["dataset"]["contact_point"]["email"]
+    assert list_result == ["project_1", "project_3"]
 
-    empty_graph = empty_graph.parse(source="tests/references/no_contact_email.ttl")
-    gen = xnat_to_DCATDataset(project, config).to_graph(userinfo_format=VCARD.VCard)
-
-    assert to_isomorphic(empty_graph) == to_isomorphic(gen)
+    assert _check_elligibility_project.call_count == 3
+    assert xnat_to_DCATDataset.call_count == 2
