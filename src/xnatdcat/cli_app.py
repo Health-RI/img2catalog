@@ -10,7 +10,7 @@ from click_option_group import optgroup, MutuallyExclusiveOptionGroup
 
 # from xnat.client.helpers import xnatpy_login_options, connect_cli
 
-from xnatdcat.const import EXAMPLE_CONFIG_PATH, XNATPY_HOST_ENV, XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV
+from xnatdcat.const import EXAMPLE_CONFIG_PATH, VCARD, XNATPY_HOST_ENV, XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV
 from xnatdcat.fdpclient import FDPClient
 
 # Python < 3.11 does not have tomllib, but tomli provides same functionality
@@ -22,7 +22,7 @@ except ModuleNotFoundError:
 import xnat
 
 from .__about__ import __version__
-from .xnat_parser import xnat_to_FDP, xnat_to_RDF
+from xnatdcat.xnat_parser import xnat_to_DCATDataset, xnat_to_FDP, xnat_to_RDF
 from . import log
 
 logger = logging.getLogger(__name__)
@@ -271,6 +271,49 @@ def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catal
 
     with ctx.obj['xnat_conn'] as session:
         xnat_to_FDP(session, config, catalog, fdpclient)
+
+
+@cli_click.command(name='project')
+@click.argument("project_id", default=None, type=str)
+@click.option(
+    '-o',
+    '--output',
+    'output',
+    default=None,
+    type=click.Path(writable=True, dir_okay=False),
+    help="Destination file to write output to. If not set, the script will print serialized output to stdout.",
+)
+@click.option(
+    "-f",
+    "--format",
+    default="turtle",
+    type=click.Choice(
+        ['xml', 'n3', 'turtle', 'nt', 'pretty-xml', 'trix', 'trig', 'nquads', 'json-ld', 'hext'], case_sensitive=False
+    ),
+    help=(
+        "The format that the output should be written in. This value references a"
+        " Serializer plugin in RDFlib. Supportd values are: "
+        " \"xml\", \"n3\", \"turtle\", \"nt\", \"pretty-xml\", \"trix\", \"trig\", \"nquads\","
+        " \"json-ld\" and \"hext\". Defaults to \"turtle\"."
+    ),
+)
+@click.pass_context
+def output_project(ctx: click.Context, project_id: str, output: click.Path, format: str):
+    """Specify one project for DCAT extraction.
+
+    The project is referred to by XNAT ID"""
+    config = ctx.obj['config']
+
+    with ctx.obj['xnat_conn'] as session:
+        g = xnat_to_DCATDataset(session.projects[project_id], config).to_graph(userinfo_format=VCARD.VCard)
+
+    if output:
+        logger.debug("Output option set, serializing output to file %s in %s format", output, format)
+        g.serialize(destination=output, format=format)
+
+    else:
+        logger.debug("Sending output to stdout")
+        print(g.serialize(format=format))
 
 
 if __name__ == "__main__":
