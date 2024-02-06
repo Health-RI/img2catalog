@@ -6,6 +6,8 @@ from rdflib import DCAT, DCTERMS, FOAF, Graph, URIRef
 from rdflib.term import Literal
 from tqdm import tqdm
 
+from xnatdcat.fdpclient import FDPClient, prepare_dataset_graph_for_fdp
+
 from .dcat_model import DCATCatalog, DCATDataSet, VCard
 from xnat.session import XNATSession
 from xnat.core import XNATBaseObject
@@ -143,6 +145,29 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
     export_graph += catalog.to_graph()
 
     return export_graph
+
+def xnat_to_FDP(session: XNATSession, config: Dict, catalog_uri: URIRef, fdpclient: FDPClient) -> None:
+    """Pushes DCAT-AP compliant Datasets to FDP
+
+    Parameters
+    ----------
+    session : XNATSession
+        An XNATSession of the XNAT instance that is going to be queried
+    config : Dict
+        A dictionary containing the configuration of xnatdcat
+
+    Returns
+    -------
+    Graph
+        An RDF graph containing DCAT-AP
+    """
+    dataset_list = xnat_list_datasets(session, config)
+
+    for dataset in tqdm(dataset_list):
+        dataset_graph = dataset.to_graph(userinfo_format=VCARD.VCard)
+        prepare_dataset_graph_for_fdp(dataset_graph, catalog_uri)
+        logger.debug("Going to push %s to FDP", dataset.title)
+        fdpclient.create_and_publish("dataset", dataset_graph)
 
 
 def xnat_list_datasets(session: XNATSession, config: Dict) -> List[DCATDataSet]:
@@ -312,3 +337,4 @@ def _check_elligibility_project(project, config: Dict) -> bool:
     logger.debug("Project %s is elligible for indexing", project)
 
     return True
+

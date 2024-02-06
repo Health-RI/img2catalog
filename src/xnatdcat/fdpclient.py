@@ -3,8 +3,10 @@ from typing import Dict, Union
 from urllib.parse import urljoin, urlparse
 
 import requests
-from rdflib import DCAT, RDF, Graph, URIRef
+from rdflib import DCAT, DCTERMS, RDF, Graph, URIRef
 from requests import HTTPError, Response
+
+from xnatdcat.const import VCARD
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +192,7 @@ class FDPClient(BasicAPIClient):
             URI of (subject of) published dataset
         """
         post_response = self.post_serialized(resource_type=resource_type, metadata=metadata)
-        # Get FDP uuid (subject) (can we always assume it is the first? No we cannot)
+        # Get FDP uuid (subject) (can we always assume it is the first? No we cannot, will cause random test failures)
         # fdp_subject = [x for x in Graph().parse(data=post_response.text).subjects() if isinstance(x, URIRef)][0]
         # fdp_subject = Graph().parse(data=post_response.text).value(predicate=RDF.type, object=DCAT.Resource, any=False)
         fdp_subject = post_response.headers['Location']
@@ -207,3 +209,56 @@ class FDPClient(BasicAPIClient):
         self.publish_record(fdp_subject)
 
         return fdp_subject
+
+
+def remove_node_from_graph(node, graph: Graph):
+    """Completely removes a node and all references to it from a graph
+
+    Parameters
+    ----------
+    node : ...
+        Node to be removed
+    graph : Graph
+        Graph to remove it from
+    """
+    # Remove all triples with the node as a subject and an object
+    graph.remove((node, None, None))
+    graph.remove((None, None, node))
+
+
+def prepare_dataset_graph_for_fdp(dataset_graph: Graph, catalog_uri: URIRef):
+    """Mangles the graph of a dataset in such a way a FDP can take it
+
+    Adds the isPartOf property to point back to parent catalog and removes some blind VCard nodes
+    that it doens't seem to like.
+
+    Parameters
+    ----------
+    dataset_graph : Graph
+        RDFlib graph of the DCAT Dataset
+    catalog_uri : URIRef
+        URIRef of the Catalog to point back to
+
+    Raises
+    ------
+    TypeError
+        if the catalog_uri is not a URIRef (e.g. it is a string)
+    """
+    if type(catalog_uri) is not URIRef:
+        raise TypeError("catalog_uri is not a URIRef")
+
+    # For each dataset, find the creator node. If it is a VCard, get rid of it.
+    for dataset in dataset_graph.subjects(RDF.type, DCAT.Dataset):
+        creator_node = dataset_graph.value(subject=dataset, predicate=DCTERMS.creator, any=False)
+        if creator_node:
+            if dataset_graph.value(subject=creator_node, predicate=RDF.type, any=False) == VCARD.VCard:
+                remove_node_from_graph(creator_node, dataset_graph)
+
+        contactpoint_node = dataset_graph.value(subject=dataset, predicate=DCAT.contactPoint, any=False)
+        if contactpoint_node:
+            if dataset_graph.value(subject=contactpoint_node, predicate=RDF.type, any=False) == VCARD.VCard:
+                remove_node_from_graph(contactpoint_node, dataset_graph)
+
+        # This is FDP specific: Dataset points back to the Catalog
+        if not dataset_graph.value(subject=dataset, predicate=DCTERMS.isPartOf, any=False):
+            dataset_graph.add((dataset, DCTERMS.isPartOf, catalog_uri))

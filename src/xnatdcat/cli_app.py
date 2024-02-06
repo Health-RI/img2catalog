@@ -5,11 +5,13 @@ from pathlib import Path, PurePath
 from typing import Dict
 
 import click
+from rdflib import URIRef
 from click_option_group import optgroup, MutuallyExclusiveOptionGroup
 
 # from xnat.client.helpers import xnatpy_login_options, connect_cli
 
 from xnatdcat.const import EXAMPLE_CONFIG_PATH, XNATPY_HOST_ENV, XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV
+from xnatdcat.fdpclient import FDPClient
 
 # Python < 3.11 does not have tomllib, but tomli provides same functionality
 try:
@@ -20,7 +22,7 @@ except ModuleNotFoundError:
 import xnat
 
 from .__about__ import __version__
-from .xnat_parser import xnat_to_RDF
+from .xnat_parser import xnat_to_FDP, xnat_to_RDF
 from . import log
 
 logger = logging.getLogger(__name__)
@@ -107,11 +109,15 @@ def cli_main():
 
 # @click.command(name='dcat', help="Export XNAT to DCAT")
 # @optgroup.group('Server configuration', help='The configuration of the XNAT server', required=False)
-@click.command()
-@click.argument(
-    "server",
+@click.group(invoke_without_command=True)
+# wontfix
+# https://github.com/pallets/click/issues/714
+@click.option(
+    "-s",
+    "--server",
     type=str,
-    envvar=[XNATPY_HOST_ENV, XNAT_HOST_ENV]
+    envvar=[XNATPY_HOST_ENV, XNAT_HOST_ENV],
+    required=True,
     # help="URI of the server to connect to (including http:// or https://). If not set, will use environment variables.",
 )
 @click.option(
@@ -132,28 +138,6 @@ def cli_main():
         "Password to use with the username, leave empty when using netrc. If a"
         " username is given and no password or environment variable, there will be a prompt on the console"
         " requesting the password."
-    ),
-)
-@click.option(
-    '-o',
-    '--output',
-    'output',
-    default=None,
-    type=click.Path(writable=True, dir_okay=False),
-    help="Destination file to write output to. If not set, the script will print serialized output to stdout.",
-)
-@click.option(
-    "-f",
-    "--format",
-    default="turtle",
-    type=click.Choice(
-        ['xml', 'n3', 'turtle', 'nt', 'pretty-xml', 'trix', 'trig', 'nquads', 'json-ld', 'hext'], case_sensitive=False
-    ),
-    help=(
-        "The format that the output should be written in. This value references a"
-        " Serializer plugin in RDFlib. Supportd values are: "
-        " \"xml\", \"n3\", \"turtle\", \"nt\", \"pretty-xml\", \"trix\", \"trig\", \"nquads\","
-        " \"json-ld\" and \"hext\". Defaults to \"turtle\"."
     ),
 )
 @click.option(
@@ -183,10 +167,12 @@ def cli_main():
     "--optout", type=str, help="Opt-out keyword. If set, projects with this keyword will be excluded", default=None
 )
 # @xnatpy_login_options
-def cli_click(server, username, password, output, format, config, verbose, logfile, optin, optout, **kwargs):
+@click.pass_context
+def cli_click(ctx, server, username, password, config, verbose, logfile, optin, optout, **kwargs):
     """This tool generates DCAT from XNAT server SERVER.
 
     If SERVER is not specified, the environment variable [fixme] will be used"""
+    ctx.ensure_object(dict)
     log._add_file_handler(logfile)
     logger.info("======= XNATDCAT New Run ========")
     if verbose:
@@ -200,7 +186,45 @@ def cli_click(server, username, password, output, format, config, verbose, logfi
         config['xnatdcat']['optout'] = optout
 
     # with connect_cli(cli=False, **kwargs) as session:
-    with __connect_xnat(server, username, password) as session:
+    # If username is not environment variable and password is, that's usually not intended
+    # Thus we clear password so xnatpy can deal with it
+    if ctx.get_parameter_source("username") != click.core.ParameterSource.ENVIRONMENT:
+        if ctx.get_parameter_source("password") == click.core.ParameterSource.ENVIRONMENT:
+            password = None
+
+    ctx.obj['xnat_conn'] = __connect_xnat(server, username, password)
+    ctx.obj['config'] = config
+    # output_dcat(server, username, password, output, format, config)
+
+
+@cli_click.command(name='dcat')
+@click.option(
+    '-o',
+    '--output',
+    'output',
+    default=None,
+    type=click.Path(writable=True, dir_okay=False),
+    help="Destination file to write output to. If not set, the script will print serialized output to stdout.",
+)
+@click.option(
+    "-f",
+    "--format",
+    default="turtle",
+    type=click.Choice(
+        ['xml', 'n3', 'turtle', 'nt', 'pretty-xml', 'trix', 'trig', 'nquads', 'json-ld', 'hext'], case_sensitive=False
+    ),
+    help=(
+        "The format that the output should be written in. This value references a"
+        " Serializer plugin in RDFlib. Supportd values are: "
+        " \"xml\", \"n3\", \"turtle\", \"nt\", \"pretty-xml\", \"trix\", \"trig\", \"nquads\","
+        " \"json-ld\" and \"hext\". Defaults to \"turtle\"."
+    ),
+)
+@click.pass_context
+def output_dcat(ctx, output, format):
+    # , server, username, password, output, format, config):
+    config = ctx.obj['config']
+    with ctx.obj['xnat_conn'] as session:
         logger.debug('Connected to XNAT server')
         g = xnat_to_RDF(session, config)
         logger.debug('Finished acquiring RDF graph')
@@ -208,11 +232,27 @@ def cli_click(server, username, password, output, format, config, verbose, logfi
     if output:
         logger.debug("Output option set, serializing output to file %s in %s format", output, format)
         g.serialize(destination=output, format=format)
+
     else:
         logger.debug("Sending output to stdout")
         print(g.serialize(format=format))
 
-    # click.abort(0)
+
+@click.option("--fdp", envvar='XNATDCAT_FDP', type=str, required=True, help="URL of FDP to push to")
+@click.option("--fdp_user", envvar='XNATDCAT_FDP_USER', type=str, required=True, help="Username of FDP to push to")
+@click.option("--fdp_pass", envvar='XNATDCAT_FDP_PASS', type=str, required=True, help="Password of FDP to push to")
+@click.option("-fdp_catalog", default=None, type=URIRef, help="Catalog URI of FDP")
+@cli_click.command(name='fdp')
+@click.pass_context
+def output_fdp(ctx, fdp, fdp_user, fdp_pass, catalog_uri):
+    config = ctx.obj['config']
+    fdpclient = FDPClient(fdp, fdp_user, fdp_pass)
+
+    if not catalog_uri:
+        if not (catalog_uri := config['xnatdcat']['fdp']['catalog']):
+            raise ValueError("No catalog uri set")
+    with ctx.obj['xnat_conn'] as session:
+        xnat_to_FDP(session, config, catalog_uri, fdpclient)
 
 
 if __name__ == "__main__":

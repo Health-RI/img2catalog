@@ -2,6 +2,9 @@
 # optin = "include_catalog"
 # optout = "exclude_catalog"
 
+[xnatdcat.fdp]
+catalog = "http://example.com/catalog"
+
 [catalog]
 title = "Example XNAT catalog"
 description = "This is an example XNAT catalog description"
