@@ -192,17 +192,9 @@ class FDPClient(BasicAPIClient):
             URI of (subject of) published dataset
         """
         post_response = self.post_serialized(resource_type=resource_type, metadata=metadata)
-        # Get FDP uuid (subject) (can we always assume it is the first? No we cannot, will cause random test failures)
-        # fdp_subject = [x for x in Graph().parse(data=post_response.text).subjects() if isinstance(x, URIRef)][0]
-        # fdp_subject = Graph().parse(data=post_response.text).value(predicate=RDF.type, object=DCAT.Resource, any=False)
-        fdp_subject = post_response.headers["Location"]
-        fdp_path = urlparse(fdp_subject).path
 
-        # Unclear what this is for?
-        if fdp_path.count("/") > 2:
-            fdp_path = fdp_path.rsplit("/", maxsplit=2)[0]
-
-        fdp_subject = URIRef(f"{self.base_url}{fdp_path}")
+        # FDP will return a 201 status code with the new identifier of the published record
+        fdp_subject = URIRef(post_response.headers["Location"])
 
         # Change status to 'published' so that metadata shows in catalog
         logger.debug("New FDP subject: %s", fdp_subject)
