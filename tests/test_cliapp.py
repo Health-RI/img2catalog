@@ -25,7 +25,9 @@ def test_cli_connect(xnat_to_RDF, connect, empty_graph, isolated_cli_runner):
     xnat_to_RDF.return_value = empty_graph
 
     # Run isolated (to keep log files safe)
-    result = isolated_cli_runner.invoke(cli_click, ["http://example.com", "--verbose"])
+    result = isolated_cli_runner.invoke(cli_click, ["--server", "http://example.com", "--verbose", "dcat"])
+
+    print(result.output)
 
     connect.assert_called_once_with(server="http://example.com", user=None, password=None)
     xnat_to_RDF.assert_called_once()
@@ -41,7 +43,7 @@ def test_example_cli(xnat_to_RDF, connect, empty_graph, isolated_cli_runner):
     xnat_to_RDF.return_value = empty_graph
 
     # Run isolated (to keep log files safe)
-    result = isolated_cli_runner.invoke(cli_click, ["http://example.com", "--verbose"])
+    result = isolated_cli_runner.invoke(cli_click, ["--verbose", "-s", "http://example.com", "dcat"])
 
     connect.assert_called_once_with(server="http://example.com", user=None, password=None)
     xnat_to_RDF.assert_called_once()
@@ -62,7 +64,7 @@ def test_anonymous_envhost(xnat_to_RDF, connect, empty_graph, isolated_cli_runne
     monkeypatch.setenv(XNAT_HOST_ENV, "http://fail_test.example.com")
 
     # Run isolated (to keep log files safe)
-    result = isolated_cli_runner.invoke(cli_click)
+    result = isolated_cli_runner.invoke(cli_click, ["dcat"])
 
     connect.assert_called_once_with(server="http://test.example.com", user=None, password=None)
     xnat_to_RDF.assert_called_once()
@@ -80,7 +82,7 @@ def test_second_env_var(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, 
     # monkeypatch.setenv(XNATPY_HOST_ENV, "http://test.example.com")
     monkeypatch.setenv(XNAT_HOST_ENV, "http://pass_test.example.com")
     # Run isolated (to keep log files safe)
-    result = isolated_cli_runner.invoke(cli_click)
+    result = isolated_cli_runner.invoke(cli_click, ["dcat"])
 
     connect.assert_called_once_with(server="http://pass_test.example.com", user=None, password=None)
     xnat_to_RDF.assert_called_once()
@@ -88,7 +90,7 @@ def test_second_env_var(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, 
     assert result.exit_code == 0
 
 
-@pytest.mark.xfail(reason="Clearing password not implemented yet")
+# @pytest.mark.xfail(reason="Clearing password not implemented yet")
 @patch("xnat.connect")
 @patch("xnatdcat.cli_app.xnat_to_RDF")
 def test_user_pass_prio_env(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, monkeypatch):
@@ -100,7 +102,7 @@ def test_user_pass_prio_env(xnat_to_RDF, connect, empty_graph, isolated_cli_runn
     monkeypatch.setenv(XNAT_PASS_ENV, "fail_password")
     # monkeypatch.setenv(XNAT_HOST_ENV, "http://fail_test.example.com")
     # Run isolated (to keep log files safe)
-    result = isolated_cli_runner.invoke(cli_click, ["http://test.example.com", "-u", "pass_user"])
+    result = isolated_cli_runner.invoke(cli_click, ["-u", "pass_user", '-s', "http://test.example.com", "dcat"])
 
     # FIXME Not sure if this is desired behavior. Ideally, if the username is set as an argument,
     # it should prompt for the password or at least ignore the environment variable.
@@ -122,7 +124,7 @@ def test_user_pass_envvar(xnat_to_RDF, connect, empty_graph, isolated_cli_runner
     # Run isolated (to keep log files safe)
     result = isolated_cli_runner.invoke(
         cli_click,
-        ["http://test.example.com"],
+        ['-s', "http://test.example.com", "dcat"],
     )
 
     connect.assert_called_once_with(server="http://test.example.com", user="pass_user", password="password")
@@ -136,11 +138,28 @@ def test_user_pass_envvar(xnat_to_RDF, connect, empty_graph, isolated_cli_runner
 @pytest.mark.parametrize(
     "test_input, expected",
     [
-        (["http://test.example.com"], {"format": "turtle"}),
-        (["http://test.example.com", "-o", "tester.ttl", "-f", "xml"], {"destination": "tester.ttl", "format": "xml"}),
+        (["-s", "http://test.example.com", "dcat"], {"format": "turtle"}),
         (
-            ["http://test.example.com", "-o", "tester.ttl"],
-            {"destination": "tester.ttl", "format": "turtle"},
+            [
+                "-s",
+                "http://test.example.com",
+                "dcat",
+                "-o",
+                "tester_1.ttl",
+                "-f",
+                "xml",
+            ],
+            {"destination": "tester_1.ttl", "format": "xml"},
+        ),
+        (
+            [
+                "-s",
+                "http://test.example.com",
+                "dcat",
+                "-o",
+                "tester_2.ttl",
+            ],
+            {"destination": "tester_2.ttl", "format": "turtle"},
         ),
     ],
 )
@@ -165,7 +184,7 @@ def test_serialize_cli_args(xnat_to_RDF, connect, test_input, expected, empty_gr
 
 @patch("xnat.connect")
 def test_nonexisting_config(connect, isolated_cli_runner):
-    result = isolated_cli_runner.invoke(cli_click, ["http://example.com", "--config", "non_existing_file.toml"])
+    result = isolated_cli_runner.invoke(cli_click, ["-s", "http://example.com", "--config", "non_existing_file.toml"])
 
     assert not connect.called, "Function was called despite having to error out"
 
