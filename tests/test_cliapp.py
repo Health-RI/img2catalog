@@ -204,7 +204,7 @@ def test_config_loader_error():
 @patch("xnatdcat.xnat_parser.xnat_to_FDP")
 @patch("xnatdcat.fdpclient.FDPClient")
 @patch("xnat.connect")
-def test_fdp_cli222(connect, mock_FDPClient, xnat_to_FDP, isolated_cli_runner):
+def test_fdp_cli(connect, mock_FDPClient, xnat_to_FDP, isolated_cli_runner):
     connect.__enter__.return_value = True
 
     mock_FDPClient.return_value = None
@@ -230,3 +230,57 @@ def test_fdp_cli222(connect, mock_FDPClient, xnat_to_FDP, isolated_cli_runner):
     connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
     xnat_to_FDP.assert_called_once()
     pass
+
+
+@patch("xnat.connect")
+@patch("xnatdcat.cli_app.xnat_to_DCATDataset")
+def test_output_project(
+    xnat_to_DCATDataset,
+    connect,
+    empty_graph,
+    isolated_cli_runner,
+):
+    # patch the session.projects such that it returns the id it was called with
+    connect.return_value.__enter__.return_value.projects.__getitem__.side_effect = lambda x: x
+
+    # Always return an empty graph
+    xnat_to_DCATDataset.return_value.to_graph.return_value = empty_graph
+
+    with patch.object(empty_graph, "serialize") as serializer:
+        result = isolated_cli_runner.invoke(
+            cli_click,
+            ["--verbose", "-s", "http://example.com", "project", "test_project"],
+        )
+        serializer.assert_called_once_with(format="turtle")
+
+    connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
+    xnat_to_DCATDataset.assert_called_with("test_project", ANY)
+
+    connect.return_value.__enter__.return_value.projects.__getitem__.assert_called_once_with("test_project")
+
+
+@patch("xnat.connect")
+@patch("xnatdcat.cli_app.xnat_to_DCATDataset")
+def test_output_project_file(
+    xnat_to_DCATDataset,
+    connect,
+    empty_graph,
+    isolated_cli_runner,
+):
+    # patch the session.projects such that it returns the id it was called with
+    connect.return_value.__enter__.return_value.projects.__getitem__.side_effect = lambda x: x
+
+    # Always return an empty graph
+    xnat_to_DCATDataset.return_value.to_graph.return_value = empty_graph
+
+    with patch.object(empty_graph, "serialize") as serializer:
+        result = isolated_cli_runner.invoke(
+            cli_click,
+            ["--verbose", "-s", "http://example.com", "project", "test_project", "-o", "test_project.xml", "-f", "xml"],
+        )
+        serializer.assert_called_once_with(format="xml", destination="test_project.xml")
+
+    connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
+    xnat_to_DCATDataset.assert_called_with("test_project", ANY)
+
+    connect.return_value.__enter__.return_value.projects.__getitem__.assert_called_once_with("test_project")
