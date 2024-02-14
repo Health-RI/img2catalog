@@ -1,4 +1,4 @@
-"""This file contains constants used by xnatdcat"""
+"""This file contains constants used by img2catalog"""
 
 from pathlib import Path
 

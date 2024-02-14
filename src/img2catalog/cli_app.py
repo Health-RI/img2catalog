@@ -5,13 +5,12 @@ from pathlib import Path, PurePath
 from typing import Dict
 
 import click
+from click_option_group import MutuallyExclusiveOptionGroup, optgroup
 from rdflib import URIRef
-from click_option_group import optgroup, MutuallyExclusiveOptionGroup
 
 # from xnat.client.helpers import xnatpy_login_options, connect_cli
-
-from xnatdcat.const import EXAMPLE_CONFIG_PATH, VCARD, XNATPY_HOST_ENV, XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV
-from xnatdcat.fdpclient import FDPClient
+from img2catalog.const import EXAMPLE_CONFIG_PATH, VCARD, XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV, XNATPY_HOST_ENV
+from img2catalog.fdpclient import FDPClient
 
 # Python < 3.11 does not have tomllib, but tomli provides same functionality
 try:
@@ -21,9 +20,10 @@ except ModuleNotFoundError:
 
 import xnat
 
-from .__about__ import __version__
-from xnatdcat.xnat_parser import xnat_to_DCATDataset, xnat_to_FDP, xnat_to_RDF
+from img2catalog.xnat_parser import xnat_to_DCATDataset, xnat_to_FDP, xnat_to_RDF
+
 from . import log
+from .__about__ import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -60,10 +60,10 @@ def __connect_xnat(server: str, username, password):
     return session
 
 
-def load_xnatdcat_configuration(config_path: Path = None) -> Dict:
-    """Loads a configuration file for XNATDCAT
+def load_img2catalog_configuration(config_path: Path = None) -> Dict:
+    """Loads a configuration file for img2catalog
 
-    First, it checks if config_path is given. If not, it will look for ~/.xnatdcat/config.toml,
+    First, it checks if config_path is given. If not, it will look for ~/.img2catalog/config.toml,
     if that file also doesn't exist it will load an example configuration from the project rootfolder.
 
     Parameters
@@ -84,16 +84,16 @@ def load_xnatdcat_configuration(config_path: Path = None) -> Dict:
     if config_path:
         if not config_path.exists():
             raise FileNotFoundError(f"Configuration file does not exist at {config_path}")
-    elif (config_path := Path.home() / ".xnatdcat" / "config.toml").exists():
+    elif (config_path := Path.home() / ".img2catalog" / "config.toml").exists():
         pass
     else:
         # Python 3.8 does not support slicing of paths yet :(
         config_path = EXAMPLE_CONFIG_PATH
-        logger.warning("No configuration file found or specified! xnatdcat will use the example file.")
+        logger.warning("No configuration file found or specified! img2catalog will use the example file.")
 
     logger.info("Using configuration file %s", config_path)
 
-    with open(config_path, 'rb') as f:
+    with open(config_path, "rb") as f:
         config = tomllib.load(f)
 
     return config
@@ -103,7 +103,7 @@ def cli_main():
     # try:
     cli_click()
     # except Exception as e:
-    #     print(f"Error running xnatdcat:\n{e}")
+    #     print(f"Error running img2catalog:\n{e}")
     #     exit(-1)
 
 
@@ -145,15 +145,15 @@ def cli_main():
     "--config",
     default=None,
     type=click.Path(exists=True, path_type=Path, readable=True),
-    help="Configuration file to use. If not set, will use ~/.xnatdcat/config.toml if it exists.",
+    help="Configuration file to use. If not set, will use ~/.img2catalog/config.toml if it exists.",
 )
 @click.option("-v", "--verbose", is_flag=True, default=False, help="Enables debugging mode.")
 @click.option(
     "-l",
     "--logfile",
-    default="./xnatdcat.log",
+    default="./img2catalog.log",
     type=click.Path(file_okay=True, dir_okay=False, path_type=Path, writable=True),
-    help="Path of logfile to use. Default is xnatdcat.log in current directory",
+    help="Path of logfile to use. Default is img2catalog.log in current directory",
 )
 @optgroup(cls=MutuallyExclusiveOptionGroup)
 @optgroup.option(
@@ -184,16 +184,16 @@ def cli_click(
     """This tool queries metadata from an XNAT server"""
     ctx.ensure_object(dict)
     log._add_file_handler(logfile)
-    logger.info("======= XNATDCAT New Run ========")
+    logger.info("======= img2catalog New Run ========")
     if verbose:
         log.setLevel(logging.DEBUG)
         logger.debug("Verbose mode enabled")
 
-    config = load_xnatdcat_configuration(config)
+    config = load_img2catalog_configuration(config)
 
     if optin or optout:
-        config['xnatdcat']['optin'] = optin
-        config['xnatdcat']['optout'] = optout
+        config["img2catalog"]["optin"] = optin
+        config["img2catalog"]["optout"] = optout
 
     # with connect_cli(cli=False, **kwargs) as session:
     # If username is not environment variable and password is, that's usually not intended
@@ -202,17 +202,17 @@ def cli_click(
         if ctx.get_parameter_source("password") == click.core.ParameterSource.ENVIRONMENT:
             password = None
 
-    ctx.obj['xnat_conn'] = __connect_xnat(server, username, password)
-    ctx.obj['config'] = config
+    ctx.obj["xnat_conn"] = __connect_xnat(server, username, password)
+    ctx.obj["config"] = config
 
     # output_dcat(server, username, password, output, format, config)
 
 
-@cli_click.command(name='dcat')
+@cli_click.command(name="dcat")
 @click.option(
-    '-o',
-    '--output',
-    'output',
+    "-o",
+    "--output",
+    "output",
     default=None,
     type=click.Path(writable=True, dir_okay=False),
     help="Destination file to write output to. If not set, the script will print serialized output to stdout.",
@@ -222,23 +222,23 @@ def cli_click(
     "--format",
     default="turtle",
     type=click.Choice(
-        ['xml', 'n3', 'turtle', 'nt', 'pretty-xml', 'trix', 'trig', 'nquads', 'json-ld', 'hext'], case_sensitive=False
+        ["xml", "n3", "turtle", "nt", "pretty-xml", "trix", "trig", "nquads", "json-ld", "hext"], case_sensitive=False
     ),
     help=(
         "The format that the output should be written in. This value references a"
         " Serializer plugin in RDFlib. Supportd values are: "
-        " \"xml\", \"n3\", \"turtle\", \"nt\", \"pretty-xml\", \"trix\", \"trig\", \"nquads\","
-        " \"json-ld\" and \"hext\". Defaults to \"turtle\"."
+        ' "xml", "n3", "turtle", "nt", "pretty-xml", "trix", "trig", "nquads",'
+        ' "json-ld" and "hext". Defaults to "turtle".'
     ),
 )
 @click.pass_context
 def output_dcat(ctx: click.Context, output: click.Path, format: str):
     # , server, username, password, output, format, config):
-    config = ctx.obj['config']
-    with ctx.obj['xnat_conn'] as session:
-        logger.debug('Connected to XNAT server')
+    config = ctx.obj["config"]
+    with ctx.obj["xnat_conn"] as session:
+        logger.debug("Connected to XNAT server")
         g = xnat_to_RDF(session, config)
-        logger.debug('Finished acquiring RDF graph')
+        logger.debug("Finished acquiring RDF graph")
 
     if output:
         logger.debug("Output option set, serializing output to file %s in %s format", output, format)
@@ -249,36 +249,36 @@ def output_dcat(ctx: click.Context, output: click.Path, format: str):
         print(g.serialize(format=format))
 
 
-@click.option("-f", "--fdp", envvar='XNATDCAT_FDP', type=str, required=True, help="URL of FDP to push to")
+@click.option("-f", "--fdp", envvar="img2catalog_FDP", type=str, required=True, help="URL of FDP to push to")
 @click.option(
-    "-u", "--username", envvar='XNATDCAT_FDP_USER', type=str, required=True, help="Username of FDP to push to"
+    "-u", "--username", envvar="img2catalog_FDP_USER", type=str, required=True, help="Username of FDP to push to"
 )
 @click.option(
-    "-p", "--password", envvar='XNATDCAT_FDP_PASS', type=str, required=True, help="Password of FDP to push to"
+    "-p", "--password", envvar="img2catalog_FDP_PASS", type=str, required=True, help="Password of FDP to push to"
 )
 @click.option("-c", "--catalog", default=None, type=URIRef, help="Catalog URI of FDP")
-@cli_click.command(name='fdp')
+@cli_click.command(name="fdp")
 @click.pass_context
 def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catalog: URIRef):
-    config = ctx.obj['config']
+    config = ctx.obj["config"]
 
     # For some reason, in testing, execution doesn't progress beyond this line
     fdpclient = FDPClient(fdp, username, password)
 
     if not catalog:
-        if not (catalog := config['xnatdcat']['fdp']['catalog']):
+        if not (catalog := config["img2catalog"]["fdp"]["catalog"]):
             raise ValueError("No catalog uri set")
 
-    with ctx.obj['xnat_conn'] as session:
+    with ctx.obj["xnat_conn"] as session:
         xnat_to_FDP(session, config, catalog, fdpclient)
 
 
-@cli_click.command(name='project')
+@cli_click.command(name="project")
 @click.argument("project_id", default=None, type=str)
 @click.option(
-    '-o',
-    '--output',
-    'output',
+    "-o",
+    "--output",
+    "output",
     default=None,
     type=click.Path(writable=True, dir_okay=False),
     help="Destination file to write output to. If not set, the script will print serialized output to stdout.",
@@ -288,13 +288,13 @@ def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catal
     "--format",
     default="turtle",
     type=click.Choice(
-        ['xml', 'n3', 'turtle', 'nt', 'pretty-xml', 'trix', 'trig', 'nquads', 'json-ld', 'hext'], case_sensitive=False
+        ["xml", "n3", "turtle", "nt", "pretty-xml", "trix", "trig", "nquads", "json-ld", "hext"], case_sensitive=False
     ),
     help=(
         "The format that the output should be written in. This value references a"
         " Serializer plugin in RDFlib. Supportd values are: "
-        " \"xml\", \"n3\", \"turtle\", \"nt\", \"pretty-xml\", \"trix\", \"trig\", \"nquads\","
-        " \"json-ld\" and \"hext\". Defaults to \"turtle\"."
+        ' "xml", "n3", "turtle", "nt", "pretty-xml", "trix", "trig", "nquads",'
+        ' "json-ld" and "hext". Defaults to "turtle".'
     ),
 )
 @click.pass_context
@@ -302,9 +302,9 @@ def output_project(ctx: click.Context, project_id: str, output: click.Path, form
     """Specify one project for DCAT extraction.
 
     The project is referred to by XNAT ID"""
-    config = ctx.obj['config']
+    config = ctx.obj["config"]
 
-    with ctx.obj['xnat_conn'] as session:
+    with ctx.obj["xnat_conn"] as session:
         g = xnat_to_DCATDataset(session.projects[project_id], config).to_graph(userinfo_format=VCARD.VCard)
 
     if output:
