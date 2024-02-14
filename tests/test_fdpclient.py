@@ -2,9 +2,8 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 import requests
-from rdflib import Graph, URIRef
-
 from img2catalog.fdpclient import FDPClient
+from rdflib import Graph, URIRef
 
 
 @pytest.fixture

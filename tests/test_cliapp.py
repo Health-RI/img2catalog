@@ -2,10 +2,9 @@ import pathlib
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
-from rdflib import DCAT, DCTERMS, Graph
-
 from img2catalog.cli_app import cli_click, load_img2catalog_configuration
 from img2catalog.const import VCARD, XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV, XNATPY_HOST_ENV
+from rdflib import DCAT, DCTERMS, Graph
 
 
 @pytest.fixture()
