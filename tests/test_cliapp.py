@@ -4,8 +4,8 @@ from unittest.mock import ANY, MagicMock, Mock, patch
 import pytest
 from rdflib import DCAT, DCTERMS, Graph
 
-from xnatdcat.cli_app import cli_click, load_xnatdcat_configuration
-from xnatdcat.const import VCARD, XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV, XNATPY_HOST_ENV
+from img2catalog.cli_app import cli_click, load_img2catalog_configuration
+from img2catalog.const import VCARD, XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV, XNATPY_HOST_ENV
 
 
 @pytest.fixture()
@@ -18,7 +18,7 @@ def empty_graph():
 
 
 @patch("xnat.connect")
-@patch("xnatdcat.cli_app.xnat_to_RDF")
+@patch("img2catalog.cli_app.xnat_to_RDF")
 def test_cli_connect(xnat_to_RDF, connect, empty_graph, isolated_cli_runner):
     # Mock context manager of xnatpy and the XNAT to RDF function
     connect.__enter__.return_value = True
@@ -36,7 +36,7 @@ def test_cli_connect(xnat_to_RDF, connect, empty_graph, isolated_cli_runner):
 
 
 @patch("xnat.connect")
-@patch("xnatdcat.cli_app.xnat_to_RDF")
+@patch("img2catalog.cli_app.xnat_to_RDF")
 def test_example_cli(xnat_to_RDF, connect, empty_graph, isolated_cli_runner):
     # Mock context manager of xnatpy and the XNAT to RDF function
     connect.__enter__.return_value = True
@@ -54,7 +54,7 @@ def test_example_cli(xnat_to_RDF, connect, empty_graph, isolated_cli_runner):
 
 
 @patch("xnat.connect")
-@patch("xnatdcat.cli_app.xnat_to_RDF")
+@patch("img2catalog.cli_app.xnat_to_RDF")
 def test_anonymous_envhost(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, monkeypatch):
     # Mock context manager of xnatpy and the XNAT to RDF function
     connect.__enter__.return_value = True
@@ -73,7 +73,7 @@ def test_anonymous_envhost(xnat_to_RDF, connect, empty_graph, isolated_cli_runne
 
 
 @patch("xnat.connect")
-@patch("xnatdcat.cli_app.xnat_to_RDF")
+@patch("img2catalog.cli_app.xnat_to_RDF")
 def test_second_env_var(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, monkeypatch):
     # Mock context manager of xnatpy and the XNAT to RDF function
     connect.__enter__.return_value = True
@@ -92,7 +92,7 @@ def test_second_env_var(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, 
 
 # @pytest.mark.xfail(reason="Clearing password not implemented yet")
 @patch("xnat.connect")
-@patch("xnatdcat.cli_app.xnat_to_RDF")
+@patch("img2catalog.cli_app.xnat_to_RDF")
 def test_user_pass_prio_env(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, monkeypatch):
     # Mock context manager of xnatpy and the XNAT to RDF function
     connect.__enter__.return_value = True
@@ -113,7 +113,7 @@ def test_user_pass_prio_env(xnat_to_RDF, connect, empty_graph, isolated_cli_runn
 
 
 @patch("xnat.connect")
-@patch("xnatdcat.cli_app.xnat_to_RDF")
+@patch("img2catalog.cli_app.xnat_to_RDF")
 def test_user_pass_envvar(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, monkeypatch):
     # Mock context manager of xnatpy and the XNAT to RDF function
     connect.__enter__.return_value = True
@@ -134,7 +134,7 @@ def test_user_pass_envvar(xnat_to_RDF, connect, empty_graph, isolated_cli_runner
 
 
 @patch("xnat.connect")
-@patch("xnatdcat.cli_app.xnat_to_RDF")
+@patch("img2catalog.cli_app.xnat_to_RDF")
 @pytest.mark.parametrize(
     "test_input, expected",
     [
@@ -197,12 +197,12 @@ def test_config_loader_error():
     config_path.exists.return_value = False
 
     with pytest.raises(FileNotFoundError):
-        load_xnatdcat_configuration(config_path)
+        load_img2catalog_configuration(config_path)
 
 
 @pytest.mark.xfail(reason="Mocking FDP client seems to halt execution")
-@patch("xnatdcat.xnat_parser.xnat_to_FDP")
-@patch("xnatdcat.fdpclient.FDPClient")
+@patch("img2catalog.xnat_parser.xnat_to_FDP")
+@patch("img2catalog.fdpclient.FDPClient")
 @patch("xnat.connect")
 def test_fdp_cli(connect, mock_FDPClient, xnat_to_FDP, isolated_cli_runner):
     connect.__enter__.return_value = True
@@ -233,7 +233,7 @@ def test_fdp_cli(connect, mock_FDPClient, xnat_to_FDP, isolated_cli_runner):
 
 
 @patch("xnat.connect")
-@patch("xnatdcat.cli_app.xnat_to_DCATDataset")
+@patch("img2catalog.cli_app.xnat_to_DCATDataset")
 def test_output_project(
     xnat_to_DCATDataset,
     connect,
@@ -260,7 +260,7 @@ def test_output_project(
 
 
 @patch("xnat.connect")
-@patch("xnatdcat.cli_app.xnat_to_DCATDataset")
+@patch("img2catalog.cli_app.xnat_to_DCATDataset")
 def test_output_project_file(
     xnat_to_DCATDataset,
     connect,

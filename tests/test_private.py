@@ -19,7 +19,7 @@ from requests_mock import Mocker
 import xnat
 from xnat.session import XNATSession
 
-from xnatdcat.xnat_parser import XNATParserError, xnat_private_project
+from img2catalog.xnat_parser import XNATParserError, xnat_private_project
 
 
 class CreatedObject:

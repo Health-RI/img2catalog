@@ -1,12 +1,12 @@
 import logging
-from logging.handlers import RotatingFileHandler
 import sys
 from logging import FileHandler, StreamHandler
+from logging.handlers import RotatingFileHandler
 from os import PathLike
 from typing import Union
 
-LOGGING_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-LOGGING_DATEFMT = '%Y-%m-%d %H:%M:%S'
+LOGGING_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+LOGGING_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
 
 class Logger:

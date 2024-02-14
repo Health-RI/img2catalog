@@ -1,8 +1,8 @@
 # XNAT to DCAT-AP
 
-![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FHealth-RI%2Fxnatdcat%2Fmain%2Fpyproject.toml)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Health-RI/xnatdcat/python-test-package.yml)
-![Codecov](https://img.shields.io/codecov/c/github/Health-RI/xnatdcat)
+![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FHealth-RI%2Fimg2catalog%2Fmain%2Fpyproject.toml)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Health-RI/img2catalog/python-test-package.yml)
+![Codecov](https://img.shields.io/codecov/c/github/Health-RI/img2catalog)
 
 This tool queries an XNAT instance and generates DCAT-AP 3.0 metadata. Every XNAT project is considered
 to be a separate Dataset. Only 'public' and 'protected' datasets are queried.
@@ -11,11 +11,11 @@ to be a separate Dataset. Only 'public' and 'protected' datasets are queried.
 
 This tool requires an installation of Python 3.8 or higher.
 Download a wheel file from releases and install using `pip install`. The tool can then be run by
-running the `xnatdcat` command from the commandline.
+running the `img2catalog` command from the commandline.
 
 ## Usage
 
-Basic example: `xnatdcat https://xnat.bmia.nl`; output will appear at stdout. A log file `xnatdcat.log` will be
+Basic example: `img2catalog https://xnat.bmia.nl`; output will appear at stdout. A log file `img2catalog.log` will be
 created in the directory from which you run this program.
 
 The tool supports both public and private XNAT instances. For authentication, you can either supply
@@ -23,10 +23,10 @@ a username and/or password at the commandline or use a `.netrc` file. For more i
 this, see the [XNATpy documentation](https://xnat.readthedocs.io/en/latest/static/tutorial.html#credentials).
 
 By default, output of the tool is in turtle format at stdout to make for easy piping, but it can be
-written in a variety of formats to a file, too. For all options, see `xnatdcat --help`:
+written in a variety of formats to a file, too. For all options, see `img2catalog --help`:
 
 ```text
-Usage: xnatdcat [OPTIONS] COMMAND [ARGS]...
+Usage: img2catalog [OPTIONS] COMMAND [ARGS]...
 
   This tool queries metadata from an XNAT server
 
@@ -42,9 +42,9 @@ Options:
                          the console requesting the password. Environment
                          variable: XNAT_PASS
   -c, --config PATH      Configuration file to use. If not set, will use
-                         ~/.xnatdcat/config.toml if it exists.
+                         ~/.img2catalog/config.toml if it exists.
   -v, --verbose          Enables debugging mode.
-  -l, --logfile FILE     Path of logfile to use. Default is xnatdcat.log in
+  -l, --logfile FILE     Path of logfile to use. Default is img2catalog.log in
                          current directory
   [mutually_exclusive]:
     --optin TEXT         Opt-in keyword. If set, only projects with this
@@ -59,7 +59,7 @@ Commands:
   fdp
 
 
-Usage: xnatdcat dcat [OPTIONS]
+Usage: img2catalog dcat [OPTIONS]
 
 Options:
   -o, --output FILE               Destination file to write output to. If not
@@ -74,7 +74,7 @@ Options:
                                   "hext". Defaults to "turtle".
   --help                          Show this message and exit.
 
-Usage: xnatdcat fdp [OPTIONS]
+Usage: img2catalog fdp [OPTIONS]
 
 Options:
   -c, --catalog URIREF  Catalog URI of FDP
@@ -87,8 +87,8 @@ Options:
 
 ## Configuration
 
-An example configuration file `config.toml` is supplied with this project. By default, `xnatdcat`
-will look for a configuration file in `~/.xnatdcat/config.toml`. The tool will not create the file
+An example configuration file `config.toml` is supplied with this project. By default, `img2catalog`
+will look for a configuration file in `~/.img2catalog/config.toml`. The tool will not create the file
 or folder if it does not exist, you will have to do so manually. If the file does not exist, the
 example file will be used.
 
@@ -121,7 +121,7 @@ Note that private projects will never be indexed, not even if an opt-in keyword 
 ## Development
 
 This project uses [Hatch](https://hatch.pypa.io/latest/) as a project manager. After cloning the
-repository, the development version can be run by `hatch run xnatdcat`. Hatch will take care of
+repository, the development version can be run by `hatch run img2catalog`. Hatch will take care of
 dependencies and all of that.
 
 You can run unit tests by running `hatch run test`, or get in a shell in the python environment by

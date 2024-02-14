@@ -2,19 +2,18 @@
 
 import logging
 import re
+from typing import Dict, List, Tuple, Union
 
 from rdflib import DCAT, DCTERMS, FOAF, Graph, URIRef
 from rdflib.term import Literal
 from tqdm import tqdm
-
-from xnatdcat.fdpclient import FDPClient, prepare_dataset_graph_for_fdp
-
-from .dcat_model import DCATCatalog, DCATDataSet, VCard
-from xnat.session import XNATSession
 from xnat.core import XNATBaseObject
-from typing import Dict, List, Tuple, Union
+from xnat.session import XNATSession
+
+from img2catalog.fdpclient import FDPClient, prepare_dataset_graph_for_fdp
 
 from .const import VCARD
+from .dcat_model import DCATCatalog, DCATDataSet, VCard
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,7 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> DCATDataSet:
     project : XNatListing
         An XNat project instance which is to be generated
     config : Dict
-        A dictionary containing the configuration of xnatdcat
+        A dictionary containing the configuration of img2catalog
 
     Returns
     -------
@@ -101,7 +100,7 @@ def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> DCATCatalog:
     session : XNATSession
         An XNATSession of the XNAT instance that is going to be queried
     config : Dict
-        A dictionary containing the configuration of xnatdcat
+        A dictionary containing the configuration of img2catalog
 
     Returns
     -------
@@ -111,8 +110,8 @@ def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> DCATCatalog:
     catalog_uri = URIRef(session.url_for(session))
     catalog = DCATCatalog(
         uri=catalog_uri,
-        title=Literal(config['catalog']['title']),
-        description=Literal(config['catalog']['description']),
+        title=Literal(config["catalog"]["title"]),
+        description=Literal(config["catalog"]["description"]),
     )
     return catalog
 
@@ -125,7 +124,7 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
     session : XNATSession
         An XNATSession of the XNAT instance that is going to be queried
     config : Dict
-        A dictionary containing the configuration of xnatdcat
+        A dictionary containing the configuration of img2catalog
 
     Returns
     -------
@@ -162,7 +161,7 @@ def xnat_to_FDP(session: XNATSession, config: Dict, catalog_uri: URIRef, fdpclie
     session : XNATSession
         An XNATSession of the XNAT instance that is going to be queried
     config : Dict
-        A dictionary containing the configuration of xnatdcat
+        A dictionary containing the configuration of img2catalog
 
     Returns
     -------
@@ -186,7 +185,7 @@ def xnat_list_datasets(session: XNATSession, config: Dict) -> List[DCATDataSet]:
     session : XNATSession
         An XNATSession of the XNAT instance that is going to be queried
     config : Dict
-        A dictionary containing the configuration of xnatdcat
+        A dictionary containing the configuration of img2catalog
 
     Returns
     -------
@@ -272,7 +271,7 @@ def xnat_private_project(project) -> bool:
 
     # The API documentation says it should be Title case, in practice XNAT returns lowercase
     # Therefore I consider the case to be unreliable
-    accessibility = project.xnat_session.get(f'{project.uri}/accessibility').text.casefold()
+    accessibility = project.xnat_session.get(f"{project.uri}/accessibility").text.casefold()
     known_accesibilities = ["public", "private", "protected"]
     if accessibility.casefold() not in known_accesibilities:
         raise XNATParserError(f"Unknown permissions of XNAT project: accessibility is '{accessibility}'")
@@ -299,14 +298,14 @@ def _check_optin_optout(project, config: Dict) -> bool:
         Returns True if a project is elligible for indexing, False if it is not.
     """
     try:
-        optin_kw = config['xnatdcat'].get('optin')
-        optout_kw = config['xnatdcat'].get('optout')
+        optin_kw = config["img2catalog"].get("optin")
+        optout_kw = config["img2catalog"].get("optout")
     except KeyError:
         # If key not found, means config is not set, so no opt-in/opt-out set so always elligible.
         return True
 
     if optin_kw:
-        if not optin_kw in split_keywords(project.keywords):
+        if optin_kw not in split_keywords(project.keywords):
             logger.debug("Project %s does not contain keyword on opt-in list, skipping", project)
             return False
     elif optout_kw:
@@ -318,14 +317,14 @@ def _check_optin_optout(project, config: Dict) -> bool:
 
 
 def _check_elligibility_project(project, config: Dict) -> bool:
-    """Checks if a project is elligible for indexing given its properties and XNATDCAT config
+    """Checks if a project is elligible for indexing given its properties and img2catalog config
 
     Parameters
     ----------
     p : XNAT Project
         The XNATpy project to be index4ed
     config : Dict
-        Dictionary containing xnatdcat config
+        Dictionary containing img2catalog config
 
     Returns
     -------
@@ -352,7 +351,7 @@ def contact_point_vcard_from_config(config: Dict) -> Union[VCard, None]:
     Parameters
     ----------
     config : Dict
-        xnatdcat configuration
+        img2catalog configuration
 
     Returns
     -------

@@ -6,7 +6,7 @@ import requests
 from rdflib import DCAT, DCTERMS, RDF, Graph, URIRef
 from requests import HTTPError, Response
 
-from xnatdcat.const import VCARD
+from img2catalog.const import VCARD
 
 logger = logging.getLogger(__name__)
 

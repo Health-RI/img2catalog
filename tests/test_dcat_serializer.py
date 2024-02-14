@@ -13,8 +13,8 @@ import xnat
 from rdflib import DCAT, DCTERMS, Graph
 from rdflib.compare import to_isomorphic
 
-from xnatdcat.const import EXAMPLE_CONFIG_PATH
-from xnatdcat.xnat_parser import (
+from img2catalog.const import EXAMPLE_CONFIG_PATH
+from img2catalog.xnat_parser import (
     VCARD,
     _check_elligibility_project,
     xnat_list_datasets,
@@ -62,9 +62,9 @@ def test_empty_xnat(session, empty_graph: Graph, config: Dict[str, Any]):
 @patch("xnat.core.XNATBaseObject")
 def test_valid_project(project, empty_graph: Graph, config: Dict[str, Any]):
     """Test if a valid project generates valid output"""
-    project.name = "Basic test project to test the xnatdcat"
+    project.name = "Basic test project to test the img2catalog"
     project.description = "In this project, we test xnat and dcat and make sure a description appears."
-    project.external_uri.return_value = "http://localhost/data/archive/projects/test_xnatdcat"
+    project.external_uri.return_value = "http://localhost/data/archive/projects/test_img2catalog"
     project.keywords = "test demo dcat"
     project.pi.firstname = "Albus"
     project.pi.lastname = "Dumbledore"
@@ -79,9 +79,9 @@ def test_valid_project(project, empty_graph: Graph, config: Dict[str, Any]):
 @patch("xnat.core.XNATBaseObject")
 def test_empty_description(project, config: Dict[str, Any]):
     """Test if a valid project generates valid output"""
-    project.name = "Basic test project to test the xnatdcat"
+    project.name = "Basic test project to test the img2catalog"
     project.description = None
-    project.external_uri.return_value = "http://localhost/data/archive/projects/test_xnatdcat"
+    project.external_uri.return_value = "http://localhost/data/archive/projects/test_img2catalog"
     project.keywords = "test demo dcat"
     project.pi.firstname = "Albus"
     project.pi.lastname = "Dumbledore"
@@ -94,9 +94,9 @@ def test_empty_description(project, config: Dict[str, Any]):
 @patch("xnat.core.XNATBaseObject")
 def test_invalid_PI(project, config: Dict[str, Any]):
     """Make sure if PI field is invalid, an exception is raised"""
-    project.name = "Basic test project to test the xnatdcat"
+    project.name = "Basic test project to test the img2catalog"
     project.description = "In this project, we test xnat and dcat and make sure a description appears."
-    project.external_uri.return_value = "http://localhost/data/archive/projects/test_xnatdcat"
+    project.external_uri.return_value = "http://localhost/data/archive/projects/test_img2catalog"
     project.keywords = "test demo dcat"
     project.pi.firstname = None
     project.pi.lastname = None
@@ -108,9 +108,9 @@ def test_invalid_PI(project, config: Dict[str, Any]):
 @patch("xnat.core.XNATBaseObject")
 def test_no_keywords(project, empty_graph: Graph, config: Dict[str, Any]):
     """Valid project without keywords, make sure it is not defined in output"""
-    project.name = "Basic test project to test the xnatdcat"
+    project.name = "Basic test project to test the img2catalog"
     project.description = "In this project, we test xnat and dcat and make sure a description appears."
-    project.external_uri.return_value = "http://localhost/data/archive/projects/test_xnatdcat"
+    project.external_uri.return_value = "http://localhost/data/archive/projects/test_img2catalog"
     project.keywords = ""
     project.pi.firstname = "Albus"
     project.pi.lastname = "Dumbledore"
@@ -124,8 +124,8 @@ def test_no_keywords(project, empty_graph: Graph, config: Dict[str, Any]):
 @pytest.mark.parametrize("private, optin, expected",
                          [(False, True, True), (True, True, False), (False, False, False), (True, False, False)])
 @patch("xnat.core.XNATBaseObject")
-@patch("xnatdcat.xnat_parser._check_optin_optout")
-@patch("xnatdcat.xnat_parser.xnat_private_project")
+@patch("img2catalog.xnat_parser._check_optin_optout")
+@patch("img2catalog.xnat_parser.xnat_private_project")
 def test_project_elligiblity(xnat_private_project, _check_optin_optout, project, private, optin, expected):
     project.__str__.return_value = "test project"
     project.id = "test"
@@ -135,8 +135,8 @@ def test_project_elligiblity(xnat_private_project, _check_optin_optout, project,
     assert _check_elligibility_project(project, None) == expected
     # pass
 
-@patch("xnatdcat.xnat_parser._check_elligibility_project")
-@patch("xnatdcat.xnat_parser.xnat_to_DCATDataset")
+@patch("img2catalog.xnat_parser._check_elligibility_project")
+@patch("img2catalog.xnat_parser.xnat_to_DCATDataset")
 def test_xnat_lister(xnat_to_DCATDataset, _check_elligibility_project):
     class SimpleProject:
         def __init__(self, id):

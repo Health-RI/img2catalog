@@ -1,7 +1,7 @@
 from unittest.mock import patch
 import pytest
 
-from xnatdcat.xnat_parser import _check_optin_optout, split_keywords
+from img2catalog.xnat_parser import _check_optin_optout, split_keywords
 
 
 @pytest.mark.parametrize(
@@ -30,7 +30,7 @@ def test_keyword_splitter(test_str, expected):
 @patch("xnat.core.XNATBaseObject")
 def test_no_optin_optout(project):
     project.keywords = 'test demo optout_keyword'
-    config = {'xnatdcat': dict()}
+    config = {'img2catalog': dict()}
 
     # First test no config
     assert _check_optin_optout(project, config)
@@ -39,7 +39,7 @@ def test_no_optin_optout(project):
 @patch("xnat.core.XNATBaseObject")
 def test_optout(project):
     # project without keywords
-    config = {'xnatdcat': {'optout': 'optout_keyword'}}
+    config = {'img2catalog': {'optout': 'optout_keyword'}}
     assert _check_optin_optout(project, config)
 
     project.keywords = 'test demo optout_keyword'
@@ -48,7 +48,7 @@ def test_optout(project):
 
 @patch("xnat.core.XNATBaseObject")
 def test_optin(project):
-    config = {'xnatdcat': {'optin': 'optin_keyword'}}
+    config = {'img2catalog': {'optin': 'optin_keyword'}}
     project.keywords = 'test demo optin_keyword'
 
     assert _check_optin_optout(project, config)

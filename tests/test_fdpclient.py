@@ -4,7 +4,7 @@ import pytest
 import requests
 from rdflib import Graph, URIRef
 
-from xnatdcat.fdpclient import FDPClient
+from img2catalog.fdpclient import FDPClient
 
 
 @pytest.fixture
@@ -60,8 +60,8 @@ def test_fdp_post_serialised(requests_mock, fdp_client_mock, metadata_type):
 
 
 # @pytest.mark.repeat(1)
-@patch("xnatdcat.fdpclient.FDPClient.post_serialized")
-@patch("xnatdcat.fdpclient.FDPClient.publish_record")
+@patch("img2catalog.fdpclient.FDPClient.post_serialized")
+@patch("img2catalog.fdpclient.FDPClient.publish_record")
 def test_fdp_create_and_publish(publish_record, post_serialized, requests_mock, fdp_client_mock):
     requests_mock.post("http://fdp.example.com/dataset", text="")
     empty_graph = Graph()

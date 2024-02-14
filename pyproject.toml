@@ -4,9 +4,9 @@ build-backend = "hatchling.build"
 
 
 [project]
-name = "xnatdcat"
+name = "img2catalog"
 dynamic = ["version"]
-description = 'This tool generates DCAT-AP from an XNAT instance'
+description = 'This tool generates RDF metadata from medical imaging respositories'
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT License" }
@@ -34,19 +34,18 @@ dependencies = [
 ]
 
 [project.entry-points]
-"xnat.cli" = { xnatdcat = "xnatdcat.cli_app:cli_click" }
+"xnat.cli" = { img2catalog = "img2catalog.cli_app:cli_click" }
 
 [project.urls]
-Documentation = "https://github.com/health-ri/xnatdcat#readme"
-Issues = "https://github.com/health-ri/xnatdcat/issues"
-Source = "https://github.com/health-ri/xnatdcat"
+Documentation = "https://github.com/health-ri/img2catalog#readme"
+Issues = "https://github.com/health-ri/img2catalog/issues"
+Source = "https://github.com/health-ri/img2catalog"
 
 [project.scripts]
-xnatdcat = "xnatdcat.cli_app:cli_click"
-# xnatdcat = "xnatdcat.cli_app:cli_main"
+img2catalog = "img2catalog.cli_app:cli_click"
 
 [tool.hatch.version]
-path = "src/xnatdcat/__about__.py"
+path = "src/img2catalog/__about__.py"
 
 [tool.hatch.envs.default]
 dependencies = ["coverage[toml]>=6.5", "pytest"]
@@ -76,7 +75,7 @@ detached = true
 dependencies = ["black>=23.1.0", "mypy>=1.0.0", "ruff>=0.0.243"]
 
 [tool.hatch.envs.lint.scripts]
-typing = "mypy --install-types --non-interactive {args:src/xnatdcat tests}"
+typing = "mypy --install-types --non-interactive {args:src/img2catalog tests}"
 style = ["ruff {args:.}", "black --check --diff {args:.}"]
 fmt = ["black {args:.}", "ruff --fix {args:.}", "style"]
 all = ["style", "typing"]
@@ -138,7 +137,7 @@ unfixable = [
 ]
 
 [tool.ruff.isort]
-known-first-party = ["xnatdcat"]
+known-first-party = ["img2catalog"]
 
 [tool.ruff.flake8-tidy-imports]
 ban-relative-imports = "all"
@@ -148,14 +147,14 @@ ban-relative-imports = "all"
 "tests/**/*" = ["PLR2004", "S101", "TID252"]
 
 [tool.coverage.run]
-source_pkgs = ["xnatdcat", "tests"]
+source_pkgs = ["img2catalog", "tests"]
 branch = true
 parallel = true
-omit = ["src/xnatdcat/__about__.py", "src/xnatdcat/__main__.py"]
+omit = ["src/img2catalog/__about__.py", "src/img2catalog/__main__.py"]
 
 [tool.coverage.paths]
-xnatdcat = ["src/xnatdcat", "*/xnatdcat/src/xnatdcat"]
-tests = ["tests", "*/xnatdcat/tests"]
+img2catalog = ["src/img2catalog", "*/img2catalog/src/img2catalog"]
+tests = ["tests", "*/img2catalog/tests"]
 
 [tool.coverage.report]
 exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
