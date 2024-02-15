@@ -1,6 +1,4 @@
-import argparse
 import logging
-import os
 from pathlib import Path, PurePath
 from typing import Dict
 
@@ -9,7 +7,17 @@ from click_option_group import MutuallyExclusiveOptionGroup, optgroup
 from rdflib import URIRef
 
 # from xnat.client.helpers import xnatpy_login_options, connect_cli
-from img2catalog.const import EXAMPLE_CONFIG_PATH, VCARD, XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV, XNATPY_HOST_ENV
+from img2catalog.const import (
+    EXAMPLE_CONFIG_PATH,
+    FDP_PASS_ENV,
+    FDP_SERVER_ENV,
+    FDP_USER_ENV,
+    VCARD,
+    XNAT_HOST_ENV,
+    XNAT_PASS_ENV,
+    XNAT_USER_ENV,
+    XNATPY_HOST_ENV,
+)
 from img2catalog.fdpclient import FDPClient
 
 # Python < 3.11 does not have tomllib, but tomli provides same functionality
@@ -20,10 +28,9 @@ except ModuleNotFoundError:
 
 import xnat
 
+from img2catalog import log
+from img2catalog.__about__ import __version__
 from img2catalog.xnat_parser import xnat_to_DCATDataset, xnat_to_FDP, xnat_to_RDF
-
-from . import log
-from .__about__ import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -249,13 +256,9 @@ def output_dcat(ctx: click.Context, output: click.Path, format: str):
         print(g.serialize(format=format))
 
 
-@click.option("-f", "--fdp", envvar="img2catalog_FDP", type=str, required=True, help="URL of FDP to push to")
-@click.option(
-    "-u", "--username", envvar="img2catalog_FDP_USER", type=str, required=True, help="Username of FDP to push to"
-)
-@click.option(
-    "-p", "--password", envvar="img2catalog_FDP_PASS", type=str, required=True, help="Password of FDP to push to"
-)
+@click.option("-f", "--fdp", envvar=FDP_SERVER_ENV, type=str, required=True, help="URL of FDP to push to")
+@click.option("-u", "--username", envvar=FDP_USER_ENV, type=str, required=True, help="Username of FDP to push to")
+@click.option("-p", "--password", envvar=FDP_PASS_ENV, type=str, required=True, help="Password of FDP to push to")
 @click.option("-c", "--catalog", default=None, type=URIRef, help="Catalog URI of FDP")
 @cli_click.command(name="fdp")
 @click.pass_context
