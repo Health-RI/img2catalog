@@ -1,6 +1,9 @@
 # Apple
 .DS_STORE
 
+# VS Code
+.vscode/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
