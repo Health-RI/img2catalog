@@ -1,3 +1,4 @@
+import pathlib
 from pathlib import Path
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
@@ -21,6 +22,8 @@ from img2catalog.xnat_parser import (
     xnat_to_RDF,
 )
 
+TEST_CONFIG = pathlib.Path(__file__).parent / "example-config.toml"
+
 
 # Taken from cedar2fdp
 @pytest.fixture()
@@ -35,7 +38,7 @@ def empty_graph():
 @pytest.fixture()
 def config():
     """Loads the default configuration TOML"""
-    config_path = Path(__file__).parent / "example-config.toml"
+    config_path = TEST_CONFIG
 
     with open(config_path, "rb") as f:
         config = tomllib.load(f)
