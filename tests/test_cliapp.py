@@ -1,11 +1,15 @@
 import pathlib
+import sys
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
 from rdflib import DCAT, DCTERMS, Graph
 
+import img2catalog
 from img2catalog.cli_app import cli_click, load_img2catalog_configuration
 from img2catalog.const import VCARD, XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV, XNATPY_HOST_ENV
+
+TEST_CONFIG = pathlib.Path(__file__).parent / "example-config.toml"
 
 
 @pytest.fixture()
@@ -15,6 +19,16 @@ def empty_graph():
     graph.bind("dcterms", DCTERMS)
     graph.bind("v", VCARD)
     return graph
+
+
+@pytest.fixture()
+def toml_patch_target():
+    # Python 3.11 and up has tomllib built-in, for 3.10 and lower we use tomli which provides
+    # the same functonality. We check if it's Python 3.10 or lower to patch the correct target.
+    if sys.version_info[0] == 3 and sys.version_info[1] <= 10:
+        return "tomli.load"
+    else:
+        return "tomllib.load"
 
 
 @patch("xnat.connect")
@@ -198,6 +212,18 @@ def test_config_loader_error():
 
     with pytest.raises(FileNotFoundError):
         load_img2catalog_configuration(config_path)
+
+
+@pytest.mark.parametrize("config_param", [None, TEST_CONFIG])
+@patch("img2catalog.configmanager.CONFIG_HOME_PATH", TEST_CONFIG)
+@patch("builtins.open")
+def test_config_dir(open, toml_patch_target, config_param):
+    with patch(toml_patch_target) as load:
+        load_img2catalog_configuration(config_param)
+        # Make sure the correct configuration is loaded
+        open.assert_called_once_with(TEST_CONFIG, "rb")
+        # Make sure the file de-serializer is called, not the string de-serializer
+        load.assert_called_once()
 
 
 @pytest.mark.xfail(reason="Mocking FDP client seems to halt execution")
