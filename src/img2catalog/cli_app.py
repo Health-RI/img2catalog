@@ -6,9 +6,10 @@ import click
 from click_option_group import MutuallyExclusiveOptionGroup, optgroup
 from rdflib import URIRef
 
+from img2catalog.configmanager import load_img2catalog_configuration
+
 # from xnat.client.helpers import xnatpy_login_options, connect_cli
 from img2catalog.const import (
-    EXAMPLE_CONFIG_PATH,
     FDP_PASS_ENV,
     FDP_SERVER_ENV,
     FDP_USER_ENV,
@@ -19,7 +20,6 @@ from img2catalog.const import (
     XNATPY_HOST_ENV,
 )
 from img2catalog.fdpclient import FDPClient
-from img2catalog.configmanager import load_img2catalog_configuration
 
 # Python < 3.11 does not have tomllib, but tomli provides same functionality
 try:

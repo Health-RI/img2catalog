@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+
 from img2catalog.xnat_parser import _check_optin_optout, split_keywords
 
 

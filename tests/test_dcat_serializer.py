@@ -10,7 +10,9 @@ except ModuleNotFoundError:
     import tomli as tomllib
 
 import xnat
-from img2catalog.const import EXAMPLE_CONFIG_PATH
+from rdflib import DCAT, DCTERMS, Graph
+from rdflib.compare import to_isomorphic
+
 from img2catalog.xnat_parser import (
     VCARD,
     _check_elligibility_project,
@@ -18,8 +20,6 @@ from img2catalog.xnat_parser import (
     xnat_to_DCATDataset,
     xnat_to_RDF,
 )
-from rdflib import DCAT, DCTERMS, Graph
-from rdflib.compare import to_isomorphic
 
 
 # Taken from cedar2fdp

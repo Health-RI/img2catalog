@@ -4,7 +4,6 @@ from pathlib import Path
 
 from rdflib import Namespace
 
-
 CONFIG_HOME_PATH = Path.home() / ".img2catalog" / "config.toml"
 
 XNAT_HOST_ENV = "XNAT_HOST"
