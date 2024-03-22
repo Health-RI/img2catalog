@@ -35,7 +35,7 @@ def empty_graph():
 @pytest.fixture()
 def config():
     """Loads the default configuration TOML"""
-    config_path = EXAMPLE_CONFIG_PATH
+    config_path = Path(__file__).parent / "example-config.toml"
 
     with open(config_path, "rb") as f:
         config = tomllib.load(f)
@@ -120,8 +120,10 @@ def test_no_keywords(project, empty_graph: Graph, config: Dict[str, Any]):
 
     assert to_isomorphic(empty_graph) == to_isomorphic(gen)
 
-@pytest.mark.parametrize("private, optin, expected",
-                         [(False, True, True), (True, True, False), (False, False, False), (True, False, False)])
+
+@pytest.mark.parametrize(
+    "private, optin, expected", [(False, True, True), (True, True, False), (False, False, False), (True, False, False)]
+)
 @patch("xnat.core.XNATBaseObject")
 @patch("img2catalog.xnat_parser._check_optin_optout")
 @patch("img2catalog.xnat_parser.xnat_private_project")
@@ -133,6 +135,7 @@ def test_project_elligiblity(xnat_private_project, _check_optin_optout, project,
 
     assert _check_elligibility_project(project, None) == expected
     # pass
+
 
 @patch("img2catalog.xnat_parser._check_elligibility_project")
 @patch("img2catalog.xnat_parser.xnat_to_DCATDataset")
@@ -147,7 +150,6 @@ def test_xnat_lister(xnat_to_DCATDataset, _check_elligibility_project):
 
     _check_elligibility_project.side_effect = [True, False, True]
     xnat_to_DCATDataset.side_effect = ["project_1", "project_3", RuntimeError("Only two projects should be converted")]
-
 
     list_result = xnat_list_datasets(session, {})
 

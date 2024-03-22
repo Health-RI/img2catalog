@@ -19,6 +19,7 @@ from img2catalog.const import (
     XNATPY_HOST_ENV,
 )
 from img2catalog.fdpclient import FDPClient
+from img2catalog.configmanager import load_img2catalog_configuration
 
 # Python < 3.11 does not have tomllib, but tomli provides same functionality
 try:
@@ -65,45 +66,6 @@ def __connect_xnat(server: str, username, password):
     session = xnat.connect(server=server, user=username, password=password)
 
     return session
-
-
-def load_img2catalog_configuration(config_path: Path = None) -> Dict:
-    """Loads a configuration file for img2catalog
-
-    First, it checks if config_path is given. If not, it will look for ~/.img2catalog/config.toml,
-    if that file also doesn't exist it will load an example configuration from the project rootfolder.
-
-    Parameters
-    ----------
-    config_path : Path, optional
-        Path to configuration file to load, by default None
-
-    Returns
-    -------
-    Dict
-        Dictionary with loaded configuration properties
-
-    Raises
-    ------
-    FileNotFoundError
-        If config_path is specified yet does not exist
-    """
-    if config_path:
-        if not config_path.exists():
-            raise FileNotFoundError(f"Configuration file does not exist at {config_path}")
-    elif (config_path := Path.home() / ".img2catalog" / "config.toml").exists():
-        pass
-    else:
-        # Python 3.8 does not support slicing of paths yet :(
-        config_path = EXAMPLE_CONFIG_PATH
-        logger.warning("No configuration file found or specified! img2catalog will use the example file.")
-
-    logger.info("Using configuration file %s", config_path)
-
-    with open(config_path, "rb") as f:
-        config = tomllib.load(f)
-
-    return config
 
 
 def cli_main():

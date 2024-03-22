@@ -4,8 +4,8 @@ from pathlib import Path
 
 from rdflib import Namespace
 
-# The location of this file (const.py) is known, so we can resolve relative to this file
-EXAMPLE_CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / "example-config.toml"
+
+CONFIG_HOME_PATH = Path.home() / ".img2catalog" / "config.toml"
 
 XNAT_HOST_ENV = "XNAT_HOST"
 XNATPY_HOST_ENV = "XNATPY_HOST"
