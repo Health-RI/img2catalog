@@ -14,11 +14,12 @@ from unittest.mock import patch
 
 import requests
 import xnat
-from img2catalog.xnat_parser import XNATParserError, xnat_private_project
 from pytest_mock import MockerFixture
 from requests import Response
 from requests_mock import Mocker
 from xnat.session import XNATSession
+
+from img2catalog.xnat_parser import XNATParserError, xnat_private_project
 
 
 class CreatedObject:
