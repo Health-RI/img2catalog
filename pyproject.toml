@@ -47,16 +47,6 @@ img2catalog = "img2catalog.cli_app:cli_click"
 [tool.hatch.version]
 path = "src/img2catalog/__about__.py"
 
-[tool.hatch.envs.default]
-dependencies = ["coverage[toml]>=6.5", "pytest"]
-
-
-[tool.hatch.envs.default.scripts]
-test = "pytest {args:tests}"
-test-cov = "coverage run -m pytest {args:tests}"
-cov-report = ["- coverage combine", "coverage report", "coverage xml"]
-cov = ["test-cov", "cov-report"]
-
 [tool.hatch.envs.test]
 dependencies = [
   "pytest",
@@ -69,6 +59,12 @@ dependencies = [
 
 [[tool.hatch.envs.test.matrix]]
 python = ["3.8", "3.9", "3.10", "3.11", "3.12", "pypy3.9", "pypy3.10"]
+
+[tool.hatch.envs.test.scripts]
+test = "pytest {args:tests}"
+test-cov = "coverage run -m pytest {args:tests}"
+cov-report = ["- coverage combine", "coverage report", "coverage xml"]
+cov = ["test-cov", "cov-report"]
 
 [tool.hatch.envs.lint]
 detached = true

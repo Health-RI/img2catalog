@@ -13,7 +13,6 @@ from typing import Any, Pattern, Union
 from unittest.mock import patch
 
 import requests
-import xnat
 from pytest_mock import MockerFixture
 from requests import Response
 from requests_mock import Mocker
