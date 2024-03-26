@@ -2,6 +2,12 @@
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## 0.3.1 - 2024-03-26
+
+### Fixed
+
+* Failure to run the package from PyPI if there was no configuration file present
+
 ## 0.3.0 - 2024-02-26
 
 ### Added
