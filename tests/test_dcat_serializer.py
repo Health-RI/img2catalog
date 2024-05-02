@@ -138,9 +138,6 @@ def test_no_keywords(project, empty_graph: Graph, config: Dict[str, Any]):
     dcat, uri = xnat_to_DCATDataset(project, config)
     gen = dcat.to_graph(uri)
 
-    print(empty_graph.serialize())
-    print(gen.serialize())
-
     assert to_isomorphic(empty_graph) == to_isomorphic(gen)
 
 

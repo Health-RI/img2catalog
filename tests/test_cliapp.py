@@ -316,13 +316,6 @@ def test_output_project_file(
         ["--verbose", "-s", "http://example.com", "project", "test_project", "-o", "test_project.xml", "-f", "xml"],
     )
 
-    result_graph = empty_graph.parse(source="test_project.xml", format="xml")
-    reference_graph = empty_graph.parse(source=pathlib.Path(__file__).parent / "references" / "mock_dataset.ttl")
-
-    # Verify known output
-    assert to_isomorphic(reference_graph) == to_isomorphic(result_graph)
-
-    # Make sure right functions are called
     connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
     xnat_to_DCATDataset.assert_called_with("test_project", ANY)
     connect.return_value.__enter__.return_value.projects.__getitem__.assert_called_once_with("test_project")

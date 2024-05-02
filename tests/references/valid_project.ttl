@@ -7,6 +7,7 @@
             v:fn "prof. Albus Dumbledore" ;
             v:hasUID <http://example.com/> ] ;
     dcterms:description "In this project, we test xnat and dcat and make sure a description appears." ;
+    dcterms:identifier "http://localhost/data/archive/projects/test_img2catalog" ;
     dcterms:title "Basic test project to test the img2catalog" ;
     dcat:keyword "dcat",
         "demo",
