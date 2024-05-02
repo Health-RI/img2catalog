@@ -5,15 +5,17 @@ import re
 from typing import Dict, List, Tuple, Union
 
 from rdflib import DCAT, DCTERMS, FOAF, Graph, URIRef
-from rdflib.term import Literal
+
+# from rdflib.term import Literal
 from tqdm import tqdm
 from xnat.core import XNATBaseObject
 from xnat.session import XNATSession
 
 from img2catalog.fdpclient import FDPClient, prepare_dataset_graph_for_fdp
 
-from .const import VCARD
-from .dcat_model import DCATCatalog, DCATDataSet, VCard
+
+from sempyro.vcard import VCard, VCARD
+from sempyro.dcat import DCATCatalog, DCATDataset
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +37,7 @@ class XNATParserError(ValueError):
         self.error_list = error_list
 
 
-def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> DCATDataSet:
+def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[DCATDataset, URIRef]:
     """This function populates a DCAT Dataset class from an XNat project
 
     Currently fills in the title, description and keywords. The first two are mandatory fields
@@ -52,12 +54,14 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> DCATDataSet:
 
     Returns
     -------
-    DCATDataSet
-        DCATDataSet object with fields filled in
+    DCATDataset
+        DCATDataset object with fields filled in
+    URIRef
+        Subject that could be used
     """
     # Specification from XNAT:  Optional: Enter searchable keywords. Each word, separated by a space,
     # can be used independently as a search string.
-    keywords = [Literal(kw) for kw in split_keywords(project.keywords)]
+    keywords = split_keywords(project.keywords)
 
     error_list = []
     if not (project.pi.firstname or project.pi.lastname):
@@ -70,15 +74,14 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> DCATDataSet:
 
     creator_vcard = [
         VCard(
-            full_name=Literal(f"{project.pi.title or ''} {project.pi.firstname} {project.pi.lastname}".strip()),
-            uid=URIRef("http://example.com"),  # Should be ORCID?
+            full_name=[(f"{project.pi.title or ''} {project.pi.firstname} {project.pi.lastname}".strip())],
+            hasUID=URIRef("http://example.com"),  # Should be ORCID?
         )
     ]
 
     dataset_dict = {
-        "uri": URIRef(project.external_uri()),
-        "title": [Literal(project.name)],
-        "description": Literal(project.description),
+        "title": [(project.name)],
+        "description": [(project.description)],
         "creator": creator_vcard,
         "keyword": keywords,
     }
@@ -87,9 +90,9 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> DCATDataSet:
     if any(contact_point_vcard):
         dataset_dict["contact_point"] = contact_point_vcard
 
-    project_dataset = DCATDataSet(**dataset_dict)
+    project_dataset = DCATDataset(**dataset_dict)
 
-    return project_dataset
+    return project_dataset, URIRef(project.external_uri())
 
 
 def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> DCATCatalog:
@@ -104,16 +107,15 @@ def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> DCATCatalog:
 
     Returns
     -------
-    DCATCatalog
+    DCATCatalog, catalog_uri
         DCATCatalog object with fields filled in
     """
     catalog_uri = URIRef(session.url_for(session))
     catalog = DCATCatalog(
-        uri=catalog_uri,
-        title=Literal(config["catalog"]["title"]),
-        description=Literal(config["catalog"]["description"]),
+        title=[(config["catalog"]["title"])],
+        description=[(config["catalog"]["description"])],
     )
-    return catalog
+    return catalog, catalog_uri
 
 
 def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
@@ -139,16 +141,20 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
     export_graph.bind("foaf", FOAF)
     export_graph.bind("vcard", VCARD)
 
-    catalog = xnat_to_DCATCatalog(session, config)
+    catalog, catalog_uri = xnat_to_DCATCatalog(session, config)
 
     dataset_list = xnat_list_datasets(session, config)
 
-    for dcat_dataset in dataset_list:
-        d = dcat_dataset.to_graph(userinfo_format=VCARD.VCard)
-        export_graph += d
-        catalog.Dataset.append(dcat_dataset.uri)
+    # Empty list so we can easily append datasets
+    catalog.dataset = []
 
-    export_graph += catalog.to_graph()
+    for dcat_dataset, subject in dataset_list:
+        d = dcat_dataset.to_graph(subject)
+        export_graph += d
+        # FIXME how to fix this
+        catalog.dataset.append(subject)
+
+    export_graph += catalog.to_graph(catalog_uri)
 
     return export_graph
 
@@ -170,14 +176,14 @@ def xnat_to_FDP(session: XNATSession, config: Dict, catalog_uri: URIRef, fdpclie
     """
     dataset_list = xnat_list_datasets(session, config)
 
-    for dataset in tqdm(dataset_list):
-        dataset_graph = dataset.to_graph(userinfo_format=VCARD.VCard)
+    for dataset, subject in tqdm(dataset_list):
+        dataset_graph = dataset.to_graph(subject)
         prepare_dataset_graph_for_fdp(dataset_graph, catalog_uri)
         logger.debug("Going to push %s to FDP", dataset.title)
         fdpclient.create_and_publish("dataset", dataset_graph)
 
 
-def xnat_list_datasets(session: XNATSession, config: Dict) -> List[DCATDataSet]:
+def xnat_list_datasets(session: XNATSession, config: Dict) -> List[DCATDataset]:
     """Acquires a list of elligible XNAT datasets
 
     Parameters
@@ -189,8 +195,8 @@ def xnat_list_datasets(session: XNATSession, config: Dict) -> List[DCATDataSet]:
 
     Returns
     -------
-    List[DCATDataSet]
-        List of DCAT models of elligible datasets
+    List[DCATDataset, URI]
+        List of DCAT models of elligible datasets, along with their URIs (for subjects)
 
     """
     failure_counter = 0
@@ -370,6 +376,8 @@ def contact_point_vcard_from_config(config: Dict) -> Union[VCard, None]:
             contact_email = f"mailto:{contact_email}"
         contact_email = URIRef(contact_email)
 
-    contact_vcard = VCard(full_name=Literal(contact_config["full_name"]), email=contact_email)
+    contact_vcard = VCard(
+        full_name=[contact_config["full_name"]], hasEmail=[contact_email], hasUID=URIRef("http://example.com")
+    )
 
     return contact_vcard

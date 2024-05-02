@@ -3,10 +3,13 @@ import sys
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
-from rdflib import DCAT, DCTERMS, Graph
+from rdflib import DCAT, DCTERMS, Graph, URIRef
+from rdflib.compare import to_isomorphic
+from sempyro.vcard import VCARD
+from sempyro.dcat.dcat_dataset import DCATDataset
 
 from img2catalog.cli_app import cli_click, load_img2catalog_configuration
-from img2catalog.const import VCARD, XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV, XNATPY_HOST_ENV
+from img2catalog.const import XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV, XNATPY_HOST_ENV
 
 TEST_CONFIG = pathlib.Path(__file__).parent / "example-config.toml"
 
@@ -28,6 +31,12 @@ def toml_patch_target():
         return "tomli.load"
     else:
         return "tomllib.load"
+
+
+@pytest.fixture()
+def dummy_dcat_dataset():
+    d = DCATDataset(title=['test project'], description=['test description'])
+    return d
 
 
 @patch("xnat.connect")
@@ -262,25 +271,30 @@ def test_fdp_cli(connect, mock_FDPClient, xnat_to_FDP, isolated_cli_runner):
 def test_output_project(
     xnat_to_DCATDataset,
     connect,
+    dummy_dcat_dataset,
     empty_graph,
     isolated_cli_runner,
 ):
     # patch the session.projects such that it returns the id it was called with
     connect.return_value.__enter__.return_value.projects.__getitem__.side_effect = lambda x: x
 
-    # Always return an empty graph
-    xnat_to_DCATDataset.return_value.to_graph.return_value = empty_graph
+    # Always return a mock DCATDataset object and URI
+    xnat_to_DCATDataset.return_value = (dummy_dcat_dataset, URIRef("http://example.com"))
 
-    with patch.object(empty_graph, "serialize") as serializer:
-        result = isolated_cli_runner.invoke(
-            cli_click,
-            ["--verbose", "-s", "http://example.com", "project", "test_project"],
-        )
-        serializer.assert_called_once_with(format="turtle")
+    # with patch.object(dummy_dcat_dataset, "to_graph", return_value=empty_graph) as serializer:
+    result = isolated_cli_runner.invoke(
+        cli_click,
+        ["--verbose", "-s", "http://example.com", "project", "test_project"],
+    )
+
+    result_graph = empty_graph.parse(result.stdout_bytes, format="ttl")
+    reference_graph = empty_graph.parse(source=pathlib.Path(__file__).parent / "references" / "mock_dataset.ttl")
+
+    # Verify known output
+    assert to_isomorphic(reference_graph) == to_isomorphic(result_graph)
 
     connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
     xnat_to_DCATDataset.assert_called_with("test_project", ANY)
-
     connect.return_value.__enter__.return_value.projects.__getitem__.assert_called_once_with("test_project")
 
 
@@ -289,23 +303,31 @@ def test_output_project(
 def test_output_project_file(
     xnat_to_DCATDataset,
     connect,
+    dummy_dcat_dataset,
     empty_graph,
     isolated_cli_runner,
 ):
     # patch the session.projects such that it returns the id it was called with
     connect.return_value.__enter__.return_value.projects.__getitem__.side_effect = lambda x: x
 
-    # Always return an empty graph
-    xnat_to_DCATDataset.return_value.to_graph.return_value = empty_graph
+    # Always return a mock DCATDataset object and URI
+    xnat_to_DCATDataset.return_value = (dummy_dcat_dataset, URIRef("http://example.com"))
 
-    with patch.object(empty_graph, "serialize") as serializer:
-        result = isolated_cli_runner.invoke(
-            cli_click,
-            ["--verbose", "-s", "http://example.com", "project", "test_project", "-o", "test_project.xml", "-f", "xml"],
-        )
-        serializer.assert_called_once_with(format="xml", destination="test_project.xml")
+    result = isolated_cli_runner.invoke(
+        cli_click,
+        ["--verbose", "-s", "http://example.com", "project", "test_project", "-o", "test_project.xml", "-f", "xml"],
+    )
+
+    print("appel")
+    print(result.output)
+    result_graph = empty_graph.parse(source="test_project.xml", format="xml")
+    reference_graph = empty_graph.parse(source=pathlib.Path(__file__).parent / "references" / "mock_dataset.ttl")
+
+    # Verify known output
+    assert to_isomorphic(reference_graph) == to_isomorphic(result_graph)
+
+    # assert False
 
     connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
     xnat_to_DCATDataset.assert_called_with("test_project", ANY)
-
     connect.return_value.__enter__.return_value.projects.__getitem__.assert_called_once_with("test_project")

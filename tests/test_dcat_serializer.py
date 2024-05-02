@@ -73,7 +73,8 @@ def test_valid_project(project, empty_graph: Graph, config: Dict[str, Any]):
     project.pi.title = "prof."
 
     empty_graph = empty_graph.parse(source="tests/references/valid_project.ttl")
-    gen = xnat_to_DCATDataset(project, config).to_graph(userinfo_format=VCARD.VCard)
+    dcat, uri = xnat_to_DCATDataset(project, config)
+    gen = dcat.to_graph(uri)
 
     assert to_isomorphic(empty_graph) == to_isomorphic(gen)
 
@@ -119,7 +120,11 @@ def test_no_keywords(project, empty_graph: Graph, config: Dict[str, Any]):
     project.pi.title = "prof."
 
     empty_graph = empty_graph.parse(source="tests/references/no_keyword.ttl")
-    gen = xnat_to_DCATDataset(project, config).to_graph(userinfo_format=VCARD.VCard)
+    dcat, uri = xnat_to_DCATDataset(project, config)
+    gen = dcat.to_graph(uri)
+
+    print(empty_graph.serialize())
+    print(gen.serialize())
 
     assert to_isomorphic(empty_graph) == to_isomorphic(gen)
 
