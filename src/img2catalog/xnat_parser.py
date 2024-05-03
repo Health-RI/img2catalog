@@ -110,12 +110,11 @@ def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> DCATCatalog:
     DCATCatalog, catalog_uri
         DCATCatalog object with fields filled in
     """
-    catalog_uri = URIRef(session.url_for(session))
     catalog = DCATCatalog(
         title=[config["catalog"]["title"]],
         description=[config["catalog"]["description"]],
     )
-    return catalog, catalog_uri
+    return catalog
 
 
 def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
@@ -141,7 +140,8 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
     export_graph.bind("foaf", FOAF)
     export_graph.bind("vcard", VCARD)
 
-    catalog, catalog_uri = xnat_to_DCATCatalog(session, config)
+    catalog = xnat_to_DCATCatalog(session, config)
+    catalog_uri = URIRef(session.url_for(session))
 
     dataset_list = xnat_list_datasets(session, config)
 
