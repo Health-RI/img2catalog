@@ -16,6 +16,7 @@ from rdflib.compare import to_isomorphic
 
 from img2catalog.xnat_parser import (
     VCARD,
+    XNATParserError,
     _check_elligibility_project,
     xnat_list_datasets,
     xnat_to_DCATDataset,
@@ -151,17 +152,27 @@ def test_xnat_lister(xnat_to_DCATDataset, _check_elligibility_project):
     class SimpleProject:
         def __init__(self, id):
             self.id = None
+            self.name = id
 
     # xnat_list_datasets
     session = MagicMock(spec=xnat.session.XNATSession)
-    session.projects.values.return_value = [SimpleProject("p1"), SimpleProject("p2"), SimpleProject("p3")]
+    session.projects.values.return_value = [
+        SimpleProject("p1"),
+        SimpleProject("p2"),
+        SimpleProject("p3"),
+        SimpleProject("p4"),
+    ]
 
-    _check_elligibility_project.side_effect = [True, False, True]
-    xnat_to_DCATDataset.side_effect = ["project_1", "project_3", RuntimeError("Only two projects should be converted")]
+    _check_elligibility_project.side_effect = [True, False, True, True]
+    xnat_to_DCATDataset.side_effect = [
+        "project_1",
+        "project_3",
+        XNATParserError("Test error", ["This project cannot be converted"]),
+    ]
 
     list_result = xnat_list_datasets(session, {})
 
     assert list_result == ["project_1", "project_3"]
 
-    assert _check_elligibility_project.call_count == 3
-    assert xnat_to_DCATDataset.call_count == 2
+    assert _check_elligibility_project.call_count == 4
+    assert xnat_to_DCATDataset.call_count == 3
