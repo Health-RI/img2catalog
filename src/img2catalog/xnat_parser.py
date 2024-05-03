@@ -74,14 +74,14 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[DCATData
 
     creator_vcard = [
         VCard(
-            full_name=[(f"{project.pi.title or ''} {project.pi.firstname} {project.pi.lastname}".strip())],
+            full_name=[f"{project.pi.title or ''} {project.pi.firstname} {project.pi.lastname}".strip()],
             hasUID=URIRef("http://example.com"),  # Should be ORCID?
         )
     ]
 
     dataset_dict = {
-        "title": [(project.name)],
-        "description": [(project.description)],
+        "title": [project.name],
+        "description": [project.description],
         "creator": creator_vcard,
         "keyword": keywords,
     }
@@ -112,8 +112,8 @@ def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> DCATCatalog:
     """
     catalog_uri = URIRef(session.url_for(session))
     catalog = DCATCatalog(
-        title=[(config["catalog"]["title"])],
-        description=[(config["catalog"]["description"])],
+        title=[config["catalog"]["title"]],
+        description=[config["catalog"]["description"]],
     )
     return catalog, catalog_uri
 
