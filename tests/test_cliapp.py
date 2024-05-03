@@ -258,9 +258,7 @@ def test_fdp_cli(connect, mock_FDPClient, xnat_to_FDP, isolated_cli_runner):
             "more_test",
         ],
     )
-    # print(xnat_connect.call_count)
-    # mock_FDPClient.assert_called()
-    print(str(result.stdout_bytes.decode()))
+
     connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
     xnat_to_FDP.assert_called_once()
     pass
@@ -318,16 +316,13 @@ def test_output_project_file(
         ["--verbose", "-s", "http://example.com", "project", "test_project", "-o", "test_project.xml", "-f", "xml"],
     )
 
-    print("appel")
-    print(result.output)
     result_graph = empty_graph.parse(source="test_project.xml", format="xml")
     reference_graph = empty_graph.parse(source=pathlib.Path(__file__).parent / "references" / "mock_dataset.ttl")
 
     # Verify known output
     assert to_isomorphic(reference_graph) == to_isomorphic(result_graph)
 
-    # assert False
-
+    # Make sure right functions are called
     connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
     xnat_to_DCATDataset.assert_called_with("test_project", ANY)
     connect.return_value.__enter__.return_value.projects.__getitem__.assert_called_once_with("test_project")

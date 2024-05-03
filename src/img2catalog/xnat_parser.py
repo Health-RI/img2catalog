@@ -145,13 +145,12 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
 
     dataset_list = xnat_list_datasets(session, config)
 
-    # Empty list so we can easily append datasets
+    # Assign an empty list so we can easily append datasets
     catalog.dataset = []
 
     for dcat_dataset, subject in dataset_list:
         d = dcat_dataset.to_graph(subject)
         export_graph += d
-        # FIXME how to fix this
         catalog.dataset.append(subject)
 
     export_graph += catalog.to_graph(catalog_uri)

@@ -165,14 +165,14 @@ def test_xnat_lister(xnat_to_DCATDataset, _check_elligibility_project):
 
     _check_elligibility_project.side_effect = [True, False, True, True]
     xnat_to_DCATDataset.side_effect = [
-        "project_1",
-        "project_3",
+        ("project_1", "uri1"),
+        ("project_3", "uri2"),
         XNATParserError("Test error", ["This project cannot be converted"]),
     ]
 
     list_result = xnat_list_datasets(session, {})
 
-    assert list_result == ["project_1", "project_3"]
+    assert list_result == [("project_1", "uri1"), ("project_3", "uri2")]
 
     assert _check_elligibility_project.call_count == 4
     assert xnat_to_DCATDataset.call_count == 3
