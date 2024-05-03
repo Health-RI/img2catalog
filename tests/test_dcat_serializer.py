@@ -4,6 +4,8 @@ from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sempyro.dcat.dcat_catalog import DCATCatalog
+from sempyro.dcat.dcat_dataset import DCATDataset
 
 try:
     import tomllib
@@ -11,7 +13,7 @@ except ModuleNotFoundError:
     import tomli as tomllib
 
 import xnat
-from rdflib import DCAT, DCTERMS, Graph
+from rdflib import DCAT, DCTERMS, Graph, URIRef
 from rdflib.compare import to_isomorphic
 
 from img2catalog.xnat_parser import (
@@ -45,6 +47,18 @@ def config():
         config = tomllib.load(f)
 
     return config
+
+
+@pytest.fixture()
+def mock_catalog():
+    catalog = DCATCatalog(title=['Test catalog'], description=['Test description'])
+    return catalog
+
+
+@pytest.fixture()
+def mock_dataset():
+    dataset = DCATDataset(title=['test project'], description=['test description'])
+    return dataset
 
 
 @patch("xnat.session.BaseXNATSession")
@@ -176,3 +190,20 @@ def test_xnat_lister(xnat_to_DCATDataset, _check_elligibility_project):
 
     assert _check_elligibility_project.call_count == 4
     assert xnat_to_DCATDataset.call_count == 3
+
+
+@patch("xnat.session.BaseXNATSession")
+@patch("img2catalog.xnat_parser.xnat_to_DCATCatalog")
+@patch("img2catalog.xnat_parser.xnat_list_datasets")
+def test_xnat_to_rdf(xnat_list_datasets, xnat_to_DCATCatalog, session, mock_dataset, mock_catalog, config, empty_graph):
+    xnat_to_DCATCatalog.return_value = mock_catalog
+
+    session.projects = {}
+    session.url_for.return_value = "https://example.com/catalog"
+
+    xnat_list_datasets.return_value = [(mock_dataset, URIRef("http://example.com/dataset"))]
+
+    result_graph = xnat_to_RDF(session, config)
+    reference_graph = empty_graph.parse(source="tests/references/minimal_catalog_dataset.ttl")
+
+    assert to_isomorphic(result_graph) == to_isomorphic(reference_graph)
