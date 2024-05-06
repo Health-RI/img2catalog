@@ -5,6 +5,8 @@ import re
 from typing import Dict, List, Tuple, Union
 
 from rdflib import DCAT, DCTERMS, FOAF, Graph, URIRef
+from sempyro.dcat import DCATCatalog, DCATDataset
+from sempyro.vcard import VCARD, VCard
 
 # from rdflib.term import Literal
 from tqdm import tqdm
@@ -12,10 +14,6 @@ from xnat.core import XNATBaseObject
 from xnat.session import XNATSession
 
 from img2catalog.fdpclient import FDPClient, prepare_dataset_graph_for_fdp
-
-
-from sempyro.vcard import VCard, VCARD
-from sempyro.dcat import DCATCatalog, DCATDataset
 
 logger = logging.getLogger(__name__)
 
