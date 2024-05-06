@@ -5,8 +5,8 @@ from urllib.parse import urljoin, urlparse
 import requests
 from rdflib import DCAT, DCTERMS, RDF, Graph, URIRef
 from requests import HTTPError, Response
-from SPARQLWrapper import SPARQLWrapper, JSON
 from sempyro.vcard import VCARD
+from SPARQLWrapper import JSON, SPARQLWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -258,7 +258,7 @@ WHERE {{
     ?subject dcterms:isPartOf <{catalog}> .
 }}"""
         self.sparql.setQuery(query)
-        results = self.sparql.queryAndConvert()['results']['bindings']
+        results = self.sparql.queryAndConvert()["results"]["bindings"]
 
         if len(results) == 0:
             # No result found
