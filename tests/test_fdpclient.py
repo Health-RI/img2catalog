@@ -100,13 +100,13 @@ def test_fdp_node_removal():
 @patch("SPARQLWrapper.SPARQLWrapper.queryAndConvert")
 def test_subject_query_success(queryAndConvert, setQuery):
     expected_decoded_json = {
-        'head': {'vars': ['subject']},
-        'results': {
-            'bindings': [
+        "head": {"vars": ["subject"]},
+        "results": {
+            "bindings": [
                 {
-                    'subject': {
-                        'type': 'uri',
-                        'value': "http://example.com/dataset",
+                    "subject": {
+                        "type": "uri",
+                        "value": "http://example.com/dataset",
                     }
                 }
             ]
@@ -133,8 +133,8 @@ WHERE {
 @patch("SPARQLWrapper.SPARQLWrapper.queryAndConvert")
 def test_subject_query_empty(queryAndConvert, setQuery):
     expected_decoded_json = {
-        'head': {'vars': ['subject']},
-        'results': {'bindings': []},
+        "head": {"vars": ["subject"]},
+        "results": {"bindings": []},
     }
     queryAndConvert.return_value = expected_decoded_json
 
@@ -146,19 +146,19 @@ def test_subject_query_empty(queryAndConvert, setQuery):
 @patch("SPARQLWrapper.SPARQLWrapper.queryAndConvert")
 def test_subject_query_multiple(queryAndConvert):
     expected_decoded_json = {
-        'head': {'vars': ['subject']},
-        'results': {
-            'bindings': [
+        "head": {"vars": ["subject"]},
+        "results": {
+            "bindings": [
                 {
-                    'subject': {
-                        'type': 'uri',
-                        'value': "http://example.com/dataset1",
+                    "subject": {
+                        "type": "uri",
+                        "value": "http://example.com/dataset1",
                     }
                 },
                 {
-                    'subject': {
-                        'type': 'uri',
-                        'value': "http://example.com/dataset2",
+                    "subject": {
+                        "type": "uri",
+                        "value": "http://example.com/dataset2",
                     }
                 },
             ]
@@ -174,13 +174,13 @@ def test_subject_query_multiple(queryAndConvert):
 @patch("SPARQLWrapper.SPARQLWrapper.queryAndConvert")
 def test_subject_query_typeerror(queryAndConvert):
     expected_decoded_json = {
-        'head': {'vars': ['subject']},
-        'results': {
-            'bindings': [
+        "head": {"vars": ["subject"]},
+        "results": {
+            "bindings": [
                 {
-                    'subject': {
-                        'type': 'literal',
-                        'value': "incorrect_result",
+                    "subject": {
+                        "type": "literal",
+                        "value": "incorrect_result",
                     }
                 }
             ]
