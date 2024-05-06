@@ -5,7 +5,7 @@ import requests
 from rdflib import Graph, URIRef
 from rdflib.compare import to_isomorphic
 
-from img2catalog.fdpclient import FDPClient, remove_node_from_graph
+from img2catalog.fdpclient import FDPClient, FDPSPARQLClient, remove_node_from_graph
 
 
 @pytest.fixture
@@ -93,3 +93,101 @@ def test_fdp_node_removal():
     remove_node_from_graph(URIRef("https://example.com/dataset"), graph_to_modify)
 
     assert to_isomorphic(reference_graph) == to_isomorphic(graph_to_modify)
+
+
+# These test cases are not the best. Better would be to emulate the actual endpoint
+@patch("SPARQLWrapper.SPARQLWrapper.setQuery")
+@patch("SPARQLWrapper.SPARQLWrapper.queryAndConvert")
+def test_subject_query_success(queryAndConvert, setQuery):
+    expected_decoded_json = {
+        'head': {'vars': ['subject']},
+        'results': {
+            'bindings': [
+                {
+                    'subject': {
+                        'type': 'uri',
+                        'value': "http://example.com/dataset",
+                    }
+                }
+            ]
+        },
+    }
+    queryAndConvert.return_value = expected_decoded_json
+
+    expected_query = """PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT *
+WHERE {
+    ?subject dcterms:identifier "https://example.com/dataset" .
+    ?subject dcterms:isPartOf <https://example.com> .
+}"""
+
+    t = FDPSPARQLClient("https://example.com")
+
+    assert t.find_subject("https://example.com/dataset", "https://example.com") == "http://example.com/dataset"
+    setQuery.assert_called_with(expected_query)
+
+
+@patch("SPARQLWrapper.SPARQLWrapper.setQuery")
+@patch("SPARQLWrapper.SPARQLWrapper.queryAndConvert")
+def test_subject_query_empty(queryAndConvert, setQuery):
+    expected_decoded_json = {
+        'head': {'vars': ['subject']},
+        'results': {'bindings': []},
+    }
+    queryAndConvert.return_value = expected_decoded_json
+
+    t = FDPSPARQLClient("https://example.com")
+
+    assert t.find_subject("https://example.com/dataset", "https://example.com") is None
+
+
+@patch("SPARQLWrapper.SPARQLWrapper.queryAndConvert")
+def test_subject_query_multiple(queryAndConvert):
+    expected_decoded_json = {
+        'head': {'vars': ['subject']},
+        'results': {
+            'bindings': [
+                {
+                    'subject': {
+                        'type': 'uri',
+                        'value': "http://example.com/dataset1",
+                    }
+                },
+                {
+                    'subject': {
+                        'type': 'uri',
+                        'value': "http://example.com/dataset2",
+                    }
+                },
+            ]
+        },
+    }
+    queryAndConvert.return_value = expected_decoded_json
+
+    t = FDPSPARQLClient("https://example.com")
+    with pytest.raises(ValueError):
+        t.find_subject("https://example.com/dataset", "https://example.com")
+
+
+@patch("SPARQLWrapper.SPARQLWrapper.queryAndConvert")
+def test_subject_query_typeerror(queryAndConvert):
+    expected_decoded_json = {
+        'head': {'vars': ['subject']},
+        'results': {
+            'bindings': [
+                {
+                    'subject': {
+                        'type': 'literal',
+                        'value': "incorrect_result",
+                    }
+                }
+            ]
+        },
+    }
+    queryAndConvert.return_value = expected_decoded_json
+
+    t = FDPSPARQLClient("https://example.com")
+    with pytest.raises(TypeError):
+        t.find_subject("https://example.com/dataset", "https://example.com")

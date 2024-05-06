@@ -5,11 +5,12 @@ from urllib.parse import urljoin, urlparse
 import requests
 from rdflib import DCAT, DCTERMS, RDF, Graph, URIRef
 from requests import HTTPError, Response
+from SPARQLWrapper import SPARQLWrapper, JSON
 from sempyro.vcard import VCARD
 
 logger = logging.getLogger(__name__)
 
-# This file is taken from cedar2fdp
+# The FDP client is taken from cedar2fdp
 
 
 class BasicAPIClient:
@@ -236,3 +237,35 @@ def prepare_dataset_graph_for_fdp(dataset_graph: Graph, catalog_uri: URIRef):
         # This is FDP specific: Dataset points back to the Catalog
         if not dataset_graph.value(subject=dataset, predicate=DCTERMS.isPartOf, any=False):
             dataset_graph.add((dataset, DCTERMS.isPartOf, catalog_uri))
+
+
+class FDPSPARQLClient:
+    """Simple SPARQL client to query a SPARQL endpoint of (reference) FAIR Data Point."""
+
+    def __init__(self, endpoint: str):
+        self.endpoint = endpoint
+
+        self.sparql = SPARQLWrapper(endpoint)
+        self.sparql.setReturnFormat(JSON)
+
+    def find_subject(self, identifier, catalog):
+        query = f"""PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT *
+WHERE {{
+    ?subject dcterms:identifier "{identifier}" .
+    ?subject dcterms:isPartOf <{catalog}> .
+}}"""
+        self.sparql.setQuery(query)
+        results = self.sparql.queryAndConvert()['results']['bindings']
+
+        if len(results) == 0:
+            # No result found
+            return None
+        elif len(results) > 1:
+            raise ValueError("More than one result for SPARQL query")
+        else:
+            if not results[0]["subject"]["type"].casefold() == "uri":
+                raise TypeError("Incorrect result type for subject in FDP")
+            return results[0]["subject"]["value"]
