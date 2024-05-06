@@ -72,6 +72,8 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[DCATData
     if error_list:
         raise XNATParserError("Errors encountered during the parsing of XNAT.", error_list=error_list)
 
+    project_uri = project.external_uri()
+
     creator_vcard = [
         VCard(
             full_name=[f"{project.pi.title or ''} {project.pi.firstname} {project.pi.lastname}".strip()],
@@ -84,6 +86,7 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[DCATData
         "description": [project.description],
         "creator": creator_vcard,
         "keyword": keywords,
+        "identifier": [project_uri],
     }
 
     contact_point_vcard = [contact_point_vcard_from_config(config)]
@@ -92,7 +95,7 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[DCATData
 
     project_dataset = DCATDataset(**dataset_dict)
 
-    return project_dataset, URIRef(project.external_uri())
+    return project_dataset, URIRef(project_uri)
 
 
 def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> DCATCatalog:
