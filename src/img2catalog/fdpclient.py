@@ -5,7 +5,6 @@ from urllib.parse import urljoin, urlparse
 import requests
 from rdflib import DCAT, DCTERMS, RDF, Graph, URIRef
 from requests import HTTPError, Response
-
 from sempyro.vcard import VCARD
 
 logger = logging.getLogger(__name__)
@@ -38,23 +37,6 @@ class BasicAPIClient:
             raise e
 
         return response
-
-        # Commented this out, as I don't mind having the exceptions go through the stack
-        # except requests.exceptions.HTTPError as e:
-        #     logger.error(e)
-        #     if response is not None:
-        #         logger.error(response.text)
-        #     # sys.exit(1)
-        # except requests.exceptions.ConnectionError as e:
-        #     logger.error(e)
-        #     # sys.exit(1)
-        # except requests.exceptions.Timeout as e:
-        #     logger.error(e)
-        #     # sys.exit(1)
-        # except requests.exceptions.RequestException as e:
-        #     logger.error(e)
-        #     # sys.exit(1)
-        # except Exception as e:
 
     def get(self, path: str, params: Dict = None) -> Response:
         return self._call_method("GET", path, params=params)
