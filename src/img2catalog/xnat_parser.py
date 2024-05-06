@@ -94,7 +94,7 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[DCATData
 
     project_dataset = DCATDataset(**dataset_dict)
 
-    return project_dataset, URIRef(project.external_uri())
+    return project_dataset, URIRef(project_uri)
 
 
 def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> DCATCatalog:

@@ -8,7 +8,7 @@
             vcard:fn "prof. Albus Dumbledore" ;
             vcard:hasUID <http://example.com> ] ;
     dcterms:description "In this project, we test xnat and dcat and make sure a description appears." ;
-    dcterms:identifier "test_img2catalog"^^xsd:token ;
+    dcterms:identifier "http://localhost/data/archive/projects/test_img2catalog" ;
     dcterms:temporal [ a dcterms:PeriodOfTime ] ;
     dcterms:title "Basic test project to test the img2catalog" ;
     dcat:keyword "dcat",
