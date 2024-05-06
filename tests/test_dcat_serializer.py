@@ -51,13 +51,13 @@ def config():
 
 @pytest.fixture()
 def mock_catalog():
-    catalog = DCATCatalog(title=['Test catalog'], description=['Test description'])
+    catalog = DCATCatalog(title=["Example XNAT catalog"], description=["This is an example XNAT catalog description"])
     return catalog
 
 
 @pytest.fixture()
 def mock_dataset():
-    dataset = DCATDataset(title=['test project'], description=['test description'])
+    dataset = DCATDataset(title=["test project"], description=["test description"])
     return dataset
 
 
@@ -66,7 +66,7 @@ def test_empty_xnat(session, empty_graph: Graph, config: Dict[str, Any]):
     """Test case for an XNAT with no projects at all"""
     # XNATSession is a key-value store so pretend it is a Dict
     session.projects = {}
-    session.url_for.return_value = "https://xnat.bmia.nl"
+    session.url_for.return_value = "https://example.com"
 
     empty_graph = empty_graph.parse(source="tests/references/empty_xnat.ttl")
 
@@ -196,9 +196,9 @@ def test_xnat_to_rdf(xnat_list_datasets, xnat_to_DCATCatalog, session, mock_data
     xnat_to_DCATCatalog.return_value = mock_catalog
 
     session.projects = {}
-    session.url_for.return_value = "https://example.com/catalog"
+    session.url_for.return_value = "https://example.com"
 
-    xnat_list_datasets.return_value = [(mock_dataset, URIRef("http://example.com/dataset"))]
+    xnat_list_datasets.return_value = [(mock_dataset, URIRef("https://example.com/dataset"))]
 
     result_graph = xnat_to_RDF(session, config)
     reference_graph = empty_graph.parse(source="tests/references/minimal_catalog_dataset.ttl")

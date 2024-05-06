@@ -3,8 +3,9 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 import requests
 from rdflib import Graph, URIRef
+from rdflib.compare import to_isomorphic
 
-from img2catalog.fdpclient import FDPClient
+from img2catalog.fdpclient import FDPClient, remove_node_from_graph
 
 
 @pytest.fixture
@@ -83,3 +84,12 @@ def test_fdp_create_and_publish(publish_record, post_serialized, requests_mock, 
         URIRef("http://fdp.example.com/dataset/f1bcfd31-397e-4955-930c-663df8c2d9bf")
     )
     post_serialized.assert_called_once_with(resource_type="dataset", metadata=empty_graph)
+
+
+def test_fdp_node_removal():
+    reference_graph = Graph().parse("tests/references/empty_xnat.ttl")
+
+    graph_to_modify = Graph().parse("tests/references/minimal_catalog_dataset.ttl")
+    remove_node_from_graph(URIRef("https://example.com/dataset"), graph_to_modify)
+
+    assert to_isomorphic(reference_graph) == to_isomorphic(graph_to_modify)

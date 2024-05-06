@@ -5,8 +5,8 @@ from unittest.mock import ANY, MagicMock, Mock, patch
 import pytest
 from rdflib import DCAT, DCTERMS, Graph, URIRef
 from rdflib.compare import to_isomorphic
-from sempyro.vcard import VCARD
 from sempyro.dcat.dcat_dataset import DCATDataset
+from sempyro.vcard import VCARD
 
 from img2catalog.cli_app import cli_click, load_img2catalog_configuration
 from img2catalog.const import XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV, XNATPY_HOST_ENV
@@ -35,7 +35,7 @@ def toml_patch_target():
 
 @pytest.fixture()
 def dummy_dcat_dataset():
-    d = DCATDataset(title=['test project'], description=['test description'])
+    d = DCATDataset(title=["test project"], description=["test description"])
     return d
 
 
