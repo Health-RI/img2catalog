@@ -1,6 +1,6 @@
 import pathlib
 import sys
-from unittest.mock import ANY, MagicMock, Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 from rdflib import DCAT, DCTERMS, Graph, URIRef
