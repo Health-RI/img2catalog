@@ -118,7 +118,7 @@ class FDPClient(BasicAPIClient):
         self._update_session_headers()
 
     def post_serialized(self, resource_type: str, metadata: "Graph") -> requests.Response:
-        """Serializes and posts a graph to an FDP
+        """Serializes and POSTs a graph to an FDP
 
         Parameters
         ----------
@@ -136,6 +136,26 @@ class FDPClient(BasicAPIClient):
         path = f"{self.base_url}/{resource_type}"
         logger.debug("Posting metadata to %s", path)
         response = self.post(path=path, data=metadata.serialize(format="turtle"))
+        return response
+
+    def update_serialized(self, resource_uri: str, metadata: "Graph") -> requests.Response:
+        """Serializes and updates (PUTs) a graph on an FDP
+
+        Parameters
+        ----------
+        resource_uri : str
+            URI to update
+        metadata : Graph
+            The graph with metadata to be pusshed
+
+        Returns
+        -------
+        requests.Response
+            The response from the FDP
+        """
+        self._change_content_type("text/turtle")
+        logger.debug("Putting metadata to %s", resource_uri)
+        response = self.update(path=resource_uri, data=metadata.serialize(format="turtle"))
         return response
 
     def get_data(self, path: str) -> requests.Response:
