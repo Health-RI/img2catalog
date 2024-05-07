@@ -221,44 +221,6 @@ def remove_node_from_graph(node, graph: Graph):
     graph.remove((None, None, node))
 
 
-def prepare_dataset_graph_for_fdp(dataset_graph: Graph, catalog_uri: URIRef):
-    """Mangles the graph of a dataset in such a way a FDP can take it
-
-    Adds the isPartOf property to point back to parent catalog and removes some blind VCard nodes
-    that it doens't seem to like.
-
-    Parameters
-    ----------
-    dataset_graph : Graph
-        RDFlib graph of the DCAT Dataset
-    catalog_uri : URIRef
-        URIRef of the Catalog to point back to
-
-    Raises
-    ------
-    TypeError
-        if the catalog_uri is not a URIRef (e.g. it is a string)
-    """
-    if type(catalog_uri) is not URIRef:
-        raise TypeError("catalog_uri is not a URIRef")
-
-    # For each dataset, find the creator node. If it is a VCard, get rid of it.
-    for dataset in dataset_graph.subjects(RDF.type, DCAT.Dataset):
-        creator_node = dataset_graph.value(subject=dataset, predicate=DCTERMS.creator, any=False)
-        if creator_node:
-            if dataset_graph.value(subject=creator_node, predicate=RDF.type, any=False) == VCARD.VCard:
-                remove_node_from_graph(creator_node, dataset_graph)
-
-        contactpoint_node = dataset_graph.value(subject=dataset, predicate=DCAT.contactPoint, any=False)
-        if contactpoint_node:
-            if dataset_graph.value(subject=contactpoint_node, predicate=RDF.type, any=False) == VCARD.VCard:
-                remove_node_from_graph(contactpoint_node, dataset_graph)
-
-        # This is FDP specific: Dataset points back to the Catalog
-        if not dataset_graph.value(subject=dataset, predicate=DCTERMS.isPartOf, any=False):
-            dataset_graph.add((dataset, DCTERMS.isPartOf, catalog_uri))
-
-
 class FDPSPARQLClient:
     """Simple SPARQL client to query a SPARQL endpoint of (reference) FAIR Data Point."""
 
@@ -289,3 +251,79 @@ WHERE {{
             if not results[0]["subject"]["type"].casefold() == "uri":
                 raise TypeError("Incorrect result type for subject in FDP")
             return results[0]["subject"]["value"]
+
+
+def prepare_dataset_graph_for_fdp(dataset_graph: Graph, catalog_uri: URIRef):
+    """Mangles the graph of a dataset in such a way a FDP can take it
+
+    Adds the isPartOf property to point back to parent catalog and removes some blind VCard nodes
+    that it doens't seem to like.
+
+    Parameters
+    ----------
+    dataset_graph : Graph
+        RDFlib graph of the DCAT Dataset
+    catalog_uri : URIRef
+        URIRef of the Catalog to point back to
+
+    Raises
+    ------
+    TypeError
+        if the catalog_uri is not a URIRef (e.g. it is a string)
+    """
+    if type(catalog_uri) is not URIRef:
+        raise TypeError("catalog_uri is not a URIRef")
+
+    # For each dataset, find the creator node. If it is a VCard, get rid of it
+    for dataset in dataset_graph.subjects(RDF.type, DCAT.Dataset):
+        creator_node = dataset_graph.value(subject=dataset, predicate=DCTERMS.creator, any=False)
+        if creator_node:
+            if dataset_graph.value(subject=creator_node, predicate=RDF.type, any=False) == VCARD.VCard:
+                remove_node_from_graph(creator_node, dataset_graph)
+
+        contactpoint_node = dataset_graph.value(subject=dataset, predicate=DCAT.contactPoint, any=False)
+        if contactpoint_node:
+            if dataset_graph.value(subject=contactpoint_node, predicate=RDF.type, any=False) == VCARD.VCard:
+                remove_node_from_graph(contactpoint_node, dataset_graph)
+
+        # This is FDP specific: Dataset points back to the Catalog
+        if not dataset_graph.value(subject=dataset, predicate=DCTERMS.isPartOf, any=False):
+            dataset_graph.add((dataset, DCTERMS.isPartOf, catalog_uri))
+
+
+def add_or_update_dataset(
+    metadata: "Graph",
+    fdpclient: FDPClient,
+    dataset_identifier: str = None,
+    catalog_uri: str = None,
+    sparql: FDPSPARQLClient = None,
+):
+    """Either posts or updates a dataset on a FAIR Data Point
+
+    For updating, you will need to provide a dataset identfier, URI of the parent catalog and an
+    instance of an FDP-SPARQL client. If any of these are missing, datasets will always be created
+    instead of being updated.
+
+    Parameters
+    ----------
+    metadata : Graph
+        The metadata to be published
+    fdpclient : FDPClient
+        Instance of FDPClient where the dataset will be pushed to
+    dataset_identifier : str, optional
+        DCAT Identifier of the dataset to match for updating the dataset, by default None
+    catalog_uri : str, optional
+        URI of the parent catalog to post data to, by default None
+    sparql : FDPSPARQLClient, optional
+        Instance of FDPSPARQLClient which will be queried for the dataset IRI, by default None
+    """
+    if sparql and dataset_identifier and catalog_uri:
+        if subject_uri := sparql.find_subject(dataset_identifier, catalog_uri):
+            logger.debug("Matched subject to %s", subject_uri)
+            return fdpclient.update_serialized(subject_uri, metadata)
+        else:
+            logger.debug("No match found")
+    else:
+        logger.debug("Not all information for potential updating is given, create and publishing.")
+
+    return fdpclient.create_and_publish("dataset", metadata)
