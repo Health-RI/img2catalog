@@ -107,8 +107,8 @@ def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> DCATCatalog:
 
     Returns
     -------
-    DCATCatalog, catalog_uri
-        DCATCatalog object with fields filled in
+    DCATCatalog
+        DCATCatalog object with fields populated
     """
     catalog = DCATCatalog(
         title=[config["catalog"]["title"]],
