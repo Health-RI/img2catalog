@@ -78,9 +78,10 @@ class FDPClient(BasicAPIClient):
         self.username = username
         # Don't store password for security reasons (might show up in a stack trace or something)
         # self.password = password
+        logger.debug("Logging into FDP %s with user %s", self.base_url, self.username)
         self.__token = self.login_fdp(username, password)
         headers = self.get_headers()
-        super().__init__(base_url, headers)
+        super().__init__(self.base_url, headers)
 
     def login_fdp(self, username: str, password: str) -> str:
         """Logs in to a Fair Data Point and retrieves a JWT token
