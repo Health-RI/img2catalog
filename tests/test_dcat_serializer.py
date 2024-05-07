@@ -1,5 +1,4 @@
 import pathlib
-from pathlib import Path
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
@@ -161,9 +160,9 @@ def test_project_elligiblity(xnat_private_project, _check_optin_optout, project,
 @patch("img2catalog.xnat_parser.xnat_to_DCATDataset")
 def test_xnat_lister(xnat_to_DCATDataset, _check_elligibility_project):
     class SimpleProject:
-        def __init__(self, id):
+        def __init__(self, project_id):
             self.id = None
-            self.name = id
+            self.name = project_id
 
     # xnat_list_datasets
     session = MagicMock(spec=xnat.session.XNATSession)
