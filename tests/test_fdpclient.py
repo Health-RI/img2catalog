@@ -1,5 +1,4 @@
-from typing import Literal
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
@@ -46,6 +45,7 @@ def test_fdp_login(requests_mock):
     assert requests_mock.call_count == 1
     assert requests_mock.last_request.json() == {"email": "user@example.com", "password": "pass"}
     assert fdp_client.get_headers() == {"Authorization": "Bearer 1234abcd", "Content-Type": "text/turtle"}
+
 
 def test_fdp_login_trailing_slash(requests_mock):
     requests_mock.post("https://fdp.example.com/tokens", json={"token": "1234abcd"})
@@ -171,9 +171,8 @@ WHERE {
     setQuery.assert_called_with(expected_query)
 
 
-@patch("SPARQLWrapper.SPARQLWrapper.setQuery")
 @patch("SPARQLWrapper.SPARQLWrapper.queryAndConvert")
-def test_subject_query_empty(queryAndConvert, setQuery):
+def test_subject_query_empty(queryAndConvert):
     expected_decoded_json = {
         "head": {"vars": ["subject"]},
         "results": {"bindings": []},
