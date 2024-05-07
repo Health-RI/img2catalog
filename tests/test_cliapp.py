@@ -49,8 +49,6 @@ def test_cli_connect(xnat_to_RDF, connect, empty_graph, isolated_cli_runner):
     # Run isolated (to keep log files safe)
     result = isolated_cli_runner.invoke(cli_click, ["--server", "http://example.com", "--verbose", "dcat"])
 
-    print(result.output)
-
     connect.assert_called_once_with(server="http://example.com", user=None, password=None)
     xnat_to_RDF.assert_called_once()
 
