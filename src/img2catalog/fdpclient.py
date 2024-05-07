@@ -74,7 +74,7 @@ class FDPClient(BasicAPIClient):
         password : str
             password for authentication
         """
-        self.base_url = base_url
+        self.base_url = base_url.rstrip('/')
         self.username = username
         # Don't store password for security reasons (might show up in a stack trace or something)
         # self.password = password
