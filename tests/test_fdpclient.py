@@ -47,6 +47,14 @@ def test_fdp_login(requests_mock):
     assert requests_mock.last_request.json() == {"email": "user@example.com", "password": "pass"}
     assert fdp_client.get_headers() == {"Authorization": "Bearer 1234abcd", "Content-Type": "text/turtle"}
 
+def test_fdp_login_trailing_slash(requests_mock):
+    requests_mock.post("https://fdp.example.com/tokens", json={"token": "1234abcd"})
+    fdp_client = FDPClient("https://fdp.example.com/", "user@example.com", "pass")
+
+    assert requests_mock.call_count == 1
+    assert requests_mock.last_request.json() == {"email": "user@example.com", "password": "pass"}
+    assert fdp_client.get_headers() == {"Authorization": "Bearer 1234abcd", "Content-Type": "text/turtle"}
+
 
 def test_fdp_login_error(requests_mock):
     requests_mock.post("http://fdp.example.com/tokens", status_code=403)
