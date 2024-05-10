@@ -4,8 +4,15 @@ import pytest
 import requests
 from rdflib import Graph, URIRef
 from rdflib.compare import to_isomorphic
+from rdflib.namespace import DCAT, RDF
 
-from img2catalog.fdpclient import FDPClient, FDPSPARQLClient, add_or_update_dataset, remove_node_from_graph
+from img2catalog.fdpclient import (
+    FDPClient,
+    FDPSPARQLClient,
+    add_or_update_dataset,
+    remove_node_from_graph,
+    rewrite_graph_subject,
+)
 
 
 @pytest.fixture
@@ -36,6 +43,14 @@ def fdp_client_mock(requests_mock):
     fdp_client = FDPClient("https://fdp.example.com", "user@example.com", "pass")
 
     return fdp_client
+
+
+@pytest.fixture()
+def empty_dataset_graph():
+    g = Graph()
+    g.add((URIRef("https://example.com/dataset"), RDF.type, DCAT.Dataset))
+
+    return g
 
 
 def test_fdp_login(requests_mock):
@@ -253,10 +268,10 @@ def test_dataset_updater_nomatch():
     fdpclient.update_serialized.assert_not_called()
 
 
-def test_dataset_updater_match():
+def test_dataset_updater_match(empty_dataset_graph):
     sparqlclient = MagicMock(spec=FDPSPARQLClient)
     fdpclient = MagicMock(spec=FDPClient)
-    metadata = Graph()
+    metadata = empty_dataset_graph
     dataset_identifier = "https://example.com/dataset"
     catalog_uri = "https://fdp.example.com/catalog/123"
 
@@ -270,10 +285,10 @@ def test_dataset_updater_match():
     fdpclient.update_serialized.assert_called_once_with(subject_uri, metadata)
 
 
-def test_dataset_updater_invalid():
+def test_dataset_updater_invalid(empty_dataset_graph):
     sparqlclient = MagicMock(spec=FDPSPARQLClient)
     fdpclient = MagicMock(spec=FDPClient)
-    metadata = Graph()
+    metadata = empty_dataset_graph
     dataset_identifier = None
     catalog_uri = "https://fdp.example.com/catalog/123"
 
@@ -282,3 +297,15 @@ def test_dataset_updater_invalid():
     fdpclient.create_and_publish.assert_called_once_with("dataset", metadata)
     sparqlclient.find_subject.assert_not_called()
     fdpclient.update_serialized.assert_not_called()
+
+
+def test_subject_replacement():
+    old_graph = Graph().parse(source="tests/references/valid_project.ttl")
+    reference_graph = Graph().parse(source="tests/references/valid_project_subject_replaced.ttl")
+
+    rewrite_graph_subject(
+        old_graph, "http://localhost/data/archive/projects/test_img2catalog", "http://example.com/newsubject"
+    )
+
+    # print(new_graph.serialize())
+    assert to_isomorphic(reference_graph) == to_isomorphic(old_graph)

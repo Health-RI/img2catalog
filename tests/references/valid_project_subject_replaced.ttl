@@ -1,0 +1,18 @@
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix v: <http://www.w3.org/2006/vcard/ns#> .
+
+<http://example.com/newsubject> a dcat:Dataset ;
+    dcterms:creator [ a v:VCard ;
+            v:fn "prof. Albus Dumbledore" ;
+            v:hasUID <http://example.com/> ] ;
+    dcterms:description "In this project, we test xnat and dcat and make sure a description appears." ;
+    dcterms:title "Basic test project to test the img2catalog" ;
+    dcterms:identifier "http://localhost/data/archive/projects/test_img2catalog" ;
+    dcat:keyword "dcat",
+        "demo",
+        "test" ;
+    dcat:contactPoint [ a v:VCard ;
+            v:fn "Example Data Management office" ;
+            v:hasEmail <mailto:datamanager@example.com> ;
+            v:hasUID <http://example.com/>  ] .

@@ -1,6 +1,6 @@
 import logging
 from typing import Dict, Union
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin
 
 import requests
 from rdflib import DCAT, DCTERMS, RDF, Graph, URIRef
@@ -74,7 +74,7 @@ class FDPClient(BasicAPIClient):
         password : str
             password for authentication
         """
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.username = username
         # Don't store password for security reasons (might show up in a stack trace or something)
         # self.password = password
@@ -319,12 +319,34 @@ def add_or_update_dataset(
         Instance of FDPSPARQLClient which will be queried for the dataset IRI, by default None
     """
     if sparql and dataset_identifier and catalog_uri:
-        if subject_uri := sparql.find_subject(dataset_identifier, catalog_uri):
-            logger.debug("Matched subject to %s", subject_uri)
-            return fdpclient.update_serialized(subject_uri, metadata)
+        if fdp_subject_uri := sparql.find_subject(dataset_identifier, catalog_uri):
+            logger.debug("Matched subject to %s", fdp_subject_uri)
+            old_subject = metadata.value(predicate=RDF.type, object=DCAT.Dataset, any=False)
+            rewrite_graph_subject(metadata, old_subject, fdp_subject_uri)
+            return fdpclient.update_serialized(fdp_subject_uri, metadata)
         else:
             logger.debug("No match found")
     else:
         logger.debug("Not all information for potential updating is given, create and publishing.")
 
     return fdpclient.create_and_publish("dataset", metadata)
+
+
+def rewrite_graph_subject(g: Graph, oldsubject: Union[str, URIRef], newsubject: Union[str, URIRef]):
+    """Modifies a graph such that all elements of the oldsubject are replaced by newsubject
+
+    Needed by the FDP update functionality to work around some ill-defined behavior
+
+    Parameters
+    ----------
+    g : Graph
+        Reference graph in which the subject will be in-place to be replaced
+    oldsubject : str, URIRef
+        The old subject which is to be replaced
+    newsubject : str
+        New subject
+    """
+    for s, p, o in g.triples((URIRef(oldsubject), None, None)):
+        print(s, p, o)
+        g.add((URIRef(newsubject), p, o))
+        g.remove((s, p, o))
