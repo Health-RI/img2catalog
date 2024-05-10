@@ -208,13 +208,19 @@ def output_dcat(ctx: click.Context, output: click.Path, format: str):
         print(g.serialize(format=format))
 
 
-@click.option("-f", "--fdp", envvar=FDP_SERVER_ENV, type=str, required=True, help="URL of FDP to push to")
+@click.option("-f", "--fdp", envvar=FDP_SERVER_ENV, type=str, required=True, help="URL of FDP to push datasets to")
 @click.option("-u", "--username", envvar=FDP_USER_ENV, type=str, required=True, help="Username of FDP to push to")
 @click.option("-p", "--password", envvar=FDP_PASS_ENV, type=str, required=True, help="Password of FDP to push to")
 @click.option(
     "-c", "--catalog", default=None, type=URIRef, help="Catalog URI where datasets will be placed in", required=True
 )
-@click.option("-s", "--sparql", default=None, type=URIRef, help=" URL of SPARQL endpoint of FDP, used to ")
+@click.option(
+    "-s",
+    "--sparql",
+    default=None,
+    type=URIRef,
+    help=" URL of SPARQL endpoint of FDP, used for querying which dataset to update",
+)
 @cli_click.command(name="fdp")
 @click.pass_context
 def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catalog: URIRef, sparql: str):

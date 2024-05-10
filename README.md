@@ -77,10 +77,13 @@ Options:
 Usage: img2catalog fdp [OPTIONS]
 
 Options:
-  -c, --catalog URIREF  Catalog URI of FDP
+  -s, --sparql URIREF   URL of SPARQL endpoint of FDP, used for querying which
+                        dataset to update
+  -c, --catalog URIREF  Catalog URI where datasets will be placed in
+                        [required]
   -p, --password TEXT   Password of FDP to push to  [required]
   -u, --username TEXT   Username of FDP to push to  [required]
-  -f, --fdp TEXT        URL of FDP to push to  [required]
+  -f, --fdp TEXT        URL of FDP to push datasets to  [required]
   --help                Show this message and exit.
 
 ```
@@ -135,7 +138,6 @@ we are open to any additions.
 
 Currently, only title, description, keywords and PI are set as well as title, description and
 publisher of the catalogue. There is no Distribution, Dataset Series or anything else.
-Datasets can be pushed to a FAIR Data Point, but not updated - this may result in duplicates.
 The language of the fields also is not set.
 
 ## Disclaimer
