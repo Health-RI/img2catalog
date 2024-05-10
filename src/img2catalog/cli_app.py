@@ -1,11 +1,13 @@
 import logging
-from pathlib import Path, PurePath
-from typing import Dict
+from pathlib import Path
 
 import click
+import xnat
 from click_option_group import MutuallyExclusiveOptionGroup, optgroup
 from rdflib import URIRef
 
+from img2catalog import log
+from img2catalog.__about__ import __version__
 from img2catalog.configmanager import load_img2catalog_configuration
 
 # from xnat.client.helpers import xnatpy_login_options, connect_cli
@@ -19,17 +21,6 @@ from img2catalog.const import (
     XNATPY_HOST_ENV,
 )
 from img2catalog.fdpclient import FDPClient, FDPSPARQLClient
-
-# Python < 3.11 does not have tomllib, but tomli provides same functionality
-try:
-    import tomllib
-except ModuleNotFoundError:
-    import tomli as tomllib
-
-import xnat
-
-from img2catalog import log
-from img2catalog.__about__ import __version__
 from img2catalog.xnat_parser import xnat_to_DCATDataset, xnat_to_FDP, xnat_to_RDF
 
 logger = logging.getLogger(__name__)

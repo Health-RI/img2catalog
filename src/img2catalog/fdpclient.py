@@ -340,13 +340,12 @@ def rewrite_graph_subject(g: Graph, oldsubject: Union[str, URIRef], newsubject: 
     Parameters
     ----------
     g : Graph
-        Reference graph in which the subject will be in-place to be replaced
+        Reference graph in which the subject will be replaced, in-place
     oldsubject : str, URIRef
         The old subject which is to be replaced
-    newsubject : str
-        New subject
+    newsubject : str, URIRef
+        New subject which will replace the old subject
     """
     for s, p, o in g.triples((URIRef(oldsubject), None, None)):
-        print(s, p, o)
         g.add((URIRef(newsubject), p, o))
         g.remove((s, p, o))
