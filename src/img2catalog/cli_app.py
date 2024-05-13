@@ -13,7 +13,6 @@ from img2catalog.const import (
     FDP_PASS_ENV,
     FDP_SERVER_ENV,
     FDP_USER_ENV,
-    VCARD,
     XNAT_HOST_ENV,
     XNAT_PASS_ENV,
     XNAT_USER_ENV,
@@ -270,15 +269,16 @@ def output_project(ctx: click.Context, project_id: str, output: click.Path, form
     config = ctx.obj["config"]
 
     with ctx.obj["xnat_conn"] as session:
-        g = xnat_to_DCATDataset(session.projects[project_id], config).to_graph(userinfo_format=VCARD.VCard)
+        dataset, uri = xnat_to_DCATDataset(session.projects[project_id], config)
+        dataset_graph = dataset.to_graph(uri)
 
     if output:
         logger.debug("Output option set, serializing output to file %s in %s format", output, format)
-        g.serialize(destination=output, format=format)
+        dataset_graph.serialize(destination=output, format=format)
 
     else:
         logger.debug("Sending output to stdout")
-        print(g.serialize(format=format))
+        print(dataset_graph.serialize(format=format))
 
 
 if __name__ == "__main__":

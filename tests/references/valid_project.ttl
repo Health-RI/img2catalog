@@ -1,19 +1,17 @@
 @prefix dcat: <http://www.w3.org/ns/dcat#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
-@prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
-@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix v: <http://www.w3.org/2006/vcard/ns#> .
 
 <http://localhost/data/archive/projects/test_img2catalog> a dcat:Dataset ;
-    dcterms:creator [ a vcard:VCard ;
-            vcard:fn "prof. Albus Dumbledore" ;
-            vcard:hasUID <http://example.com> ] ;
+    dcterms:creator [ a v:VCard ;
+            v:fn "prof. Albus Dumbledore" ;
+            v:hasUID <http://example.com/> ] ;
     dcterms:description "In this project, we test xnat and dcat and make sure a description appears." ;
-    dcterms:identifier "test_img2catalog"^^xsd:token ;
-    dcterms:temporal [ a dcterms:PeriodOfTime ] ;
     dcterms:title "Basic test project to test the img2catalog" ;
     dcat:keyword "dcat",
         "demo",
         "test" ;
-    dcat:contactPoint [ a vcard:VCard ;
-            vcard:fn "Example Data Management office" ;
-            vcard:hasEmail <mailto:datamanager@example.com> ] .
+    dcat:contactPoint [ a v:VCard ;
+            v:fn "Example Data Management office" ;
+            v:hasEmail <mailto:datamanager@example.com> ;
+            v:hasUID <http://example.com/>  ] .

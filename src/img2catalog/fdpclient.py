@@ -6,7 +6,7 @@ import requests
 from rdflib import DCAT, DCTERMS, RDF, Graph, URIRef
 from requests import HTTPError, Response
 
-from img2catalog.const import VCARD
+from sempyro.vcard import VCARD
 
 logger = logging.getLogger(__name__)
 
