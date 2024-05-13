@@ -11,6 +11,7 @@ from img2catalog.xnat_parser import _check_optin_optout, split_keywords
         # Various type of whitespace and variations
         ("", []),
         ("        ", []),
+        (" .  , ;  .. .,;:", []),
         # Keywords with different amounts of space inbetween
         ("xnat python", ["xnat", "python"]),
         ("  xnat      python ", ["xnat", "python"]),
