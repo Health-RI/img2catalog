@@ -1,11 +1,11 @@
 @prefix dcat: <http://www.w3.org/ns/dcat#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 
-<https://example.com/catalog> a dcat:Catalog ;
-    dcterms:description "Test description" ;
-    dcterms:title "Test catalog" ;
-    dcat:dataset <http://example.com/dataset> .
+<https://example.com> a dcat:Catalog ;
+    dcterms:title "Example XNAT catalog" ;
+    dcterms:description "This is an example XNAT catalog description" ;
+    dcat:dataset <https://example.com/dataset> .
 
-<http://example.com/dataset> a dcat:Dataset ;
+<https://example.com/dataset> a dcat:Dataset ;
     dcterms:description "test description" ;
     dcterms:title "test project" .

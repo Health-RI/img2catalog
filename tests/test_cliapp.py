@@ -1,12 +1,12 @@
 import pathlib
 import sys
-from unittest.mock import ANY, MagicMock, Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 from rdflib import DCAT, DCTERMS, Graph, URIRef
 from rdflib.compare import to_isomorphic
-from sempyro.vcard import VCARD
 from sempyro.dcat.dcat_dataset import DCATDataset
+from sempyro.vcard import VCARD
 
 from img2catalog.cli_app import cli_click, load_img2catalog_configuration
 from img2catalog.const import XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV, XNATPY_HOST_ENV
@@ -35,7 +35,7 @@ def toml_patch_target():
 
 @pytest.fixture()
 def dummy_dcat_dataset():
-    d = DCATDataset(title=['test project'], description=['test description'])
+    d = DCATDataset(title=["test project"], description=["test description"])
     return d
 
 
@@ -48,8 +48,6 @@ def test_cli_connect(xnat_to_RDF, connect, empty_graph, isolated_cli_runner):
 
     # Run isolated (to keep log files safe)
     result = isolated_cli_runner.invoke(cli_click, ["--server", "http://example.com", "--verbose", "dcat"])
-
-    print(result.output)
 
     connect.assert_called_once_with(server="http://example.com", user=None, password=None)
     xnat_to_RDF.assert_called_once()

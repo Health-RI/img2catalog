@@ -1,11 +1,13 @@
 import logging
-from pathlib import Path, PurePath
-from typing import Dict
+from pathlib import Path
 
 import click
+import xnat
 from click_option_group import MutuallyExclusiveOptionGroup, optgroup
 from rdflib import URIRef
 
+from img2catalog import log
+from img2catalog.__about__ import __version__
 from img2catalog.configmanager import load_img2catalog_configuration
 
 # from xnat.client.helpers import xnatpy_login_options, connect_cli
@@ -18,18 +20,7 @@ from img2catalog.const import (
     XNAT_USER_ENV,
     XNATPY_HOST_ENV,
 )
-from img2catalog.fdpclient import FDPClient
-
-# Python < 3.11 does not have tomllib, but tomli provides same functionality
-try:
-    import tomllib
-except ModuleNotFoundError:
-    import tomli as tomllib
-
-import xnat
-
-from img2catalog import log
-from img2catalog.__about__ import __version__
+from img2catalog.fdpclient import FDPClient, FDPSPARQLClient
 from img2catalog.xnat_parser import xnat_to_DCATDataset, xnat_to_FDP, xnat_to_RDF
 
 logger = logging.getLogger(__name__)
@@ -217,24 +208,38 @@ def output_dcat(ctx: click.Context, output: click.Path, format: str):
         print(g.serialize(format=format))
 
 
-@click.option("-f", "--fdp", envvar=FDP_SERVER_ENV, type=str, required=True, help="URL of FDP to push to")
+@click.option("-f", "--fdp", envvar=FDP_SERVER_ENV, type=str, required=True, help="URL of FDP to push datasets to")
 @click.option("-u", "--username", envvar=FDP_USER_ENV, type=str, required=True, help="Username of FDP to push to")
 @click.option("-p", "--password", envvar=FDP_PASS_ENV, type=str, required=True, help="Password of FDP to push to")
-@click.option("-c", "--catalog", default=None, type=URIRef, help="Catalog URI of FDP")
+@click.option(
+    "-c", "--catalog", default=None, type=URIRef, help="Catalog URI where datasets will be placed in", required=True
+)
+@click.option(
+    "-s",
+    "--sparql",
+    default=None,
+    type=URIRef,
+    help=" URL of SPARQL endpoint of FDP, used for querying which dataset to update",
+)
 @cli_click.command(name="fdp")
 @click.pass_context
-def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catalog: URIRef):
+def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catalog: URIRef, sparql: str):
     config = ctx.obj["config"]
 
     # For some reason, in testing, execution doesn't progress beyond this line
     fdpclient = FDPClient(fdp, username, password)
+
+    if sparql:
+        sparqlclient = FDPSPARQLClient(sparql)
+    else:
+        sparqlclient = None
 
     if not catalog:
         if not (catalog := config["img2catalog"]["fdp"]["catalog"]):
             raise ValueError("No catalog uri set")
 
     with ctx.obj["xnat_conn"] as session:
-        xnat_to_FDP(session, config, catalog, fdpclient)
+        xnat_to_FDP(session, config, catalog, fdpclient, sparqlclient=sparqlclient)
 
 
 @cli_click.command(name="project")

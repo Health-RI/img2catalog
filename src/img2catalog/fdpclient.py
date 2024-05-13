@@ -1,16 +1,16 @@
 import logging
 from typing import Dict, Union
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin
 
 import requests
 from rdflib import DCAT, DCTERMS, RDF, Graph, URIRef
 from requests import HTTPError, Response
-
 from sempyro.vcard import VCARD
+from SPARQLWrapper import JSON, SPARQLWrapper
 
 logger = logging.getLogger(__name__)
 
-# This file is taken from cedar2fdp
+# The FDP client is taken from cedar2fdp
 
 
 class BasicAPIClient:
@@ -38,23 +38,6 @@ class BasicAPIClient:
             raise e
 
         return response
-
-        # Commented this out, as I don't mind having the exceptions go through the stack
-        # except requests.exceptions.HTTPError as e:
-        #     logger.error(e)
-        #     if response is not None:
-        #         logger.error(response.text)
-        #     # sys.exit(1)
-        # except requests.exceptions.ConnectionError as e:
-        #     logger.error(e)
-        #     # sys.exit(1)
-        # except requests.exceptions.Timeout as e:
-        #     logger.error(e)
-        #     # sys.exit(1)
-        # except requests.exceptions.RequestException as e:
-        #     logger.error(e)
-        #     # sys.exit(1)
-        # except Exception as e:
 
     def get(self, path: str, params: Dict = None) -> Response:
         return self._call_method("GET", path, params=params)
@@ -91,13 +74,14 @@ class FDPClient(BasicAPIClient):
         password : str
             password for authentication
         """
-        self.base_url = base_url
+        self.base_url = base_url.rstrip("/")
         self.username = username
         # Don't store password for security reasons (might show up in a stack trace or something)
         # self.password = password
+        logger.debug("Logging into FDP %s with user %s", self.base_url, self.username)
         self.__token = self.login_fdp(username, password)
         headers = self.get_headers()
-        super().__init__(base_url, headers)
+        super().__init__(self.base_url, headers)
 
     def login_fdp(self, username: str, password: str) -> str:
         """Logs in to a Fair Data Point and retrieves a JWT token
@@ -135,7 +119,7 @@ class FDPClient(BasicAPIClient):
         self._update_session_headers()
 
     def post_serialized(self, resource_type: str, metadata: "Graph") -> requests.Response:
-        """Serializes and posts a graph to an FDP
+        """Serializes and POSTs a graph to an FDP
 
         Parameters
         ----------
@@ -153,6 +137,26 @@ class FDPClient(BasicAPIClient):
         path = f"{self.base_url}/{resource_type}"
         logger.debug("Posting metadata to %s", path)
         response = self.post(path=path, data=metadata.serialize(format="turtle"))
+        return response
+
+    def update_serialized(self, resource_uri: str, metadata: "Graph") -> requests.Response:
+        """Serializes and updates (PUTs) a graph on an FDP
+
+        Parameters
+        ----------
+        resource_uri : str
+            URI to update
+        metadata : Graph
+            The graph with metadata to be pusshed
+
+        Returns
+        -------
+        requests.Response
+            The response from the FDP
+        """
+        self._change_content_type("text/turtle")
+        logger.debug("Putting metadata to %s", resource_uri)
+        response = self.update(path=resource_uri, data=metadata.serialize(format="turtle"))
         return response
 
     def get_data(self, path: str) -> requests.Response:
@@ -218,6 +222,38 @@ def remove_node_from_graph(node, graph: Graph):
     graph.remove((None, None, node))
 
 
+class FDPSPARQLClient:
+    """Simple SPARQL client to query a SPARQL endpoint of (reference) FAIR Data Point."""
+
+    def __init__(self, endpoint: str):
+        self.endpoint = endpoint
+
+        self.sparql = SPARQLWrapper(endpoint)
+        self.sparql.setReturnFormat(JSON)
+
+    def find_subject(self, identifier, catalog):
+        query = f"""PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT *
+WHERE {{
+    ?subject dcterms:identifier "{identifier}" .
+    ?subject dcterms:isPartOf <{catalog}> .
+}}"""
+        self.sparql.setQuery(query)
+        results = self.sparql.queryAndConvert()["results"]["bindings"]
+
+        if len(results) == 0:
+            # No result found
+            return None
+        elif len(results) > 1:
+            raise ValueError("More than one result for SPARQL query")
+        else:
+            if not results[0]["subject"]["type"].casefold() == "uri":
+                raise TypeError("Incorrect result type for subject in FDP")
+            return results[0]["subject"]["value"]
+
+
 def prepare_dataset_graph_for_fdp(dataset_graph: Graph, catalog_uri: URIRef):
     """Mangles the graph of a dataset in such a way a FDP can take it
 
@@ -239,7 +275,7 @@ def prepare_dataset_graph_for_fdp(dataset_graph: Graph, catalog_uri: URIRef):
     if type(catalog_uri) is not URIRef:
         raise TypeError("catalog_uri is not a URIRef")
 
-    # For each dataset, find the creator node. If it is a VCard, get rid of it.
+    # For each dataset, find the creator node. If it is a VCard, get rid of it
     for dataset in dataset_graph.subjects(RDF.type, DCAT.Dataset):
         creator_node = dataset_graph.value(subject=dataset, predicate=DCTERMS.creator, any=False)
         if creator_node:
@@ -254,3 +290,62 @@ def prepare_dataset_graph_for_fdp(dataset_graph: Graph, catalog_uri: URIRef):
         # This is FDP specific: Dataset points back to the Catalog
         if not dataset_graph.value(subject=dataset, predicate=DCTERMS.isPartOf, any=False):
             dataset_graph.add((dataset, DCTERMS.isPartOf, catalog_uri))
+
+
+def add_or_update_dataset(
+    metadata: "Graph",
+    fdpclient: FDPClient,
+    dataset_identifier: str = None,
+    catalog_uri: str = None,
+    sparql: FDPSPARQLClient = None,
+):
+    """Either posts or updates a dataset on a FAIR Data Point
+
+    For updating, you will need to provide a dataset identfier, URI of the parent catalog and an
+    instance of an FDP-SPARQL client. If any of these are missing, datasets will always be created
+    instead of being updated.
+
+    Parameters
+    ----------
+    metadata : Graph
+        The metadata to be published
+    fdpclient : FDPClient
+        Instance of FDPClient where the dataset will be pushed to
+    dataset_identifier : str, optional
+        DCAT Identifier of the dataset to match for updating the dataset, by default None
+    catalog_uri : str, optional
+        URI of the parent catalog to post data to, by default None
+    sparql : FDPSPARQLClient, optional
+        Instance of FDPSPARQLClient which will be queried for the dataset IRI, by default None
+    """
+    if sparql and dataset_identifier and catalog_uri:
+        if fdp_subject_uri := sparql.find_subject(dataset_identifier, catalog_uri):
+            logger.debug("Matched subject to %s", fdp_subject_uri)
+            old_subject = metadata.value(predicate=RDF.type, object=DCAT.Dataset, any=False)
+            rewrite_graph_subject(metadata, old_subject, fdp_subject_uri)
+            return fdpclient.update_serialized(fdp_subject_uri, metadata)
+        else:
+            logger.debug("No match found")
+    else:
+        logger.debug("Not all information for potential updating is given, create and publishing.")
+
+    return fdpclient.create_and_publish("dataset", metadata)
+
+
+def rewrite_graph_subject(g: Graph, oldsubject: Union[str, URIRef], newsubject: Union[str, URIRef]):
+    """Modifies a graph such that all elements of the oldsubject are replaced by newsubject
+
+    Needed by the FDP update functionality to work around some ill-defined behavior
+
+    Parameters
+    ----------
+    g : Graph
+        Reference graph in which the subject will be replaced, in-place
+    oldsubject : str, URIRef
+        The old subject which is to be replaced
+    newsubject : str, URIRef
+        New subject which will replace the old subject
+    """
+    for s, p, o in g.triples((URIRef(oldsubject), None, None)):
+        g.add((URIRef(newsubject), p, o))
+        g.remove((s, p, o))

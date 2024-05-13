@@ -5,16 +5,14 @@ import re
 from typing import Dict, List, Tuple, Union
 
 from rdflib import DCAT, DCTERMS, FOAF, Graph, URIRef
+from sempyro.dcat import DCATCatalog, DCATDataset
+from sempyro.vcard import VCARD, VCard
 
 from tqdm import tqdm
 from xnat.core import XNATBaseObject
 from xnat.session import XNATSession
 
-from img2catalog.fdpclient import FDPClient, prepare_dataset_graph_for_fdp
-
-
-from sempyro.vcard import VCard, VCARD
-from sempyro.dcat import DCATCatalog, DCATDataset
+from img2catalog.fdpclient import FDPClient, FDPSPARQLClient, add_or_update_dataset, prepare_dataset_graph_for_fdp
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +69,8 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[DCATData
     if error_list:
         raise XNATParserError("Errors encountered during the parsing of XNAT.", error_list=error_list)
 
+    project_uri = project.external_uri()
+
     creator_vcard = [
         VCard(
             full_name=[f"{project.pi.title or ''} {project.pi.firstname} {project.pi.lastname}".strip()],
@@ -83,6 +83,7 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[DCATData
         "description": [project.description],
         "creator": creator_vcard,
         "keyword": keywords,
+        "identifier": [project_uri],
     }
 
     contact_point_vcard = [contact_point_vcard_from_config(config)]
@@ -91,7 +92,7 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[DCATData
 
     project_dataset = DCATDataset(**dataset_dict)
 
-    return project_dataset, URIRef(project.external_uri())
+    return project_dataset, URIRef(project_uri)
 
 
 def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> DCATCatalog:
@@ -157,7 +158,9 @@ def xnat_to_RDF(session: XNATSession, config: Dict) -> Graph:
     return export_graph
 
 
-def xnat_to_FDP(session: XNATSession, config: Dict, catalog_uri: URIRef, fdpclient: FDPClient) -> None:
+def xnat_to_FDP(
+    session: XNATSession, config: Dict, catalog_uri: URIRef, fdpclient: FDPClient, sparqlclient: FDPSPARQLClient = None
+) -> None:
     """Pushes DCAT-AP compliant Datasets to FDP
 
     Parameters
@@ -166,6 +169,12 @@ def xnat_to_FDP(session: XNATSession, config: Dict, catalog_uri: URIRef, fdpclie
         An XNATSession of the XNAT instance that is going to be queried
     config : Dict
         A dictionary containing the configuration of img2catalog
+    catalog_uri : URIRef
+        URI of the catalog in which the datasets will be placed
+    fdpclient : FDPClient
+        An instance of FDPClient of the FDP where the datasets will be put
+    sparqlclient : FDPSPARQLClient, optional
+        An instance of FDPSPARQLClient which can be used for updating existing datasts, by default None
 
     Returns
     -------
@@ -178,7 +187,10 @@ def xnat_to_FDP(session: XNATSession, config: Dict, catalog_uri: URIRef, fdpclie
         dataset_graph = dataset.to_graph(subject)
         prepare_dataset_graph_for_fdp(dataset_graph, catalog_uri)
         logger.debug("Going to push %s to FDP", dataset.title)
-        fdpclient.create_and_publish("dataset", dataset_graph)
+        try:
+            add_or_update_dataset(dataset_graph, fdpclient, dataset.identifier[0], catalog_uri, sparqlclient)
+        except Exception as e:
+            logger.warn("Error pushing dataset to FDP: %s", e)
 
 
 def xnat_list_datasets(session: XNATSession, config: Dict) -> List[DCATDataset]:

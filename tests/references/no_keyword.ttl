@@ -7,8 +7,10 @@
     dcterms:creator [ a vcard:VCard ;
             vcard:fn "prof. Albus Dumbledore" ;
             vcard:hasUID <http://example.com/> ] ;
+    dcterms:identifier "http://localhost/data/archive/projects/test_img2catalog" ;
     dcterms:description "In this project, we test xnat and dcat and make sure a description appears." ;
     dcterms:title "Basic test project to test the img2catalog" ;
+    dcterms:identifier "http://localhost/data/archive/projects/test_img2catalog" ;
     dcat:contactPoint [ a vcard:VCard ;
             vcard:fn "Example Data Management office" ;
             vcard:hasEmail <mailto:datamanager@example.com> ;
