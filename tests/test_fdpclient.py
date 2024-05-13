@@ -42,6 +42,7 @@ def fdp_client_mock(requests_mock):
     requests_mock.get(
         "https://fdp.example.com/dataset/12345678",
         status_code=200,
+        headers={"Content-Type": "text/turtle"},
         body=open(file="tests/references/fdp_dataset.ttl", mode="rb"),
     )
     requests_mock.delete(
@@ -178,6 +179,16 @@ def test_fdp_delete_dataset(requests_mock, fdp_client_mock: FDPClient):
     assert requests_mock.last_request.url == "https://fdp.example.com/dataset/12345678"
     assert requests_mock.last_request.method == "DELETE"
     assert response.status_code == 204
+
+
+def test_fdp_get_dataset(requests_mock, fdp_client_mock: FDPClient):
+    # Ensure it's valid? Enforce lowercase?
+    response = fdp_client_mock.get_data("dataset/12345678")
+
+    assert requests_mock.last_request.url == "https://fdp.example.com/dataset/12345678"
+    assert requests_mock.last_request.method == "GET"
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "text/turtle"
 
 
 # @pytest.mark.repeat(1)
