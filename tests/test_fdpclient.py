@@ -5,7 +5,13 @@ import requests
 from rdflib import Graph, URIRef
 from rdflib.compare import to_isomorphic
 
-from img2catalog.fdpclient import FDPClient, FDPSPARQLClient, add_or_update_dataset, remove_node_from_graph
+from img2catalog.fdpclient import (
+    BasicAPIClient,
+    FDPClient,
+    FDPSPARQLClient,
+    add_or_update_dataset,
+    remove_node_from_graph,
+)
 
 
 @pytest.fixture
@@ -33,9 +39,68 @@ def fdp_client_mock(requests_mock):
         status_code=201,
         headers={"Location": "https://fdp.example.com/distribution/abcdefgh"},
     )
+    requests_mock.get(
+        "https://fdp.example.com/dataset/12345678",
+        status_code=200,
+        body=open(file="tests/references/fdp_dataset.ttl", mode="rb"),
+    )
+    requests_mock.delete(
+        "https://fdp.example.com/dataset/12345678",
+        status_code=204,
+    )
     fdp_client = FDPClient("https://fdp.example.com", "user@example.com", "pass")
 
     return fdp_client
+
+
+def test_api_client_get(requests_mock):
+    requests_mock.get("http://example.com/test_get", text="Test 1234 get")
+
+    client = BasicAPIClient("http://example.com", [])
+    response_return = client.get("test_get", {})
+    assert response_return.text == "Test 1234 get"
+    assert response_return.status_code == 200
+
+
+def test_api_client_post(requests_mock):
+    requests_mock.post("http://example.com/test_post", text="Test 1234 post")
+
+    client = BasicAPIClient("http://example.com", [])
+    response_return = client.post("test_post", {})
+    assert response_return.text == "Test 1234 post"
+    assert response_return.status_code == 200
+
+
+def test_api_client_update(requests_mock):
+    requests_mock.put("http://example.com/test_put", text="Test 1234 put")
+
+    client = BasicAPIClient("http://example.com", [])
+    response_return = client.update("test_put", {})
+    assert response_return.text == "Test 1234 put"
+    assert response_return.status_code == 200
+
+
+def test_api_client_delete(requests_mock):
+    requests_mock.delete("http://example.com/test_delete", text="Test 1234 delete")
+
+    client = BasicAPIClient("http://example.com", [])
+    response_return = client.delete("test_delete", {})
+    assert response_return.text == "Test 1234 delete"
+    assert response_return.status_code == 200
+
+
+def test_api_client_unknown(requests_mock):
+    client = BasicAPIClient("http://example.com", [])
+    with pytest.raises(ValueError):
+        response_return = client._call_method("test", "test_url")
+
+
+def test_api_client_403(requests_mock):
+    requests_mock.get("http://example.com/test_error", text="Test 1234", status_code=403)
+
+    client = BasicAPIClient("http://example.com", [])
+    with pytest.raises(requests.HTTPError):
+        response_return = client.get("test_error", {})
 
 
 def test_fdp_login(requests_mock):
@@ -104,6 +169,15 @@ def test_fdp_update_serialised(requests_mock, fdp_client_mock: FDPClient):
     assert requests_mock.last_request.headers["Authorization"] == "Bearer 1234abcd"
     assert requests_mock.last_request.method == "PUT"
     metadata.serialize.assert_called_once_with(format="turtle")
+
+
+def test_fdp_delete_dataset(requests_mock, fdp_client_mock: FDPClient):
+    # Ensure it's valid? Enforce lowercase?
+    response = fdp_client_mock.delete_record("dataset/12345678")
+
+    assert requests_mock.last_request.url == "https://fdp.example.com/dataset/12345678"
+    assert requests_mock.last_request.method == "DELETE"
+    assert response.status_code == 204
 
 
 # @pytest.mark.repeat(1)

@@ -57,4 +57,10 @@ def test_optin(project):
     project.keywords = "test demo"
     assert not _check_optin_optout(project, config)
 
-    # assert to_isomorphic(empty_graph) == to_isomorphic(gen)
+
+@patch("xnat.core.XNATBaseObject")
+def test_optin_noconfig(project):
+    config = {}
+    project.keywords = "test demo"
+
+    assert _check_optin_optout(project, config)
