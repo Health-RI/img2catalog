@@ -6,7 +6,6 @@ from typing import Dict, List, Tuple, Union
 
 from rdflib import DCAT, DCTERMS, FOAF, Graph, URIRef
 
-# from rdflib.term import Literal
 from tqdm import tqdm
 from xnat.core import XNATBaseObject
 from xnat.session import XNATSession
