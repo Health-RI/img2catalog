@@ -11,6 +11,7 @@ from img2catalog.xnat_parser import _check_optin_optout, split_keywords
         # Various type of whitespace and variations
         ("", []),
         ("        ", []),
+        (" .  , ;  .. .,;:", []),
         # Keywords with different amounts of space inbetween
         ("xnat python", ["xnat", "python"]),
         ("  xnat      python ", ["xnat", "python"]),
@@ -57,4 +58,10 @@ def test_optin(project):
     project.keywords = "test demo"
     assert not _check_optin_optout(project, config)
 
-    # assert to_isomorphic(empty_graph) == to_isomorphic(gen)
+
+@patch("xnat.core.XNATBaseObject")
+def test_optin_noconfig(project):
+    config = {}
+    project.keywords = "test demo"
+
+    assert _check_optin_optout(project, config)
