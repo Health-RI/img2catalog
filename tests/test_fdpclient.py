@@ -7,6 +7,7 @@ from rdflib.compare import to_isomorphic
 from rdflib.namespace import DCAT, RDF
 
 from img2catalog.fdpclient import (
+    BasicAPIClient,
     FDPClient,
     FDPSPARQLClient,
     add_or_update_dataset,
@@ -39,6 +40,16 @@ def fdp_client_mock(requests_mock):
         "https://fdp.example.com/distribution",
         status_code=201,
         headers={"Location": "https://fdp.example.com/distribution/abcdefgh"},
+    )
+    requests_mock.get(
+        "https://fdp.example.com/dataset/12345678",
+        status_code=200,
+        headers={"Content-Type": "text/turtle"},
+        body=open(file="tests/references/fdp_dataset.ttl", mode="rb"),
+    )
+    requests_mock.delete(
+        "https://fdp.example.com/dataset/12345678",
+        status_code=204,
     )
     fdp_client = FDPClient("https://fdp.example.com", "user@example.com", "pass")
 
@@ -119,6 +130,25 @@ def test_fdp_update_serialised(requests_mock, fdp_client_mock: FDPClient):
     assert requests_mock.last_request.headers["Authorization"] == "Bearer 1234abcd"
     assert requests_mock.last_request.method == "PUT"
     metadata.serialize.assert_called_once_with(format="turtle")
+
+
+def test_fdp_delete_dataset(requests_mock, fdp_client_mock: FDPClient):
+    # Ensure it's valid? Enforce lowercase?
+    response = fdp_client_mock.delete_record("dataset/12345678")
+
+    assert requests_mock.last_request.url == "https://fdp.example.com/dataset/12345678"
+    assert requests_mock.last_request.method == "DELETE"
+    assert response.status_code == 204
+
+
+def test_fdp_get_dataset(requests_mock, fdp_client_mock: FDPClient):
+    # Ensure it's valid? Enforce lowercase?
+    response = fdp_client_mock.get_data("dataset/12345678")
+
+    assert requests_mock.last_request.url == "https://fdp.example.com/dataset/12345678"
+    assert requests_mock.last_request.method == "GET"
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "text/turtle"
 
 
 # @pytest.mark.repeat(1)
