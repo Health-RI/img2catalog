@@ -7,7 +7,6 @@ from typing import Dict, List, Tuple, Union
 from rdflib import DCAT, DCTERMS, FOAF, Graph, URIRef
 from sempyro.dcat import DCATCatalog, DCATDataset
 from sempyro.vcard import VCARD, VCard
-
 from tqdm import tqdm
 from xnat.core import XNATBaseObject
 from xnat.session import XNATSession

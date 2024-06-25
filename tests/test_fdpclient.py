@@ -64,6 +64,15 @@ def empty_dataset_graph():
     return g
 
 
+def test_fdp_clienterror(requests_mock, empty_dataset_graph):
+    requests_mock.post("https://fdp.example.com/tokens", json={"token": "1234abcd"})
+    requests_mock.post("https://fdp.example.com/dataset", status_code=418, reason="I'm a teapot")
+    fdp_client = FDPClient("https://fdp.example.com", "user@example.com", "pass")
+
+    with pytest.raises(requests.HTTPError):
+        fdp_client.post_serialized("dataset", empty_dataset_graph)
+
+
 def test_fdp_login(requests_mock):
     requests_mock.post("https://fdp.example.com/tokens", json={"token": "1234abcd"})
     fdp_client = FDPClient("https://fdp.example.com", "user@example.com", "pass")
