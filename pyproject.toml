@@ -34,6 +34,9 @@ dependencies = [
   "sparqlwrapper~=2.0",
 ]
 
+[project.optional-dependencies]
+highlights = ["pygments ~= 2.17"]
+
 [project.entry-points]
 "xnat.cli" = { img2catalog = "img2catalog.cli_app:cli_click" }
 
