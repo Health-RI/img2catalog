@@ -4,6 +4,9 @@ on:
   release:
     types: [published]
 
+env:
+    PYTHON_VERSION: "3.12"
+
 permissions:
   contents: read
 
@@ -18,10 +21,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
       uses: actions/setup-python@v5
       with:
-        python-version: '3.12'
+        python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
     - name: Install dependencies
       run: |
@@ -31,7 +34,7 @@ jobs:
     - name: Build package
       run: hatch build
     - name: Test package
-      run: hatch run test
+      run: hatch run +py=${{ env.PYTHON_VERSION }} test:test
     - name: Push Python artifacts to PyPI
       uses: pypa/gh-action-pypi-publish@v1.9.0
       with:
