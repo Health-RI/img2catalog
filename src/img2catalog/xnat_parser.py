@@ -3,10 +3,13 @@
 import logging
 import re
 from typing import Dict, List, Tuple, Union
+import datetime
 
 from rdflib import DCAT, DCTERMS, FOAF, Graph, URIRef
-from sempyro.dcat import DCATCatalog, DCATDataset
+from sempyro.hri_dcat.hri_dataset import HRIDataset
+from sempyro.dcat import DCATCatalog
 from sempyro.vcard import VCARD, VCard
+from sempyro.foaf import Agent
 
 from tqdm import tqdm
 from xnat.core import XNATBaseObject
@@ -34,7 +37,7 @@ class XNATParserError(ValueError):
         self.error_list = error_list
 
 
-def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[DCATDataset, URIRef]:
+def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDataset, URIRef]:
     """This function populates a DCAT Dataset class from an XNat project
 
     Currently fills in the title, description and keywords. The first two are mandatory fields
@@ -71,26 +74,40 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[DCATData
 
     project_uri = project.external_uri()
 
-    creator_vcard = [
-        VCard(
-            full_name=[f"{project.pi.title or ''} {project.pi.firstname} {project.pi.lastname}".strip()],
-            hasUID=URIRef("http://example.com"),  # Should be ORCID?
+    creator_foaf = [
+        Agent(
+            name=[f"{project.pi.title or ''} {project.pi.firstname} {project.pi.lastname}".strip()],
+            identifier=str("http://example.com"),  # Should be ORCID?
         )
     ]
+
+    publisher_foaf = [Agent(**config['dataset']['publisher'])]
+
+    license = URIRef(config['dataset']['license'])
+    themes = [URIRef(config['dataset']['theme'])]
+
+    # TODO These are stub values, should be modified to reflect something slightly more accurate
+    issued = datetime.datetime.now()
+    modified = datetime.datetime.now()
 
     dataset_dict = {
         "title": [project.name],
         "description": [project.description],
-        "creator": creator_vcard,
+        "creator": creator_foaf,
         "keyword": keywords,
-        "identifier": [project_uri],
+        "identifier": project_uri,
+        "license": license,
+        "publisher": publisher_foaf,
+        "theme": themes,
+        "issued": issued,
+        "modified": modified,
     }
 
     contact_point_vcard = [contact_point_vcard_from_config(config)]
     if any(contact_point_vcard):
         dataset_dict["contact_point"] = contact_point_vcard
 
-    project_dataset = DCATDataset(**dataset_dict)
+    project_dataset = HRIDataset(**dataset_dict)
 
     return project_dataset, URIRef(project_uri)
 
@@ -193,7 +210,7 @@ def xnat_to_FDP(
             logger.warn("Error pushing dataset to FDP: %s", e)
 
 
-def xnat_list_datasets(session: XNATSession, config: Dict) -> List[DCATDataset]:
+def xnat_list_datasets(session: XNATSession, config: Dict) -> List[HRIDataset]:
     """Acquires a list of elligible XNAT datasets
 
     Parameters

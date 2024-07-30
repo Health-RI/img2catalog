@@ -56,6 +56,7 @@ dependencies = [
   "pytest-cov",
   "pytest-click",
   "pytest-repeat",
+  "freezegun",
 ]
 
 [[tool.hatch.envs.test.matrix]]

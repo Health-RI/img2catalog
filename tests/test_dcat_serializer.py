@@ -14,6 +14,7 @@ except ModuleNotFoundError:
 import xnat
 from rdflib import DCAT, DCTERMS, Graph, URIRef
 from rdflib.compare import to_isomorphic
+from freezegun import freeze_time
 
 from img2catalog.xnat_parser import (
     VCARD,
@@ -75,6 +76,7 @@ def test_empty_xnat(session, empty_graph: Graph, config: Dict[str, Any]):
     assert to_isomorphic(expected) == to_isomorphic(empty_graph)
 
 
+@freeze_time("2024-04-01")
 @patch("xnat.core.XNATBaseObject")
 def test_valid_project(project, empty_graph: Graph, config: Dict[str, Any]):
     """Test if a valid project generates valid output"""
@@ -89,6 +91,9 @@ def test_valid_project(project, empty_graph: Graph, config: Dict[str, Any]):
     empty_graph = empty_graph.parse(source="tests/references/valid_project.ttl")
     dcat, uri = xnat_to_DCATDataset(project, config)
     gen = dcat.to_graph(uri)
+
+    print(gen.serialize())
+    print(empty_graph.serialize())
 
     assert to_isomorphic(empty_graph) == to_isomorphic(gen)
 

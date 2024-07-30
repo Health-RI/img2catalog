@@ -28,10 +28,22 @@ def example_standard_config() -> str:
 # optin = "include_catalog"
 # optout = "exclude_catalog"
 
+[dataset]
+# Theme should be Health, according to the EU Data Theme vocabulary
+theme = "http://publications.europa.eu/resource/authority/data-theme/HEAL"
+
+# Default License for datasets is "available upon reasonable request"
+# I can't find that, so putting a placeholder here
+license = "http://example.com/license#nolicense"
+
 [dataset.contact_point]
 # override = true
 full_name = "Example Data Management office"
 email = "datamanager@example.com"
+
+[dataset.publisher]
+name = ["Example publisher list",]
+identifier = "http://example.com"
 
 [catalog]
 title = "Example XNAT catalog"
@@ -39,7 +51,7 @@ description = "This is an example XNAT catalog description"
 
 [catalog.publisher]
 name = "Example publishing institution"
-homepage = "https://www.example.com"
+identifier = "http://www.example.com/institution#example"
 
 [distribution.default]
 title = "XNAT imaging distribution"
