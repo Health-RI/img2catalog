@@ -27,7 +27,7 @@ def empty_graph():
 def toml_patch_target():
     # Python 3.11 and up has tomllib built-in, for 3.10 and lower we use tomli which provides
     # the same functonality. We check if it's Python 3.10 or lower to patch the correct target.
-    if sys.version_info[0] == 3 and sys.version_info[1] <= 10:
+    if sys.version_info < (3, 11):
         return "tomli.load"
     else:
         return "tomllib.load"
@@ -223,11 +223,11 @@ def test_config_loader_error():
 @pytest.mark.parametrize("config_param", [None, TEST_CONFIG])
 @patch("img2catalog.configmanager.CONFIG_HOME_PATH", TEST_CONFIG)
 @patch("builtins.open")
-def test_config_dir(open, toml_patch_target, config_param):
+def test_config_dir(fileopen, toml_patch_target, config_param):
     with patch(toml_patch_target) as load:
         load_img2catalog_configuration(config_param)
         # Make sure the correct configuration is loaded
-        open.assert_called_once_with(TEST_CONFIG, "rb")
+        fileopen.assert_called_once_with(TEST_CONFIG, "rb")
         # Make sure the file de-serializer is called, not the string de-serializer
         load.assert_called_once()
 
@@ -241,7 +241,7 @@ def test_fdp_cli(connect, mock_FDPClient, xnat_to_FDP, isolated_cli_runner):
 
     mock_FDPClient.return_value = None
 
-    result = isolated_cli_runner.invoke(
+    isolated_cli_runner.invoke(
         cli_click,
         [
             "--verbose",
@@ -309,7 +309,7 @@ def test_output_project_file(
     # Always return a mock DCATDataset object and URI
     xnat_to_DCATDataset.return_value = (dummy_dcat_dataset, URIRef("http://example.com"))
 
-    result = isolated_cli_runner.invoke(
+    isolated_cli_runner.invoke(
         cli_click,
         ["--verbose", "-s", "http://example.com", "project", "test_project", "-o", "test_project.xml", "-f", "xml"],
     )
