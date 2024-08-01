@@ -204,6 +204,6 @@ def test_xnat_to_rdf(xnat_list_datasets, xnat_to_DCATCatalog, session, mock_data
     xnat_list_datasets.return_value = [(mock_dataset, URIRef("https://example.com/dataset"))]
 
     result_graph = xnat_to_RDF(session, config)
-    reference_graph = empty_graph.parse(source="tests/references/minimal_catalog_dataset.ttl")
+    reference_graph = empty_graph.parse(source="tests/references/minimal_dcat_catalog_dataset.ttl")
 
     assert to_isomorphic(result_graph) == to_isomorphic(reference_graph)

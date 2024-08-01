@@ -1,12 +1,8 @@
 @prefix dcat: <http://www.w3.org/ns/dcat#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
-@prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
 <https://example.com> a dcat:Catalog ;
     dcterms:title "Example XNAT catalog" ;
-    dcterms:publisher [ a foaf:Agent ;
-            dcterms:identifier "http://www.example.com/institution#example" ;
-            foaf:name "Example publishing institution" ] ;
     dcterms:description "This is an example XNAT catalog description" ;
     dcat:dataset <https://example.com/dataset> .
 

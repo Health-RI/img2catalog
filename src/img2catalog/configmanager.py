@@ -50,7 +50,7 @@ title = "Example XNAT catalog"
 description = "This is an example XNAT catalog description"
 
 [catalog.publisher]
-name = "Example publishing institution"
+name = ["Example publishing institution",]
 identifier = "http://www.example.com/institution#example"
 
 [distribution.default]

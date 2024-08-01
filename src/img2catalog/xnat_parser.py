@@ -7,7 +7,7 @@ import datetime
 
 from rdflib import DCAT, DCTERMS, FOAF, Graph, URIRef
 from sempyro.hri_dcat.hri_dataset import HRIDataset
-from sempyro.dcat import DCATCatalog
+from sempyro.hri_dcat.hri_catalog import HRICatalog
 from sempyro.vcard import VCARD, VCard
 from sempyro.foaf import Agent
 
@@ -54,8 +54,8 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
 
     Returns
     -------
-    DCATDataset
-        DCATDataset object with fields filled in
+    HRIDataset
+        HRIDataset object with fields filled in
     URIRef
         Subject that could be used
     """
@@ -112,7 +112,7 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
     return project_dataset, URIRef(project_uri)
 
 
-def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> DCATCatalog:
+def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> HRICatalog:
     """Creates a DCAT-AP compliant Catalog from XNAT instance
 
     Parameters
@@ -124,12 +124,15 @@ def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> DCATCatalog:
 
     Returns
     -------
-    DCATCatalog
-        DCATCatalog object with fields populated
+    HRICatalog
+        HRICatalog object with fields populated
     """
-    catalog = DCATCatalog(
+    publisher_foaf = [Agent(**config['catalog']['publisher'])]
+
+    catalog = HRICatalog(
         title=[config["catalog"]["title"]],
         description=[config["catalog"]["description"]],
+        publisher=publisher_foaf,
     )
     return catalog
 
