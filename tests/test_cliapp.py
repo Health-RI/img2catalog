@@ -232,9 +232,8 @@ def test_config_dir(fileopen, toml_patch_target, config_param):
         load.assert_called_once()
 
 
-@pytest.mark.xfail(reason="Mocking FDP client seems to halt execution")
-@patch("img2catalog.xnat_parser.xnat_to_FDP")
-@patch("img2catalog.fdpclient.FDPClient")
+@patch("img2catalog.cli_app.xnat_to_FDP")
+@patch("img2catalog.fdpclient.FDPClient.__init__")
 @patch("xnat.connect")
 def test_fdp_cli(connect, mock_FDPClient, xnat_to_FDP, isolated_cli_runner):
     connect.__enter__.return_value = True
@@ -254,6 +253,8 @@ def test_fdp_cli(connect, mock_FDPClient, xnat_to_FDP, isolated_cli_runner):
             "test",
             "-p",
             "more_test",
+            "-c",
+            "http://catalog.example.com",
         ],
     )
 
