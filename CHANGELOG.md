@@ -2,7 +2,19 @@
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
-## Unreleased
+## 0.5.0
+
+### Fixed
+
+* img2catalog now uses the latest [SeMPyRO](https://github.com/health-RI/sempyro). This changes
+the VCard definition used for contactpoint.
+
+## 0.4.0 - 2024-07-23
+
+### Added
+
+* Datasets can now be updated in a FAIR Data Point if it exposes a SPARQL endpoint
+* Automated releases straight from Github
 
 ### Changed
 

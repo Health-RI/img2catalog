@@ -32,7 +32,7 @@ def test_keyword_splitter(test_str, expected):
 @patch("xnat.core.XNATBaseObject")
 def test_no_optin_optout(project):
     project.keywords = "test demo optout_keyword"
-    config = {"img2catalog": dict()}
+    config = {"img2catalog": {}}
 
     # First test no config
     assert _check_optin_optout(project, config)

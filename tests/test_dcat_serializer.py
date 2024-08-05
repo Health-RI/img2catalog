@@ -12,6 +12,7 @@ except ModuleNotFoundError:
     import tomli as tomllib
 
 import xnat
+from freezegun import freeze_time
 from rdflib import DCAT, DCTERMS, Graph, URIRef
 from rdflib.compare import to_isomorphic
 
@@ -75,6 +76,7 @@ def test_empty_xnat(session, empty_graph: Graph, config: Dict[str, Any]):
     assert to_isomorphic(expected) == to_isomorphic(empty_graph)
 
 
+@freeze_time("2024-04-01")
 @patch("xnat.core.XNATBaseObject")
 def test_valid_project(project, empty_graph: Graph, config: Dict[str, Any]):
     """Test if a valid project generates valid output"""
@@ -109,7 +111,7 @@ def test_empty_description(project, config: Dict[str, Any]):
 
 
 @patch("xnat.core.XNATBaseObject")
-def test_invalid_PI(project, config: Dict[str, Any]):
+def test_invalid_pi(project, config: Dict[str, Any]):
     """Make sure if PI field is invalid, an exception is raised"""
     project.name = "Basic test project to test the img2catalog"
     project.description = "In this project, we test xnat and dcat and make sure a description appears."
@@ -122,6 +124,7 @@ def test_invalid_PI(project, config: Dict[str, Any]):
         xnat_to_DCATDataset(project, config)
 
 
+@freeze_time("2024-04-01")
 @patch("xnat.core.XNATBaseObject")
 def test_no_keywords(project, empty_graph: Graph, config: Dict[str, Any]):
     """Valid project without keywords, make sure it is not defined in output"""
@@ -188,6 +191,7 @@ def test_xnat_lister(xnat_to_DCATDataset, _check_elligibility_project):
     assert xnat_to_DCATDataset.call_count == 3
 
 
+@freeze_time("2024-04-01")
 @patch("xnat.session.BaseXNATSession")
 @patch("img2catalog.xnat_parser.xnat_to_DCATCatalog")
 @patch("img2catalog.xnat_parser.xnat_list_datasets")
@@ -200,6 +204,6 @@ def test_xnat_to_rdf(xnat_list_datasets, xnat_to_DCATCatalog, session, mock_data
     xnat_list_datasets.return_value = [(mock_dataset, URIRef("https://example.com/dataset"))]
 
     result_graph = xnat_to_RDF(session, config)
-    reference_graph = empty_graph.parse(source="tests/references/minimal_catalog_dataset.ttl")
+    reference_graph = empty_graph.parse(source="tests/references/minimal_dcat_catalog_dataset.ttl")
 
     assert to_isomorphic(result_graph) == to_isomorphic(reference_graph)

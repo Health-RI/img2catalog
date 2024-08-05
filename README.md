@@ -4,8 +4,11 @@
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Health-RI/img2catalog/python-test-package.yml)
 ![Codecov](https://img.shields.io/codecov/c/github/Health-RI/img2catalog)
 
-This tool queries an XNAT instance and generates DCAT-AP 3.0 metadata. Every XNAT project is considered
-to be a separate Dataset. Only 'public' and 'protected' datasets are queried.
+This tool queries an XNAT instance and generates DCAT-AP 3.0 metadata. Every XNAT project is
+considered to be a separate Dataset. Only 'public' and 'protected' datasets are queried.
+
+The metadata is compliant with the [Health-RI core v1 specification](https://github.com/Health-RI/health-ri-metadata/).
+Some fields are still left as placeholders. These will be updated in due time.
 
 ## Installation
 
@@ -92,13 +95,12 @@ Options:
 
 An example configuration file `config.toml` is supplied with this project. By default, `img2catalog`
 will look for a configuration file in `~/.img2catalog/config.toml`. The tool will not create the file
-or folder if it does not exist, you will have to do so manually. If the file does not exist, the
-example file will be used.
+or folder if it does not exist, you will have to do so manually. If the file does not exist, a
+hard-coded example file will be used.
 
 A limited number of properties can be set in the configuration, including the title and name of the
 xnat (DCAT) catalog and the publisher of the catalog. A default contact point for datasets can also
 be provided and will be included in the Dataset properties.
-We are still working on adding more default values for certain DCAT properties to the configuration.
 
 There is limited support for using environment variables. For setting the XNAT server, variables
 `XNAT_HOST` or `XNATPY_HOST` can be used, with the latter taking preference. Authentication can be
@@ -107,10 +109,22 @@ provided in `XNAT_USER` and `XNAT_PASS`.
 Commandline arguments take precedence over environment variables. Environment variables take
 precedence over `.netrc` login.
 
+## Metadata
+
+THe current metadata complies to the Health-RI core v1 shapes. This is an extension of DCAT-AP,
+output of the tool is thus fully compliant with DCAT-AP. A few fields that cannot be extracted
+from XNAT, are set at a more global level. This includes *dcat:contactPoint*, *dcat:theme* and
+*dcat:publisher*. The value of those fields can be set in the configuration.
+
+A few fields are currently set with stub values. That includes the *dcterms:identifier* of the
+*creator*, the *dcterms:license*, and the *dcterms:issued* and *dcterms:modified* fields. We hope
+to be able to expand XNAT to include these fields as well.
+
 ## Inclusion and exclusion of projects
 
 By default, all public and protected projects are indexed. Private projects are *not* indexed, even
-if you provide user credentials that have relevant permissions for them.
+if you provide user credentials that have relevant permissions for them. We can make an override
+for this behavior, please file an issue if you'd like to see this changed.
 
 Further granularity can be provided by using keywords. There is functionality for an opt-in keyword
 and an opt-out keyword, though only one of these at the time. If an opt-in keyword is set, only
@@ -119,7 +133,7 @@ ignored. If an opt-out keyword is set, all projects except for those containing 
 keyword will be indexed. The keywords can be configured in either the settings or the CLI, see the
 example configuration file.
 
-Note that private projects will never be indexed, not even if an opt-in keyword is set in them.
+Note that private projects will currently not be indexed, not even if an opt-in keyword is set in them.
 
 ## Development
 

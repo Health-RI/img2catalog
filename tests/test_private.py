@@ -1,7 +1,6 @@
 import logging
 
 import pytest
-from pytest import fixture
 
 logger = logging.getLogger(__name__)
 

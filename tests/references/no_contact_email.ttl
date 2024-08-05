@@ -4,7 +4,7 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 <http://localhost/data/archive/projects/test_img2catalog> a dcat:Dataset ;
-    dcterms:creator [ a vcard:VCard ;
+    dcterms:creator [ a vcard:Kind ;
             vcard:fn "prof. Albus Dumbledore" ;
             vcard:hasUID <http://example.com> ] ;
     dcterms:description "In this project, we test xnat and dcat and make sure a description appears." ;
@@ -14,5 +14,5 @@
     dcat:keyword "dcat",
         "demo",
         "test" ;
-    dcat:contactPoint [ a vcard:VCard ;
+    dcat:contactPoint [ a vcard:Kind ;
             vcard:fn "Example Data Management office" ] .
