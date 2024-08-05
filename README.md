@@ -141,7 +141,7 @@ This project uses [Hatch](https://hatch.pypa.io/latest/) as a project manager. A
 repository, the development version can be run by `hatch run img2catalog`. Hatch will take care of
 dependencies and all of that.
 
-You can run unit tests by running `hatch run test`, or get in a shell in the python environment by
+You can run unit tests by running `hatch run test:test`, or get in a shell in the python environment by
 running `hatch shell`. Hatch uses whatever Python version is currently loaded.
 This project is compatible with Python 3.8 and up.
 
