@@ -233,7 +233,7 @@ def test_config_dir(fileopen, toml_patch_target, config_param):
 
 
 @patch("img2catalog.cli_app.xnat_to_FDP")
-@patch("img2catalog.fdpclient.FDPClient.__init__")
+@patch("fairclient.fdpclient.FDPClient.__init__")
 @patch("xnat.connect")
 def test_fdp_cli(connect, mock_FDPClient, xnat_to_FDP, isolated_cli_runner):
     connect.__enter__.return_value = True
