@@ -1,16 +1,16 @@
 """Simple tool to query an XNAT instance and serialize projects as datasets"""
 
+import datetime
+import html
 import logging
 import re
 from typing import Dict, List, Tuple, Union
-import datetime
 
 from rdflib import DCAT, DCTERMS, FOAF, Graph, URIRef
-from sempyro.hri_dcat.hri_dataset import HRIDataset
-from sempyro.hri_dcat.hri_catalog import HRICatalog
-from sempyro.vcard import VCARD, VCard
 from sempyro.foaf import Agent
-
+from sempyro.hri_dcat.hri_catalog import HRICatalog
+from sempyro.hri_dcat.hri_dataset import HRIDataset
+from sempyro.vcard import VCARD, VCard
 from tqdm import tqdm
 from xnat.core import XNATBaseObject
 from xnat.session import XNATSession
@@ -77,22 +77,24 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
     creator_foaf = [
         Agent(
             name=[f"{project.pi.title or ''} {project.pi.firstname} {project.pi.lastname}".strip()],
-            identifier=str("http://example.com"),  # Should be ORCID?
+            identifier="http://example.com",  # Should be ORCID?
         )
     ]
 
-    publisher_foaf = [Agent(**config['dataset']['publisher'])]
+    publisher_foaf = [Agent(**config["dataset"]["publisher"])]
 
-    license = URIRef(config['dataset']['license'])
-    themes = [URIRef(config['dataset']['theme'])]
+    license = URIRef(config["dataset"]["license"])
+    themes = [URIRef(config["dataset"]["theme"])]
 
     # TODO These are stub values, should be modified to reflect something slightly more accurate
     issued = datetime.datetime.now()
     modified = datetime.datetime.now()
 
+    project_description = html.unescape(project.description)
+
     dataset_dict = {
         "title": [project.name],
-        "description": [project.description],
+        "description": [project_description],
         "creator": creator_foaf,
         "keyword": keywords,
         "identifier": project_uri,
@@ -127,7 +129,7 @@ def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> HRICatalog:
     HRICatalog
         HRICatalog object with fields populated
     """
-    publisher_foaf = [Agent(**config['catalog']['publisher'])]
+    publisher_foaf = [Agent(**config["catalog"]["publisher"])]
 
     catalog = HRICatalog(
         title=[config["catalog"]["title"]],
