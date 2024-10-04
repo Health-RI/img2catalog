@@ -87,6 +87,7 @@ def test_valid_project_no_investigator(project, empty_graph: Graph, config: Dict
     project.pi.firstname = "Albus"
     project.pi.lastname = "Dumbledore"
     project.pi.title = "prof."
+    project.investigators = False
 
     empty_graph = empty_graph.parse(source="tests/references/valid_project_no_investigator.ttl")
     dcat, uri = xnat_to_DCATDataset(project, config)
