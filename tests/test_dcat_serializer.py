@@ -81,7 +81,7 @@ def test_empty_xnat(session, empty_graph: Graph, config: Dict[str, Any]):
 def test_valid_project(project, empty_graph: Graph, config: Dict[str, Any]):
     """Test if a valid project generates valid output"""
     project.name = "Basic test project to test the img2catalog"
-    project.description = "In this project, we test xnat and dcat and make sure a description appears."
+    project.description = "In this project, we test &quot;xnat&quot; &amp; dcat and make sure a description appears."
     project.external_uri.return_value = "http://localhost/data/archive/projects/test_img2catalog"
     project.keywords = "test demo dcat"
     project.pi.firstname = "Albus"
