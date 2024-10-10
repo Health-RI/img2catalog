@@ -78,6 +78,25 @@ def test_empty_xnat(session, empty_graph: Graph, config: Dict[str, Any]):
 
 @freeze_time("2024-04-01")
 @patch("xnat.core.XNATBaseObject")
+def test_valid_project_no_investigator(project, empty_graph: Graph, config: Dict[str, Any]):
+    """Test if a valid project generates valid output"""
+    project.name = "Basic test project to test the img2catalog"
+    project.description = "In this project, we test xnat and dcat and make sure a description appears."
+    project.external_uri.return_value = "http://localhost/data/archive/projects/test_img2catalog"
+    project.keywords = "test demo dcat"
+    project.pi.firstname = "Albus"
+    project.pi.lastname = "Dumbledore"
+    project.pi.title = "prof."
+
+    empty_graph = empty_graph.parse(source="tests/references/valid_project_no_investigator.ttl")
+    dcat, uri = xnat_to_DCATDataset(project, config)
+    gen = dcat.to_graph(uri)
+
+    assert to_isomorphic(empty_graph) == to_isomorphic(gen)
+
+
+@freeze_time("2024-04-01")
+@patch("xnat.core.XNATBaseObject")
 def test_valid_project(project, empty_graph: Graph, config: Dict[str, Any]):
     """Test if a valid project generates valid output"""
     project.name = "Basic test project to test the img2catalog"
@@ -87,6 +106,11 @@ def test_valid_project(project, empty_graph: Graph, config: Dict[str, Any]):
     project.pi.firstname = "Albus"
     project.pi.lastname = "Dumbledore"
     project.pi.title = "prof."
+    # project
+    project.investigators.__len__.return_value = 1
+    project.investigators[0].firstname = "Minerva"
+    project.investigators[0].lastname = "McGonagall"
+    project.investigators[0].title = "Prof."
 
     empty_graph = empty_graph.parse(source="tests/references/valid_project.ttl")
     dcat, uri = xnat_to_DCATDataset(project, config)

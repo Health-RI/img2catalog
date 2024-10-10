@@ -74,17 +74,20 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
 
     project_uri = project.external_uri()
 
-    creator_foaf = [
-        Agent(
-            name=[f"{project.pi.title or ''} {project.pi.firstname} {project.pi.lastname}".strip()],
-            identifier=str("http://example.com"),  # Should be ORCID?
-        )
-    ]
+    creator_list = list([xnat_investigator_to_Agent(project.pi)])
 
-    publisher_foaf = [Agent(**config['dataset']['publisher'])]
+    # FIXME
+    # Workaround for xnatpy issue #68
+    # https://gitlab.com/radiology/infrastructure/xnatpy/-/issues/68
+    if project.investigators:
+        for i in range(len(project.investigators)):
+            creator = xnat_investigator_to_Agent(project.investigators[i])
+            creator_list.append(creator)
 
-    license = URIRef(config['dataset']['license'])
-    themes = [URIRef(config['dataset']['theme'])]
+    publisher_foaf = [Agent(**config["dataset"]["publisher"])]
+
+    license = URIRef(config["dataset"]["license"])
+    themes = [URIRef(config["dataset"]["theme"])]
 
     # TODO These are stub values, should be modified to reflect something slightly more accurate
     issued = datetime.datetime.now()
@@ -93,7 +96,7 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
     dataset_dict = {
         "title": [project.name],
         "description": [project.description],
-        "creator": creator_foaf,
+        "creator": creator_list,
         "keyword": keywords,
         "identifier": project_uri,
         "license": license,
@@ -112,6 +115,15 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
     return project_dataset, URIRef(project_uri)
 
 
+def xnat_investigator_to_Agent(investigator) -> Agent:
+    creator_foaf = Agent(
+        name=[f"{investigator.title or ''} {investigator.firstname} {investigator.lastname}".strip()],
+        identifier="http://example.com",  # Should be ORCID?
+    )
+
+    return creator_foaf
+
+
 def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> HRICatalog:
     """Creates a DCAT-AP compliant Catalog from XNAT instance
 
@@ -127,7 +139,7 @@ def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> HRICatalog:
     HRICatalog
         HRICatalog object with fields populated
     """
-    publisher_foaf = [Agent(**config['catalog']['publisher'])]
+    publisher_foaf = [Agent(**config["catalog"]["publisher"])]
 
     catalog = HRICatalog(
         title=[config["catalog"]["title"]],
