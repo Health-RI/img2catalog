@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple, Union
 from fairclient.fdpclient import FDPClient
 from fairclient.sparqlclient import FDPSPARQLClient
 from fairclient.utils import add_or_update_dataset, remove_node_from_graph
-from rdflib import DCAT, DCTERMS, FOAF, Graph, URIRef
+from rdflib import DCAT, DCTERMS, FOAF, Graph, URIRef, RDF
 from sempyro.foaf import Agent
 from sempyro.hri_dcat.hri_catalog import HRICatalog
 from sempyro.hri_dcat.hri_dataset import HRIDataset
@@ -217,12 +217,12 @@ def xnat_to_FDP(
 
     for dataset, subject in tqdm(dataset_list):
         dataset_graph = dataset.to_graph(subject)
-        prepare_dataset_graph_for_fdp(dataset_graph, catalog_uri)
+        dataset_graph.add((URIRef(dataset.identifier), DCTERMS.isPartOf, catalog_uri))
         logger.debug("Going to push %s to FDP", dataset.title)
         try:
-            add_or_update_dataset(dataset_graph, fdpclient, dataset.identifier[0], catalog_uri, sparqlclient)
+            add_or_update_dataset(dataset_graph, fdpclient, dataset.identifier, catalog_uri, sparqlclient)
         except Exception as e:
-            logger.warn("Error pushing dataset to FDP: %s", e)
+            logger.warning("Error pushing dataset to FDP: %s", e)
 
 
 def xnat_list_datasets(session: XNATSession, config: Dict) -> List[HRIDataset]:
@@ -448,15 +448,6 @@ def prepare_dataset_graph_for_fdp(dataset_graph: Graph, catalog_uri: URIRef):
 
     # For each dataset, find the creator node. If it is a VCard, get rid of it
     for dataset in dataset_graph.subjects(RDF.type, DCAT.Dataset):
-        creator_node = dataset_graph.value(subject=dataset, predicate=DCTERMS.creator, any=False)
-        if creator_node:
-            if dataset_graph.value(subject=creator_node, predicate=RDF.type, any=False) == VCARD.VCard:
-                remove_node_from_graph(creator_node, dataset_graph)
-
-        contactpoint_node = dataset_graph.value(subject=dataset, predicate=DCAT.contactPoint, any=False)
-        if contactpoint_node:
-            if dataset_graph.value(subject=contactpoint_node, predicate=RDF.type, any=False) == VCARD.VCard:
-                remove_node_from_graph(contactpoint_node, dataset_graph)
 
         # This is FDP specific: Dataset points back to the Catalog
         if not dataset_graph.value(subject=dataset, predicate=DCTERMS.isPartOf, any=False):
