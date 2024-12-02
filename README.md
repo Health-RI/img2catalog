@@ -28,7 +28,7 @@ this, see the [XNATpy documentation](https://xnat.readthedocs.io/en/latest/stati
 By default, output of the tool is in turtle format at stdout to make for easy piping, but it can be
 written in a variety of formats to a file, too. For all options, see `img2catalog --help`:
 
-```text
+```sh
 Usage: img2catalog [OPTIONS] COMMAND [ARGS]...
 
   This tool queries metadata from an XNAT server
@@ -90,6 +90,12 @@ Options:
   --help                Show this message and exit.
 
 ```
+
+### Example with SPARQL endpoint
+
+```sh
+img2catalog --verbose -s "https://xnat-acc.health-ri.nl" fdp --fdp "https://fdp-acc.healthdata.nl" -u "albert.einstein@example.com" -p "check 1 Password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d" -s "https://sparql-acc.healthdata.nl/repositories/fdp"
+```   
 
 ## Configuration
 
