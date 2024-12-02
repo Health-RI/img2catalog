@@ -13,7 +13,7 @@ from img2catalog.__about__ import __version__
 from img2catalog.configmanager import load_img2catalog_configuration
 
 # from xnat.client.helpers import xnatpy_login_options, connect_cli
-from img2catalog.const import (
+from img2catalog.config import (
     FDP_PASS_ENV,
     FDP_SERVER_ENV,
     FDP_USER_ENV,
@@ -21,6 +21,7 @@ from img2catalog.const import (
     XNAT_PASS_ENV,
     XNAT_USER_ENV,
     XNATPY_HOST_ENV,
+    IMG2CATALOG_SPARQL_ENV,
 )
 from img2catalog.xnat_parser import xnat_to_DCATDataset, xnat_to_FDP, xnat_to_RDF
 
@@ -218,7 +219,7 @@ def output_dcat(ctx: click.Context, output: click.Path, format: str):
 @click.option(
     "-s",
     "--sparql",
-    default=None,
+    envvar=IMG2CATALOG_SPARQL_ENV,
     type=URIRef,
     help=" URL of SPARQL endpoint of FDP, used for querying which dataset to update",
 )
