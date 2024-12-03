@@ -28,7 +28,7 @@ this, see the [XNATpy documentation](https://xnat.readthedocs.io/en/latest/stati
 By default, output of the tool is in turtle format at stdout to make for easy piping, but it can be
 written in a variety of formats to a file, too. For all options, see `img2catalog --help`:
 
-```text
+```sh
 Usage: img2catalog [OPTIONS] COMMAND [ARGS]...
 
   This tool queries metadata from an XNAT server
@@ -91,6 +91,12 @@ Options:
 
 ```
 
+### Example with SPARQL endpoint
+
+```sh
+img2catalog --verbose -s "https://xnat-acc.health-ri.nl" fdp --fdp "https://fdp-acc.healthdata.nl" -u "albert.einstein@example.com" -p "check 1 Password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d" -s "https://sparql-acc.healthdata.nl/repositories/fdp"
+```   
+
 ## Configuration
 
 An example configuration file `config.toml` is supplied with this project. By default, `img2catalog`
@@ -102,9 +108,19 @@ A limited number of properties can be set in the configuration, including the ti
 xnat (DCAT) catalog and the publisher of the catalog. A default contact point for datasets can also
 be provided and will be included in the Dataset properties.
 
-There is limited support for using environment variables. For setting the XNAT server, variables
-`XNAT_HOST` or `XNATPY_HOST` can be used, with the latter taking preference. Authentication can be
-provided in `XNAT_USER` and `XNAT_PASS`.
+The tool can also be configured using environment variables. Here are the environment variables that can be used:
+
+### Environment Variables
+
+The tool can also be configured using environment variables. Here are the environment variables that can be used:
+* XNAT_HOST: The XNAT server host.
+* XNATPY_HOST: Alternative environment variable for the XNAT server host.
+* XNAT_USER: The XNAT username.
+* XNAT_PASS: The XNAT password.
+* IMG2CATALOG_FDP: The FDP server.
+* IMG2CATALOG_FDP_USER: The FDP username.
+* IMG2CATALOG_FDP_PASS: The FDP password.
+* IMG2CATALOG_SPARQL_ENDPOINT: The SPARQL endpoint.
 
 Commandline arguments take precedence over environment variables. Environment variables take
 precedence over `.netrc` login.
@@ -150,8 +166,8 @@ we are open to any additions.
 
 ## Limitations
 
-Currently, only title, description, keywords and PI are set as well as title, description and
-publisher of the catalogue. There is no Distribution, Dataset Series or anything else.
+Currently, title, description, keywords, PI and Investigators are set as well as title, description
+and publisher of the catalogue. There is no Distribution, Dataset Series or anything else.
 The language of the fields also is not set.
 
 ## Disclaimer

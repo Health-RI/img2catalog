@@ -4,6 +4,8 @@ from pathlib import Path
 import click
 import xnat
 from click_option_group import MutuallyExclusiveOptionGroup, optgroup
+from fairclient.fdpclient import FDPClient
+from fairclient.sparqlclient import FDPSPARQLClient
 from rdflib import URIRef
 
 from img2catalog import log
@@ -19,8 +21,8 @@ from img2catalog.const import (
     XNAT_PASS_ENV,
     XNAT_USER_ENV,
     XNATPY_HOST_ENV,
+    SPARQL_ENV,
 )
-from img2catalog.fdpclient import FDPClient, FDPSPARQLClient
 from img2catalog.xnat_parser import xnat_to_DCATDataset, xnat_to_FDP, xnat_to_RDF
 
 logger = logging.getLogger(__name__)
@@ -217,7 +219,7 @@ def output_dcat(ctx: click.Context, output: click.Path, format: str):
 @click.option(
     "-s",
     "--sparql",
-    default=None,
+    envvar=SPARQL_ENV,
     type=URIRef,
     help=" URL of SPARQL endpoint of FDP, used for querying which dataset to update",
 )

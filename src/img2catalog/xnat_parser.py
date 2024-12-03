@@ -6,7 +6,10 @@ import logging
 import re
 from typing import Dict, List, Tuple, Union
 
-from rdflib import DCAT, DCTERMS, FOAF, Graph, URIRef
+from fairclient.fdpclient import FDPClient
+from fairclient.sparqlclient import FDPSPARQLClient
+from fairclient.utils import add_or_update_dataset, remove_node_from_graph
+from rdflib import DCAT, DCTERMS, FOAF, RDF, Graph, URIRef
 from sempyro.foaf import Agent
 from sempyro.hri_dcat.hri_catalog import HRICatalog
 from sempyro.hri_dcat.hri_dataset import HRIDataset
@@ -14,8 +17,6 @@ from sempyro.vcard import VCARD, VCard
 from tqdm import tqdm
 from xnat.core import XNATBaseObject
 from xnat.session import XNATSession
-
-from img2catalog.fdpclient import FDPClient, FDPSPARQLClient, add_or_update_dataset, prepare_dataset_graph_for_fdp
 
 logger = logging.getLogger(__name__)
 
@@ -74,12 +75,15 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
 
     project_uri = project.external_uri()
 
-    creator_foaf = [
-        Agent(
-            name=[f"{project.pi.title or ''} {project.pi.firstname} {project.pi.lastname}".strip()],
-            identifier="http://example.com",  # Should be ORCID?
-        )
-    ]
+    creator_list = list([xnat_investigator_to_Agent(project.pi)])
+
+    # FIXME
+    # Workaround for xnatpy issue #68
+    # https://gitlab.com/radiology/infrastructure/xnatpy/-/issues/68
+    if project.investigators:
+        for i in range(len(project.investigators)):
+            creator = xnat_investigator_to_Agent(project.investigators[i])
+            creator_list.append(creator)
 
     publisher_foaf = [Agent(**config["dataset"]["publisher"])]
 
@@ -95,7 +99,7 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
     dataset_dict = {
         "title": [project.name],
         "description": [project_description],
-        "creator": creator_foaf,
+        "creator": creator_list,
         "keyword": keywords,
         "identifier": project_uri,
         "license": license,
@@ -112,6 +116,15 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
     project_dataset = HRIDataset(**dataset_dict)
 
     return project_dataset, URIRef(project_uri)
+
+
+def xnat_investigator_to_Agent(investigator) -> Agent:
+    creator_foaf = Agent(
+        name=[f"{investigator.title or ''} {investigator.firstname} {investigator.lastname}".strip()],
+        identifier="http://example.com",  # Should be ORCID?
+    )
+
+    return creator_foaf
 
 
 def xnat_to_DCATCatalog(session: XNATSession, config: Dict) -> HRICatalog:
@@ -207,12 +220,15 @@ def xnat_to_FDP(
 
     for dataset, subject in tqdm(dataset_list):
         dataset_graph = dataset.to_graph(subject)
-        prepare_dataset_graph_for_fdp(dataset_graph, catalog_uri)
+
+        # This is FDP specific: Dataset points back to the Catalog
+        dataset_graph.add((subject, DCTERMS.isPartOf, catalog_uri))
+
         logger.debug("Going to push %s to FDP", dataset.title)
         try:
-            add_or_update_dataset(dataset_graph, fdpclient, dataset.identifier[0], catalog_uri, sparqlclient)
+            add_or_update_dataset(dataset_graph, fdpclient, dataset.identifier, catalog_uri, sparqlclient)
         except Exception as e:
-            logger.warn("Error pushing dataset to FDP: %s", e)
+            logger.warning("Error pushing dataset to FDP: %s", e)
 
 
 def xnat_list_datasets(session: XNATSession, config: Dict) -> List[HRIDataset]:
@@ -408,8 +424,10 @@ def contact_point_vcard_from_config(config: Dict) -> Union[VCard, None]:
             contact_email = f"mailto:{contact_email}"
         contact_email = URIRef(contact_email)
 
-    contact_vcard = VCard(
-        full_name=[contact_config["full_name"]], hasEmail=[contact_email], hasUID=URIRef("http://example.com")
-    )
+        contact_vcard = VCard(
+            full_name=[contact_config["full_name"]], hasEmail=[contact_email], hasUID=URIRef("http://example.com")
+        )
 
-    return contact_vcard
+        return contact_vcard
+    else:
+        return None
