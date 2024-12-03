@@ -9,7 +9,7 @@ from sempyro.dcat.dcat_dataset import DCATDataset
 from sempyro.vcard import VCARD
 
 from img2catalog.cli_app import cli_click, load_img2catalog_configuration
-from img2catalog.config import XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV, XNATPY_HOST_ENV
+from img2catalog.const import XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV, XNATPY_HOST_ENV
 
 TEST_CONFIG = pathlib.Path(__file__).parent / "example-config.toml"
 

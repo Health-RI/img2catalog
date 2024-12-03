@@ -8,7 +8,7 @@ try:
 except ModuleNotFoundError:
     import tomli as tomllib
 
-from img2catalog.config import CONFIG_HOME_PATH
+from img2catalog.const import CONFIG_HOME_PATH
 
 logger = logging.getLogger(__name__)
 
