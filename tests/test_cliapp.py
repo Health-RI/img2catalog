@@ -9,7 +9,8 @@ from sempyro.dcat.dcat_dataset import DCATDataset
 from sempyro.vcard import VCARD
 
 from img2catalog.cli_app import cli_click, load_img2catalog_configuration
-from img2catalog.const import XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV, XNATPY_HOST_ENV
+from img2catalog.const import XNAT_HOST_ENV, XNAT_PASS_ENV, XNAT_USER_ENV, XNATPY_HOST_ENV, SPARQL_ENV, FDP_USER_ENV, \
+    FDP_PASS_ENV, FDP_SERVER_ENV
 
 TEST_CONFIG = pathlib.Path(__file__).parent / "example-config.toml"
 
@@ -258,6 +259,39 @@ def test_fdp_cli(connect, mock_FDPClient, xnat_to_FDP, isolated_cli_runner):
         ],
     )
 
+    connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
+    xnat_to_FDP.assert_called_once()
+    pass
+
+@patch("img2catalog.cli_app.xnat_to_FDP")
+@patch("fairclient.fdpclient.FDPClient.__init__")
+@patch("fairclient.sparqlclient.FDPSPARQLClient.__init__")
+@patch("xnat.connect")
+def test_fdp_cli_env(connect, mock_SPARQLClient, mock_FDPClient, xnat_to_FDP, isolated_cli_runner, monkeypatch):
+    connect.__enter__.return_value = True
+
+    mock_FDPClient.return_value = None
+    mock_SPARQLClient.return_value = None
+
+    monkeypatch.setenv(XNAT_HOST_ENV, "http://example.com")
+    monkeypatch.setenv(FDP_USER_ENV, "userFDP")
+    monkeypatch.setenv(FDP_PASS_ENV, "passwordFDP")
+    monkeypatch.setenv(FDP_SERVER_ENV, "http://fdp.example.com")
+    monkeypatch.setenv(SPARQL_ENV, "http://sparql.example.com")
+
+
+    isolated_cli_runner.invoke(
+        cli_click,
+        [
+            "--verbose",
+            "fdp",
+            "-c",
+            "http://catalog.example.com",
+        ],
+    )
+
+    mock_FDPClient.assert_called_once_with("http://fdp.example.com", "userFDP", "passwordFDP")
+    mock_SPARQLClient.assert_called_once_with(URIRef("http://sparql.example.com"))
     connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
     xnat_to_FDP.assert_called_once()
     pass
