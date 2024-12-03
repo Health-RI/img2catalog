@@ -1,7 +1,6 @@
 """This file contains constants used by img2catalog"""
 
 from pathlib import Path
-import os
 
 CONFIG_HOME_PATH = Path.home() / ".img2catalog" / "config.toml"
 
