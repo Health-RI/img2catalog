@@ -22,6 +22,7 @@ from img2catalog.xnat_parser import (
     _check_elligibility_project,
     xnat_list_datasets,
     xnat_to_DCATDataset,
+    xnat_to_FDP,
     xnat_to_RDF,
 )
 
@@ -220,6 +221,7 @@ def test_xnat_lister(xnat_to_DCATDataset, _check_elligibility_project):
 @patch("img2catalog.xnat_parser.xnat_to_DCATCatalog")
 @patch("img2catalog.xnat_parser.xnat_list_datasets")
 def test_xnat_to_rdf(xnat_list_datasets, xnat_to_DCATCatalog, session, mock_dataset, mock_catalog, config, empty_graph):
+    """Tests of XNAT to RDF pushing happens with correct arguments and graph is modified correctly"""
     xnat_to_DCATCatalog.return_value = mock_catalog
 
     session.projects = {}
@@ -231,3 +233,52 @@ def test_xnat_to_rdf(xnat_list_datasets, xnat_to_DCATCatalog, session, mock_data
     reference_graph = empty_graph.parse(source="tests/references/minimal_dcat_catalog_dataset.ttl")
 
     assert to_isomorphic(result_graph) == to_isomorphic(reference_graph)
+
+
+@patch("img2catalog.xnat_parser.add_or_update_dataset")
+@patch("img2catalog.xnat_parser.xnat_list_datasets")
+def test_xnat_to_fdp_push(xnat_list_datasets, add_or_update_dataset, mock_dataset, config, empty_graph):
+    """Tests of XNAT to RDF pushing happens even when errors happen"""
+
+    xnat_list_datasets.return_value = [(mock_dataset, URIRef("http://example.com/dataset"))]
+
+    xnat_to_FDP(None, config, URIRef("http://example.com/catalog"), None, None)
+
+    # Check if function is called and correct term added to Graph
+    add_or_update_dataset.assert_called_once()
+    assert (
+        URIRef("http://example.com/dataset"),
+        DCTERMS.isPartOf,
+        URIRef("http://example.com/catalog"),
+    ) in add_or_update_dataset.call_args.args[0], "FDP catalog reference missing"
+
+    pass
+
+
+@patch("img2catalog.xnat_parser.add_or_update_dataset")
+@patch("img2catalog.xnat_parser.xnat_list_datasets")
+def test_xnat_to_fdp_push_error(xnat_list_datasets, add_or_update_dataset, mock_dataset, config, empty_graph):
+    xnat_list_datasets.return_value = [
+        (mock_dataset, URIRef("http://example.com/dataset1")),
+        (mock_dataset, URIRef("http://example.com/dataset2")),
+    ]
+    add_or_update_dataset.side_effect = [ValueError, None]
+
+    xnat_to_FDP(None, config, URIRef("http://example.com/catalog"), None, None)
+
+    assert add_or_update_dataset.call_count == 2
+    assert (
+        URIRef("http://example.com/dataset2"),
+        DCTERMS.isPartOf,
+        URIRef("http://example.com/catalog"),
+    ) in add_or_update_dataset.call_args_list[1].args[0], "FDP catalog reference missing"
+
+    # # Check if function is called and correct term added to Graph
+    # add_or_update_dataset.assert_called_once()
+    # assert (
+    #     URIRef("http://example.com/dataset"),
+    #     DCTERMS.isPartOf,
+    #     URIRef("http://example.com/catalog"),
+    # ) in add_or_update_dataset.call_args.args[0], "FDP catalog reference missing"
+
+    pass
