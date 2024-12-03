@@ -13,7 +13,7 @@ from img2catalog.__about__ import __version__
 from img2catalog.configmanager import load_img2catalog_configuration
 
 # from xnat.client.helpers import xnatpy_login_options, connect_cli
-from img2catalog.config import (
+from img2catalog.const import (
     FDP_PASS_ENV,
     FDP_SERVER_ENV,
     FDP_USER_ENV,
