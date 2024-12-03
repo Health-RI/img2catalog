@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple, Union
 from fairclient.fdpclient import FDPClient
 from fairclient.sparqlclient import FDPSPARQLClient
 from fairclient.utils import add_or_update_dataset, remove_node_from_graph
-from rdflib import DCAT, DCTERMS, FOAF, Graph, URIRef, RDF
+from rdflib import DCAT, DCTERMS, FOAF, RDF, Graph, URIRef
 from sempyro.foaf import Agent
 from sempyro.hri_dcat.hri_catalog import HRICatalog
 from sempyro.hri_dcat.hri_dataset import HRIDataset
@@ -219,7 +219,7 @@ def xnat_to_FDP(
         dataset_graph = dataset.to_graph(subject)
 
         # This is FDP specific: Dataset points back to the Catalog
-        dataset_graph.add((URIRef(dataset.identifier), DCTERMS.isPartOf, catalog_uri))
+        dataset_graph.add((subject, DCTERMS.isPartOf, catalog_uri))
 
         logger.debug("Going to push %s to FDP", dataset.title)
         try:
@@ -421,8 +421,10 @@ def contact_point_vcard_from_config(config: Dict) -> Union[VCard, None]:
             contact_email = f"mailto:{contact_email}"
         contact_email = URIRef(contact_email)
 
-    contact_vcard = VCard(
-        full_name=[contact_config["full_name"]], hasEmail=[contact_email], hasUID=URIRef("http://example.com")
-    )
+        contact_vcard = VCard(
+            full_name=[contact_config["full_name"]], hasEmail=[contact_email], hasUID=URIRef("http://example.com")
+        )
 
-    return contact_vcard
+        return contact_vcard
+    else:
+        return None
