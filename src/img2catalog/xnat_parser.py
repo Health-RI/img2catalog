@@ -1,6 +1,7 @@
 """Simple tool to query an XNAT instance and serialize projects as datasets"""
 
 import datetime
+import html
 import logging
 import re
 from typing import Dict, List, Tuple, Union
@@ -93,9 +94,11 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
     issued = datetime.datetime.now()
     modified = datetime.datetime.now()
 
+    project_description = html.unescape(project.description)
+
     dataset_dict = {
         "title": [project.name],
-        "description": [project.description],
+        "description": [project_description],
         "creator": creator_list,
         "keyword": keywords,
         "identifier": project_uri,

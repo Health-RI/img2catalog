@@ -11,7 +11,7 @@
         [ a foaf:Agent ;
             dcterms:identifier "http://example.com" ;
             foaf:name "Prof. Minerva McGonagall" ] ;
-    dcterms:description "In this project, we test xnat and dcat and make sure a description appears." ;
+    dcterms:description "In this project, we test \"xnat\" & dcat and make sure a description appears." ;
     dcterms:identifier "http://localhost/data/archive/projects/test_img2catalog" ;
     dcterms:title "Basic test project to test the img2catalog" ;
     dcat:keyword "dcat",
