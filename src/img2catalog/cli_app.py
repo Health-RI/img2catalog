@@ -21,7 +21,7 @@ from img2catalog.config import (
     XNAT_PASS_ENV,
     XNAT_USER_ENV,
     XNATPY_HOST_ENV,
-    IMG2CATALOG_SPARQL_ENV,
+    SPARQL_ENV,
 )
 from img2catalog.xnat_parser import xnat_to_DCATDataset, xnat_to_FDP, xnat_to_RDF
 
@@ -219,7 +219,7 @@ def output_dcat(ctx: click.Context, output: click.Path, format: str):
 @click.option(
     "-s",
     "--sparql",
-    envvar=IMG2CATALOG_SPARQL_ENV,
+    envvar=SPARQL_ENV,
     type=URIRef,
     help=" URL of SPARQL endpoint of FDP, used for querying which dataset to update",
 )
