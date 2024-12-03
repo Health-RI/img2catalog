@@ -217,7 +217,10 @@ def xnat_to_FDP(
 
     for dataset, subject in tqdm(dataset_list):
         dataset_graph = dataset.to_graph(subject)
+
+        # This is FDP specific: Dataset points back to the Catalog
         dataset_graph.add((URIRef(dataset.identifier), DCTERMS.isPartOf, catalog_uri))
+
         logger.debug("Going to push %s to FDP", dataset.title)
         try:
             add_or_update_dataset(dataset_graph, fdpclient, dataset.identifier, catalog_uri, sparqlclient)
@@ -423,32 +426,3 @@ def contact_point_vcard_from_config(config: Dict) -> Union[VCard, None]:
     )
 
     return contact_vcard
-
-
-def prepare_dataset_graph_for_fdp(dataset_graph: Graph, catalog_uri: URIRef):
-    """Mangles the graph of a dataset in such a way a FDP can take it
-
-    Adds the isPartOf property to point back to parent catalog and removes some blind VCard nodes
-    that it doens't seem to like.
-
-    Parameters
-    ----------
-    dataset_graph : Graph
-        RDFlib graph of the DCAT Dataset
-    catalog_uri : URIRef
-        URIRef of the Catalog to point back to
-
-    Raises
-    ------
-    TypeError
-        if the catalog_uri is not a URIRef (e.g. it is a string)
-    """
-    if type(catalog_uri) is not URIRef:
-        raise TypeError("catalog_uri is not a URIRef")
-
-    # For each dataset, find the creator node. If it is a VCard, get rid of it
-    for dataset in dataset_graph.subjects(RDF.type, DCAT.Dataset):
-
-        # This is FDP specific: Dataset points back to the Catalog
-        if not dataset_graph.value(subject=dataset, predicate=DCTERMS.isPartOf, any=False):
-            dataset_graph.add((dataset, DCTERMS.isPartOf, catalog_uri))

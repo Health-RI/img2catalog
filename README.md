@@ -108,9 +108,19 @@ A limited number of properties can be set in the configuration, including the ti
 xnat (DCAT) catalog and the publisher of the catalog. A default contact point for datasets can also
 be provided and will be included in the Dataset properties.
 
-There is limited support for using environment variables. For setting the XNAT server, variables
-`XNAT_HOST` or `XNATPY_HOST` can be used, with the latter taking preference. Authentication can be
-provided in `XNAT_USER` and `XNAT_PASS`.
+The tool can also be configured using environment variables. Here are the environment variables that can be used:
+
+### Environment Variables
+
+The tool can also be configured using environment variables. Here are the environment variables that can be used:
+* XNAT_HOST: The XNAT server host.
+* XNATPY_HOST: Alternative environment variable for the XNAT server host.
+* XNAT_USER: The XNAT username.
+* XNAT_PASS: The XNAT password.
+* IMG2CATALOG_FDP: The FDP server.
+* IMG2CATALOG_FDP_USER: The FDP username.
+* IMG2CATALOG_FDP_PASS: The FDP password.
+* IMG2CATALOG_SPARQL_ENDPOINT: The SPARQL endpoint.
 
 Commandline arguments take precedence over environment variables. Environment variables take
 precedence over `.netrc` login.
