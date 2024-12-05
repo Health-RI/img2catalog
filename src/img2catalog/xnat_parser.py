@@ -18,6 +18,8 @@ from tqdm import tqdm
 from xnat.core import XNATBaseObject
 from xnat.session import XNATSession
 
+from img2catalog.const import REMOVE_OPTIN_KEYWORD
+
 logger = logging.getLogger(__name__)
 
 
@@ -271,6 +273,23 @@ def xnat_list_datasets(session: XNATSession, config: Dict) -> List[HRIDataset]:
         logger.warning("There were %d projects with invalid data for DCAT generation", failure_counter)
 
     return dataset_list
+
+
+def filter_keyword(xnat_keywords: Union[str, None], config: Dict) -> List[str]:
+    try:
+        optin_kw = config["img2catalog"].get("optin")
+    except KeyError:
+        # If key not found, means config is not set, so no opt-in/opt-out set so all are included
+        return xnat_keywords
+
+    remove_keyword = config["img2catalog"].get("remove_optin", REMOVE_OPTIN_KEYWORD)
+
+    if remove_keyword:
+        if optin_kw in xnat_keywords:
+            xnat_keywords.remove(optin_kw)
+            return xnat_keywords
+
+    return xnat_keywords
 
 
 def split_keywords(xnat_keywords: Union[str, None]) -> List[str]:

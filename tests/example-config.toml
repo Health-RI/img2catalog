@@ -1,6 +1,7 @@
 [img2catalog]
 # optin = "include_catalog"
 # optout = "exclude_catalog"
+# remove_optin = true
 
 [dataset]
 # Theme should be Health, according to the EU Data Theme vocabulary
@@ -16,7 +17,7 @@ full_name = "Example Data Management office"
 email = "datamanager@example.com"
 
 [dataset.publisher]
-name = ["Example publisher list",]
+name = ["Example publisher list"]
 identifier = "http://example.com"
 
 [catalog]
@@ -24,7 +25,7 @@ title = "Example XNAT catalog"
 description = "This is an example XNAT catalog description"
 
 [catalog.publisher]
-name = ["Example publishing institution",]
+name = ["Example publishing institution"]
 identifier = "http://www.example.com/institution#example"
 
 [distribution.default]

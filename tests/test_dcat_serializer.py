@@ -20,6 +20,7 @@ from img2catalog.xnat_parser import (
     VCARD,
     XNATParserError,
     _check_elligibility_project,
+    filter_keyword,
     xnat_list_datasets,
     xnat_to_DCATDataset,
     xnat_to_FDP,
@@ -185,6 +186,24 @@ def test_project_elligiblity(xnat_private_project, _check_optin_optout, project,
     # pass
 
 
+@pytest.mark.parametrize(
+    "config, expected",
+    [
+        ({}, ["apple", "banana", "pear"]),
+        ({"img2catalog": {"optin": "banana"}}, ["apple", "pear"]),  # test default remove
+        ({"img2catalog": {}}, ["apple", "banana", "pear"]),  # test no settings
+        ({"img2catalog": {"optin": "banana", "remove_optin": False}}, ["apple", "banana", "pear"]),  # do not remove
+        (
+            {"img2catalog": {"optin": "orange", "remove_optin": True}},
+            ["apple", "banana", "pear"],
+        ),  # Should never happen but still
+    ],
+)
+def test_keyword_filter(config, expected):
+    keyword_list = ["apple", "banana", "pear"]
+    assert sorted(filter_keyword(keyword_list, config)) == expected
+
+
 @patch("img2catalog.xnat_parser._check_elligibility_project")
 @patch("img2catalog.xnat_parser.xnat_to_DCATDataset")
 def test_xnat_lister(xnat_to_DCATDataset, _check_elligibility_project):
@@ -273,13 +292,5 @@ def test_xnat_to_fdp_push_error(xnat_list_datasets, add_or_update_dataset, mock_
         DCTERMS.isPartOf,
         URIRef("http://example.com/catalog"),
     ) in add_or_update_dataset.call_args_list[1].args[0], "FDP catalog reference missing"
-
-    # # Check if function is called and correct term added to Graph
-    # add_or_update_dataset.assert_called_once()
-    # assert (
-    #     URIRef("http://example.com/dataset"),
-    #     DCTERMS.isPartOf,
-    #     URIRef("http://example.com/catalog"),
-    # ) in add_or_update_dataset.call_args.args[0], "FDP catalog reference missing"
 
     pass
