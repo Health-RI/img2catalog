@@ -18,6 +18,8 @@ from tqdm import tqdm
 from xnat.core import XNATBaseObject
 from xnat.session import XNATSession
 
+from img2catalog.const import REMOVE_OPTIN_KEYWORD
+
 logger = logging.getLogger(__name__)
 
 
@@ -62,7 +64,7 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
     """
     # Specification from XNAT:  Optional: Enter searchable keywords. Each word, separated by a space,
     # can be used independently as a search string.
-    keywords = split_keywords(project.keywords)
+    keywords = filter_keyword(split_keywords(project.keywords), config)
 
     error_list = []
     if not (project.pi.firstname or project.pi.lastname):
@@ -87,7 +89,7 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
 
     publisher_foaf = [Agent(**config["dataset"]["publisher"])]
 
-    license = URIRef(config["dataset"]["license"])
+    dataset_license = URIRef(config["dataset"]["license"])
     themes = [URIRef(config["dataset"]["theme"])]
 
     # TODO These are stub values, should be modified to reflect something slightly more accurate
@@ -102,7 +104,7 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
         "creator": creator_list,
         "keyword": keywords,
         "identifier": project_uri,
-        "license": license,
+        "license": dataset_license,
         "publisher": publisher_foaf,
         "theme": themes,
         "issued": issued,
@@ -271,6 +273,41 @@ def xnat_list_datasets(session: XNATSession, config: Dict) -> List[HRIDataset]:
         logger.warning("There were %d projects with invalid data for DCAT generation", failure_counter)
 
     return dataset_list
+
+
+def filter_keyword(xnat_keywords: Union[List[str], None], config: Dict) -> List[str]:
+    """Filters the opt-in keyword from the xnat keywords list
+
+    If no opt-in keyword is set, all keywords will be returned.
+    If remove_keywords is set to False, all keywords will be returned.
+    If the opt-in keyword cannot be found, all keywords will be returned.
+
+    Parameters
+    ----------
+    xnat_keywords : Union[List[str], None]
+        List of XNAT keywords
+    config : Dict
+        img2catalog configuration dictionary
+
+    Returns
+    -------
+    List[str]
+        List of XNAT keywords, with the opt-in keyword filtered out if necessary
+    """
+    try:
+        optin_kw = config["img2catalog"].get("optin")
+    except KeyError:
+        # If key not found, means config is not set, so no opt-in/opt-out set so all are included
+        return xnat_keywords
+
+    remove_keyword = config["img2catalog"].get("remove_optin", REMOVE_OPTIN_KEYWORD)
+
+    if remove_keyword:
+        if optin_kw in xnat_keywords:
+            xnat_keywords.remove(optin_kw)
+            return xnat_keywords
+
+    return xnat_keywords
 
 
 def split_keywords(xnat_keywords: Union[str, None]) -> List[str]:
