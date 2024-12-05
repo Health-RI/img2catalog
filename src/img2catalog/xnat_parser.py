@@ -64,7 +64,7 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
     """
     # Specification from XNAT:  Optional: Enter searchable keywords. Each word, separated by a space,
     # can be used independently as a search string.
-    keywords = split_keywords(project.keywords)
+    keywords = filter_keyword(split_keywords(project.keywords), config)
 
     error_list = []
     if not (project.pi.firstname or project.pi.lastname):
@@ -89,7 +89,7 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
 
     publisher_foaf = [Agent(**config["dataset"]["publisher"])]
 
-    license = URIRef(config["dataset"]["license"])
+    dataset_license = URIRef(config["dataset"]["license"])
     themes = [URIRef(config["dataset"]["theme"])]
 
     # TODO These are stub values, should be modified to reflect something slightly more accurate
@@ -104,7 +104,7 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
         "creator": creator_list,
         "keyword": keywords,
         "identifier": project_uri,
-        "license": license,
+        "license": dataset_license,
         "publisher": publisher_foaf,
         "theme": themes,
         "issued": issued,

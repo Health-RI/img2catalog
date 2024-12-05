@@ -2,12 +2,31 @@
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
-## 0.5.0
+## 1.0.0
+
+### Updated
+
+* Dependencies have been updated
+
+### Added
+
+* The environment variable `IMG2CATALOG_SPARQL_ENV` can now be used to set the SPARQL endpoint
+* The opt-in keyword can now be excluded from the generated DCAT with a configuration setting
+
+### Changed
+
+* All investigators are added as creator
+* HTML characters in the XNAT description are unescaped
 
 ### Fixed
 
 * img2catalog now uses the latest [SeMPyRO](https://github.com/health-RI/sempyro). This changes
 the VCard definition used for contactpoint.
+* Test coverage has been improved
+
+### Removed
+
+* The built-in FDP client was moved to the external library [fairclient](https://github.com/health-RI/fairclient)
 
 ## 0.4.0 - 2024-07-23
 
