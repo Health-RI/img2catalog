@@ -275,7 +275,25 @@ def xnat_list_datasets(session: XNATSession, config: Dict) -> List[HRIDataset]:
     return dataset_list
 
 
-def filter_keyword(xnat_keywords: Union[str, None], config: Dict) -> List[str]:
+def filter_keyword(xnat_keywords: Union[List[str], None], config: Dict) -> List[str]:
+    """Filters the opt-in keyword from the xnat keywords list
+
+    If no opt-in keyword is set, all keywords will be returned.
+    If remove_keywords is set to False, all keywords will be returned.
+    If the opt-in keyword cannot be found, all keywords will be returned.
+
+    Parameters
+    ----------
+    xnat_keywords : Union[List[str], None]
+        List of XNAT keywords
+    config : Dict
+        img2catalog configuration dictionary
+
+    Returns
+    -------
+    List[str]
+        List of XNAT keywords, with the opt-in keyword filtered out if necessary
+    """
     try:
         optin_kw = config["img2catalog"].get("optin")
     except KeyError:
