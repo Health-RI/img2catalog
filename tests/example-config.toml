@@ -14,7 +14,7 @@ license = "http://example.com/license#nolicense"
 [dataset.contact_point]
 # override = true
 full_name = "Example Data Management office"
-email = "datamanager@example.com"
+email = "mailto:servicedesk@health-ri.nl"
 
 [dataset.publisher]
 name = ["Example publisher list"]
