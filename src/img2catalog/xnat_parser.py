@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class XNATParserError(ValueError):
-    """Exception that can contain an list of errors from the XNAT parser.
+    """Exception that can contain a list of errors from the XNAT parser.
 
     Parameters
     ----------
@@ -83,6 +83,9 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
     # Workaround for xnatpy issue #68
     # https://gitlab.com/radiology/infrastructure/xnatpy/-/issues/68
     if project.investigators:
+        # for investigator in project.investigators:
+        #     creator = xnat_investigator_to_Agent(investigator)
+        #     creator_list.append(creator)
         for i in range(len(project.investigators)):
             creator = xnat_investigator_to_Agent(project.investigators[i])
             creator_list.append(creator)
@@ -245,8 +248,8 @@ def xnat_list_datasets(session: XNATSession, config: Dict) -> List[HRIDataset]:
 
     Returns
     -------
-    List[DCATDataset, URI]
-        List of DCAT models of elligible datasets, along with their URIs (for subjects)
+    List[HRIDataset]
+        List of DCAT models of elligible datasets
 
     """
     failure_counter = 0
@@ -331,7 +334,6 @@ def split_keywords(xnat_keywords: Union[str, None]) -> List[str]:
             keyword_list = [
                 kw.strip()
                 for kw in re.split(r"[\.,;: ]", xnat_keywords)
-                # for kw in xnat_keywords.strip().replace(".", " ").replace(",", " ").replace(";", " ").split(" ")
             ]
 
     # Filter out all empty strings, then return list

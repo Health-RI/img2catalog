@@ -35,23 +35,15 @@ def __connect_xnat(server: str, username, password):
     ----------
     server : str
         XNAT server to connect (including https://)
-    args : Namespace
-        Namespace containing commandline arguments
+    username: str
+        Username of XNAT user
+    password: str
+         Password of XNAT user
 
     Returns
     -------
     XNATSession
     """
-    # if not (server):
-    #     if not (server := os.environ.get(XNATPY_HOST_ENV)):
-    #         if not (server := os.environ.get(XNAT_HOST_ENV)):
-    #             raise RuntimeError("No server specified: no argument nor environment variable found")
-    # if not (username):
-    #     if not (username := os.environ.get(XNAT_USER_ENV)):
-    #         logger.info("No username set, using anonymous/netrc login")
-    # if not (password):
-    #     if not (password := os.environ.get(XNAT_PASS_ENV)):
-    #         logger.info("No password set, using anonymous/netrc login")
 
     logger.debug("Connecting to server %s using username %s", server, username)
 
@@ -60,16 +52,6 @@ def __connect_xnat(server: str, username, password):
     return session
 
 
-def cli_main():
-    # try:
-    cli_click()
-    # except Exception as e:
-    #     print(f"Error running img2catalog:\n{e}")
-    #     exit(-1)
-
-
-# @click.command(name='dcat', help="Export XNAT to DCAT")
-# @optgroup.group('Server configuration', help='The configuration of the XNAT server', required=False)
 @click.group(invoke_without_command=True)
 # wontfix
 # https://github.com/pallets/click/issues/714
@@ -166,8 +148,6 @@ def cli_click(
     ctx.obj["xnat_conn"] = __connect_xnat(server, username, password)
     ctx.obj["config"] = config
 
-    # output_dcat(server, username, password, output, format, config)
-
 
 @cli_click.command(name="dcat")
 @click.option(
@@ -194,7 +174,7 @@ def cli_click(
 )
 @click.pass_context
 def output_dcat(ctx: click.Context, output: click.Path, format: str):
-    # , server, username, password, output, format, config):
+    """ Extracts the metadata of all projects and write them to file. """
     config = ctx.obj["config"]
     with ctx.obj["xnat_conn"] as session:
         logger.debug("Connected to XNAT server")
@@ -226,6 +206,7 @@ def output_dcat(ctx: click.Context, output: click.Path, format: str):
 @cli_click.command(name="fdp")
 @click.pass_context
 def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catalog: URIRef, sparql: str):
+    """ Extracts the metadata of all projects and pushes them to an FDP. """
     config = ctx.obj["config"]
 
     # For some reason, in testing, execution doesn't progress beyond this line
