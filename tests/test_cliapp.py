@@ -1,12 +1,9 @@
 import pathlib
-import sys
 from unittest.mock import ANY, Mock, patch
 
 import pytest
-from rdflib import DCAT, DCTERMS, Graph, URIRef
+from rdflib import URIRef
 from rdflib.compare import to_isomorphic
-from sempyro.dcat.dcat_dataset import DCATDataset
-from sempyro.vcard import VCARD
 
 from img2catalog.cli_app import cli_click, load_img2catalog_configuration
 from img2catalog.const import (
@@ -21,31 +18,6 @@ from img2catalog.const import (
 )
 
 TEST_CONFIG = pathlib.Path(__file__).parent / "example-config.toml"
-
-
-@pytest.fixture()
-def empty_graph():
-    graph = Graph()
-    graph.bind("dcat", DCAT)
-    graph.bind("dcterms", DCTERMS)
-    graph.bind("v", VCARD)
-    return graph
-
-
-@pytest.fixture()
-def toml_patch_target():
-    # Python 3.11 and up has tomllib built-in, for 3.10 and lower we use tomli which provides
-    # the same functonality. We check if it's Python 3.10 or lower to patch the correct target.
-    if sys.version_info < (3, 11):
-        return "tomli.load"
-    else:
-        return "tomllib.load"
-
-
-@pytest.fixture()
-def dummy_dcat_dataset():
-    d = DCATDataset(title=["test project"], description=["test description"])
-    return d
 
 
 @patch("xnat.connect")
@@ -78,8 +50,6 @@ def test_example_cli(xnat_to_RDF, connect, empty_graph, isolated_cli_runner):
     xnat_to_RDF.assert_called_once()
 
     assert result.exit_code == 0
-
-    # assert False
 
 
 @patch("xnat.connect")
@@ -310,7 +280,7 @@ def test_fdp_cli_env(connect, mock_SPARQLClient, mock_FDPClient, xnat_to_FDP, is
 def test_output_project(
     xnat_to_DCATDataset,
     connect,
-    dummy_dcat_dataset,
+    mock_dataset,
     empty_graph,
     isolated_cli_runner,
 ):
@@ -318,7 +288,7 @@ def test_output_project(
     connect.return_value.__enter__.return_value.projects.__getitem__.side_effect = lambda x: x
 
     # Always return a mock DCATDataset object and URI
-    xnat_to_DCATDataset.return_value = (dummy_dcat_dataset, URIRef("http://example.com"))
+    xnat_to_DCATDataset.return_value = (mock_dataset, URIRef("http://example.com"))
 
     # with patch.object(dummy_dcat_dataset, "to_graph", return_value=empty_graph) as serializer:
     result = isolated_cli_runner.invoke(
@@ -342,7 +312,7 @@ def test_output_project(
 def test_output_project_file(
     xnat_to_DCATDataset,
     connect,
-    dummy_dcat_dataset,
+    mock_dataset,
     empty_graph,
     isolated_cli_runner,
 ):
@@ -350,7 +320,7 @@ def test_output_project_file(
     connect.return_value.__enter__.return_value.projects.__getitem__.side_effect = lambda x: x
 
     # Always return a mock DCATDataset object and URI
-    xnat_to_DCATDataset.return_value = (dummy_dcat_dataset, URIRef("http://example.com"))
+    xnat_to_DCATDataset.return_value = (mock_dataset, URIRef("http://example.com"))
 
     isolated_cli_runner.invoke(
         cli_click,

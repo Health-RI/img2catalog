@@ -1,19 +1,11 @@
-import pathlib
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sempyro.dcat.dcat_catalog import DCATCatalog
-from sempyro.dcat.dcat_dataset import DCATDataset
-
-try:
-    import tomllib
-except ModuleNotFoundError:
-    import tomli as tomllib
 
 import xnat
 from freezegun import freeze_time
-from rdflib import DCAT, DCTERMS, Graph, URIRef
+from rdflib import DCTERMS, Graph, URIRef
 from rdflib.compare import to_isomorphic
 
 from img2catalog.xnat_parser import (
@@ -27,40 +19,6 @@ from img2catalog.xnat_parser import (
     xnat_to_RDF,
 )
 
-TEST_CONFIG = pathlib.Path(__file__).parent / "example-config.toml"
-
-
-# Taken from cedar2fdp
-@pytest.fixture()
-def empty_graph():
-    graph = Graph()
-    graph.bind("dcat", DCAT)
-    graph.bind("dcterms", DCTERMS)
-    graph.bind("v", VCARD)
-    return graph
-
-
-@pytest.fixture()
-def config():
-    """Loads the default configuration TOML"""
-    config_path = TEST_CONFIG
-
-    with open(config_path, "rb") as f:
-        config = tomllib.load(f)
-
-    return config
-
-
-@pytest.fixture()
-def mock_catalog():
-    catalog = DCATCatalog(title=["Example XNAT catalog"], description=["This is an example XNAT catalog description"])
-    return catalog
-
-
-@pytest.fixture()
-def mock_dataset():
-    dataset = DCATDataset(title=["test project"], description=["test description"])
-    return dataset
 
 
 @patch("xnat.session.BaseXNATSession")
