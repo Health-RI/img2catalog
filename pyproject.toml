@@ -58,6 +58,7 @@ dependencies = [
   "pytest-click",
   "pytest-repeat",
   "freezegun",
+  "xnat4tests"
 ]
 
 [[tool.hatch.envs.test.matrix]]
