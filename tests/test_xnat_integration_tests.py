@@ -1,18 +1,30 @@
 import pathlib
+import pytest
 
 from rdflib.compare import to_isomorphic
 
 from img2catalog.cli_app import cli_click
 from freezegun import freeze_time
 
-# XNAT integration tests
-# 5 projects; 1 public with optout keyword, 1 public without any keywords, 1 public with optin keyword,
-# 1 protected with optin keyword, 1 private with optin keyword
 
 TEST_CONFIG = pathlib.Path(__file__).parent / "xnat_integration_test_config.toml"
 
 @freeze_time("2024-04-01")
+@pytest.mark.integration
 def test_xnat_integration(tmp_path, xnat4tests_connection, xnat4tests_uri, isolated_cli_runner, empty_graph):
+    """ XNAT Integration test
+
+    Using xnat4tests, there is a local XNAT prepared with 5 projects:
+    - 1 public with the opt-out keyword,
+    - 1 public without any keywords,
+    - 1 private with optin keyword
+    - 1 public with optin keyword,
+    - 1 protected with optin keyword
+    There is also some metadata inserted; see xnat4tests_fixture() in xnatpy_fixtures.py.
+
+    Of these projects only the last two should be serialized.
+    """
+    # XNAT integration tests
     result = isolated_cli_runner.invoke(cli_click, ["--server", xnat4tests_uri, "--verbose",
                                                     "-u", "admin", "-p", "admin",
                                                     "--config", f"{TEST_CONFIG}", "dcat",
