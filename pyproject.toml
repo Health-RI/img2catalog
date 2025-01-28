@@ -67,8 +67,10 @@ python = ["3.8", "3.9", "3.10", "3.11", "3.12", "pypy3.9", "pypy3.10"]
 [tool.hatch.envs.test.scripts]
 test = "pytest {args:tests}"
 test-cov = "coverage run -m pytest {args:tests}"
+test-cov-integration = "coverage run -m pytest {args:tests} --runint"
 cov-report = ["- coverage combine", "coverage report", "coverage xml"]
 cov = ["test-cov", "cov-report"]
+cov-integration = ["test-cov-integration", "cov-report"]
 
 [tool.hatch.envs.lint]
 detached = true

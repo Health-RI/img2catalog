@@ -57,3 +57,23 @@ def toml_patch_target():
         return "tomli.load"
     else:
         return "tomllib.load"
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--runint", action="store_true", default=False, help="Run integration tests"
+    )
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "int: Mark tests as integration tests")
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--runint"):
+        # --runint given in cli: do not skip integration tests
+        return
+    skip_int = pytest.mark.skip(reason="Integration test: needs --runint option to run")
+    for item in items:
+        if "integration" in item.keywords:
+            item.add_marker(skip_int)
