@@ -14,6 +14,7 @@ TEST_CONFIG = pathlib.Path(__file__).parent / "xnat_integration_test_config.toml
 @freeze_time("2024-04-01")
 def test_xnat_integration(tmp_path, xnat4tests_connection, xnat4tests_uri, isolated_cli_runner, empty_graph):
     result = isolated_cli_runner.invoke(cli_click, ["--server", xnat4tests_uri, "--verbose",
+                                                    "-u", "admin", "-p", "admin",
                                                     "--config", f"{TEST_CONFIG}", "dcat",
                                                     "-o", f"{tmp_path}/output.ttl"])
     result_graph = empty_graph.parse(source=f"{tmp_path}/output.ttl")
