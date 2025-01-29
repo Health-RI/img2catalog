@@ -154,7 +154,7 @@ ban-relative-imports = "all"
 source_pkgs = ["img2catalog", "tests"]
 branch = true
 parallel = true
-omit = ["src/img2catalog/__about__.py", "src/img2catalog/__main__.py"]
+omit = ["src/img2catalog/__about__.py", "src/img2catalog/__main__.py", "tests/xnatpy_fixtures.py"]
 
 [tool.coverage.paths]
 img2catalog = ["src/img2catalog", "*/img2catalog/src/img2catalog"]
