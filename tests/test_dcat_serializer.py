@@ -1,19 +1,11 @@
-import pathlib
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sempyro.dcat.dcat_catalog import DCATCatalog
-from sempyro.dcat.dcat_dataset import DCATDataset
-
-try:
-    import tomllib
-except ModuleNotFoundError:
-    import tomli as tomllib
 
 import xnat
 from freezegun import freeze_time
-from rdflib import DCAT, DCTERMS, Graph, URIRef
+from rdflib import DCTERMS, Graph, URIRef
 from rdflib.compare import to_isomorphic
 
 from img2catalog.xnat_parser import (
@@ -27,40 +19,6 @@ from img2catalog.xnat_parser import (
     xnat_to_RDF,
 )
 
-TEST_CONFIG = pathlib.Path(__file__).parent / "example-config.toml"
-
-
-# Taken from cedar2fdp
-@pytest.fixture()
-def empty_graph():
-    graph = Graph()
-    graph.bind("dcat", DCAT)
-    graph.bind("dcterms", DCTERMS)
-    graph.bind("v", VCARD)
-    return graph
-
-
-@pytest.fixture()
-def config():
-    """Loads the default configuration TOML"""
-    config_path = TEST_CONFIG
-
-    with open(config_path, "rb") as f:
-        config = tomllib.load(f)
-
-    return config
-
-
-@pytest.fixture()
-def mock_catalog():
-    catalog = DCATCatalog(title=["Example XNAT catalog"], description=["This is an example XNAT catalog description"])
-    return catalog
-
-
-@pytest.fixture()
-def mock_dataset():
-    dataset = DCATDataset(title=["test project"], description=["test description"])
-    return dataset
 
 
 @patch("xnat.session.BaseXNATSession")
@@ -81,7 +39,7 @@ def test_empty_xnat(session, empty_graph: Graph, config: Dict[str, Any]):
 @freeze_time("2024-04-01")
 @patch("xnat.core.XNATBaseObject")
 def test_valid_project_no_investigator(project, empty_graph: Graph, config: Dict[str, Any]):
-    """Test if a valid project generates valid output"""
+    """Test if a valid project generates valid output; only PI, no other investigators"""
     project.name = "Basic test project to test the img2catalog"
     project.description = "In this project, we test xnat and dcat and make sure a description appears."
     project.external_uri.return_value = "http://localhost/data/archive/projects/test_img2catalog"
@@ -101,7 +59,7 @@ def test_valid_project_no_investigator(project, empty_graph: Graph, config: Dict
 @freeze_time("2024-04-01")
 @patch("xnat.core.XNATBaseObject")
 def test_valid_project(project, empty_graph: Graph, config: Dict[str, Any]):
-    """Test if a valid project generates valid output"""
+    """Test if a valid project generates valid output; multiple investigators"""
     project.name = "Basic test project to test the img2catalog"
     project.description = "In this project, we test &quot;xnat&quot; &amp; dcat and make sure a description appears."
     project.external_uri.return_value = "http://localhost/data/archive/projects/test_img2catalog"
@@ -124,7 +82,7 @@ def test_valid_project(project, empty_graph: Graph, config: Dict[str, Any]):
 
 @patch("xnat.core.XNATBaseObject")
 def test_empty_description(project, config: Dict[str, Any]):
-    """Test if a valid project generates valid output"""
+    """Test that if the description is empty, an exception is raised"""
     project.name = "Basic test project to test the img2catalog"
     project.description = None
     project.external_uri.return_value = "http://localhost/data/archive/projects/test_img2catalog"
@@ -154,7 +112,7 @@ def test_invalid_pi(project, config: Dict[str, Any]):
 @freeze_time("2024-04-01")
 @patch("xnat.core.XNATBaseObject")
 def test_no_keywords(project, empty_graph: Graph, config: Dict[str, Any]):
-    """Valid project without keywords, make sure it is not defined in output"""
+    """Valid project without keywords, make the property `keywords` it is not defined in output"""
     project.name = "Basic test project to test the img2catalog"
     project.description = "In this project, we test xnat and dcat and make sure a description appears."
     project.external_uri.return_value = "http://localhost/data/archive/projects/test_img2catalog"
@@ -171,19 +129,23 @@ def test_no_keywords(project, empty_graph: Graph, config: Dict[str, Any]):
 
 
 @pytest.mark.parametrize(
-    "private, optin, expected", [(False, True, True), (True, True, False), (False, False, False), (True, False, False)]
+    "private, optin, expected", [
+        (False, True, True),
+        (True, True, False),
+        (False, False, False),
+        (True, False, False)]
 )
 @patch("xnat.core.XNATBaseObject")
 @patch("img2catalog.xnat_parser._check_optin_optout")
 @patch("img2catalog.xnat_parser.xnat_private_project")
 def test_project_elligiblity(xnat_private_project, _check_optin_optout, project, private, optin, expected):
+    """ Test project elligibility; it should only be elligible if it's not private, but does have opt-in. """
     project.__str__.return_value = "test project"
     project.id = "test"
     xnat_private_project.return_value = private
     _check_optin_optout.return_value = optin
 
     assert _check_elligibility_project(project, None) == expected
-    # pass
 
 
 @pytest.mark.parametrize(
@@ -207,6 +169,7 @@ def test_keyword_filter(config, expected):
 @patch("img2catalog.xnat_parser._check_elligibility_project")
 @patch("img2catalog.xnat_parser.xnat_to_DCATDataset")
 def test_xnat_lister(xnat_to_DCATDataset, _check_elligibility_project):
+    """ Test if `xnat_list_datasets` returns the right datasets based on elligibility and errors"""
     class SimpleProject:
         def __init__(self, project_id):
             self.id = None
@@ -241,7 +204,11 @@ def test_xnat_lister(xnat_to_DCATDataset, _check_elligibility_project):
 @patch("img2catalog.xnat_parser.xnat_to_DCATCatalog")
 @patch("img2catalog.xnat_parser.xnat_list_datasets")
 def test_xnat_to_rdf(xnat_list_datasets, xnat_to_DCATCatalog, session, mock_dataset, mock_catalog, config, empty_graph):
-    """Tests of XNAT to RDF pushing happens with correct arguments and graph is modified correctly"""
+    """Tests if XNAT to RDF pushing happens with correct arguments and graph is modified correctly
+
+    Tests if `xnat_to_RDF` creates a Catalog based on the XNAT URL from the XNATSession object, and combines them
+    properly with the discovered datasets.
+    """
     xnat_to_DCATCatalog.return_value = mock_catalog
 
     session.projects = {}
@@ -259,6 +226,7 @@ def test_xnat_to_rdf(xnat_list_datasets, xnat_to_DCATCatalog, session, mock_data
 @patch("img2catalog.xnat_parser.xnat_list_datasets")
 def test_xnat_to_fdp_push(xnat_list_datasets, add_or_update_dataset, mock_dataset, config, empty_graph):
     """Tests of XNAT to RDF pushing happens even when errors happen"""
+    # FIXME: Figure out what the goal is of this test
 
     xnat_list_datasets.return_value = [(mock_dataset, URIRef("http://example.com/dataset"))]
 
@@ -272,12 +240,11 @@ def test_xnat_to_fdp_push(xnat_list_datasets, add_or_update_dataset, mock_datase
         URIRef("http://example.com/catalog"),
     ) in add_or_update_dataset.call_args.args[0], "FDP catalog reference missing"
 
-    pass
-
 
 @patch("img2catalog.xnat_parser.add_or_update_dataset")
 @patch("img2catalog.xnat_parser.xnat_list_datasets")
 def test_xnat_to_fdp_push_error(xnat_list_datasets, add_or_update_dataset, mock_dataset, config, empty_graph):
+    # FIXME: Figure out what the goal is of this test also
     xnat_list_datasets.return_value = [
         (mock_dataset, URIRef("http://example.com/dataset1")),
         (mock_dataset, URIRef("http://example.com/dataset2")),
@@ -292,5 +259,3 @@ def test_xnat_to_fdp_push_error(xnat_list_datasets, add_or_update_dataset, mock_
         DCTERMS.isPartOf,
         URIRef("http://example.com/catalog"),
     ) in add_or_update_dataset.call_args_list[1].args[0], "FDP catalog reference missing"
-
-    pass

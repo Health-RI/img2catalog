@@ -1,12 +1,9 @@
 import pathlib
-import sys
 from unittest.mock import ANY, Mock, patch
 
 import pytest
-from rdflib import DCAT, DCTERMS, Graph, URIRef
+from rdflib import URIRef
 from rdflib.compare import to_isomorphic
-from sempyro.dcat.dcat_dataset import DCATDataset
-from sempyro.vcard import VCARD
 
 from img2catalog.cli_app import cli_click, load_img2catalog_configuration
 from img2catalog.const import (
@@ -23,34 +20,14 @@ from img2catalog.const import (
 TEST_CONFIG = pathlib.Path(__file__).parent / "example-config.toml"
 
 
-@pytest.fixture()
-def empty_graph():
-    graph = Graph()
-    graph.bind("dcat", DCAT)
-    graph.bind("dcterms", DCTERMS)
-    graph.bind("v", VCARD)
-    return graph
-
-
-@pytest.fixture()
-def toml_patch_target():
-    # Python 3.11 and up has tomllib built-in, for 3.10 and lower we use tomli which provides
-    # the same functonality. We check if it's Python 3.10 or lower to patch the correct target.
-    if sys.version_info < (3, 11):
-        return "tomli.load"
-    else:
-        return "tomllib.load"
-
-
-@pytest.fixture()
-def dummy_dcat_dataset():
-    d = DCATDataset(title=["test project"], description=["test description"])
-    return d
-
-
 @patch("xnat.connect")
 @patch("img2catalog.cli_app.xnat_to_RDF")
 def test_cli_connect(xnat_to_RDF, connect, empty_graph, isolated_cli_runner):
+    """ Test CLI connect
+
+    Test if calling `img2catalog dcat` works.
+    """
+
     # Mock context manager of xnatpy and the XNAT to RDF function
     connect.__enter__.return_value = True
     xnat_to_RDF.return_value = empty_graph
@@ -66,25 +43,12 @@ def test_cli_connect(xnat_to_RDF, connect, empty_graph, isolated_cli_runner):
 
 @patch("xnat.connect")
 @patch("img2catalog.cli_app.xnat_to_RDF")
-def test_example_cli(xnat_to_RDF, connect, empty_graph, isolated_cli_runner):
-    # Mock context manager of xnatpy and the XNAT to RDF function
-    connect.__enter__.return_value = True
-    xnat_to_RDF.return_value = empty_graph
-
-    # Run isolated (to keep log files safe)
-    result = isolated_cli_runner.invoke(cli_click, ["--verbose", "-s", "http://example.com", "dcat"])
-
-    connect.assert_called_once_with(server="http://example.com", user=None, password=None)
-    xnat_to_RDF.assert_called_once()
-
-    assert result.exit_code == 0
-
-    # assert False
-
-
-@patch("xnat.connect")
-@patch("img2catalog.cli_app.xnat_to_RDF")
 def test_anonymous_envhost(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, monkeypatch):
+    """ Test XNATPY_HOST_ENV
+
+    Test that `img2catalog dcat` uses the XNAT server configuration set through
+    `XNATPY_HOST_ENV` and not `XNAT_HOST_ENV`, when both are set.
+    """
     # Mock context manager of xnatpy and the XNAT to RDF function
     connect.__enter__.return_value = True
     xnat_to_RDF.return_value = empty_graph
@@ -104,6 +68,11 @@ def test_anonymous_envhost(xnat_to_RDF, connect, empty_graph, isolated_cli_runne
 @patch("xnat.connect")
 @patch("img2catalog.cli_app.xnat_to_RDF")
 def test_second_env_var(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, monkeypatch):
+    """ Test XNAT_HOST_ENV
+
+    Test that `img2catalog dcat` uses the XNAT server configuration set through
+    `XNAT_HOST_ENV`, when it is set and `XNATPY_HOST_ENV` is not.
+    """
     # Mock context manager of xnatpy and the XNAT to RDF function
     connect.__enter__.return_value = True
     xnat_to_RDF.return_value = empty_graph
@@ -123,6 +92,12 @@ def test_second_env_var(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, 
 @patch("xnat.connect")
 @patch("img2catalog.cli_app.xnat_to_RDF")
 def test_user_pass_prio_env(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, monkeypatch):
+    """ Test credentials CLI priority
+
+    Test that `img2catalog dcat` uses the credentials set through the CLI, and not through `XNAT_USER_ENV` and
+    `XNAT_PASS_ENV`. When only one of the two is set through the CLI, both environment variables should still be
+    ignored.
+    """
     # Mock context manager of xnatpy and the XNAT to RDF function
     connect.__enter__.return_value = True
     xnat_to_RDF.return_value = empty_graph
@@ -144,6 +119,11 @@ def test_user_pass_prio_env(xnat_to_RDF, connect, empty_graph, isolated_cli_runn
 @patch("xnat.connect")
 @patch("img2catalog.cli_app.xnat_to_RDF")
 def test_user_pass_envvar(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, monkeypatch):
+    """ Test credentials environment variables.
+
+    Test that `img2catalog dcat` uses the credentials set through `XNAT_USER_ENV` and `XNAT_PASS_ENV`,
+    when none are supplied through the CLI.
+    """
     # Mock context manager of xnatpy and the XNAT to RDF function
     connect.__enter__.return_value = True
     xnat_to_RDF.return_value = empty_graph
@@ -193,6 +173,10 @@ def test_user_pass_envvar(xnat_to_RDF, connect, empty_graph, isolated_cli_runner
     ],
 )
 def test_serialize_cli_args(xnat_to_RDF, connect, test_input, expected, empty_graph, isolated_cli_runner):
+    """ Test CLI input for RDF serialization
+
+    See the parametrize decorator for the CLI input and the expected output.
+    """
     # Mock context manager of xnatpy and the XNAT to RDF function
     connect.__enter__.return_value = True
     xnat_to_RDF.return_value = empty_graph
@@ -213,6 +197,11 @@ def test_serialize_cli_args(xnat_to_RDF, connect, test_input, expected, empty_gr
 
 @patch("xnat.connect")
 def test_nonexisting_config(connect, isolated_cli_runner):
+    """ Test nonexisting configuration
+
+    The CLI should return exit code 2 and not proceed to connecting to XNAT if a nonexisting configuration
+    file is supplied.
+    """
     result = isolated_cli_runner.invoke(cli_click, ["-s", "http://example.com", "--config", "non_existing_file.toml"])
 
     assert not connect.called, "Function was called despite having to error out"
@@ -222,6 +211,10 @@ def test_nonexisting_config(connect, isolated_cli_runner):
 
 
 def test_config_loader_error():
+    """ Test config loader error
+
+    The function load_img2catalog_configuration() should return a FileNotFoundError if the config file does not exist.
+    """
     config_path = Mock(spec=pathlib.Path)
     config_path.exists.return_value = False
 
@@ -233,6 +226,12 @@ def test_config_loader_error():
 @patch("img2catalog.configmanager.CONFIG_HOME_PATH", TEST_CONFIG)
 @patch("builtins.open")
 def test_config_dir(fileopen, toml_patch_target, config_param):
+    """ Test config dir
+
+    If config_param is `None`, no files should be opened; an example config is loaded from a hardcoded string.
+    If config_param is `TEST_CONFIG`, this file should be loaded.
+    In both cases the right toml loader should be called.
+    """
     with patch(toml_patch_target) as load:
         load_img2catalog_configuration(config_param)
         # Make sure the correct configuration is loaded
@@ -245,6 +244,7 @@ def test_config_dir(fileopen, toml_patch_target, config_param):
 @patch("fairclient.fdpclient.FDPClient.__init__")
 @patch("xnat.connect")
 def test_fdp_cli(connect, mock_FDPClient, xnat_to_FDP, isolated_cli_runner):
+    """ Test CLI push to FDP, using CLI configuration """
     connect.__enter__.return_value = True
 
     mock_FDPClient.return_value = None
@@ -277,6 +277,7 @@ def test_fdp_cli(connect, mock_FDPClient, xnat_to_FDP, isolated_cli_runner):
 @patch("fairclient.sparqlclient.FDPSPARQLClient.__init__")
 @patch("xnat.connect")
 def test_fdp_cli_env(connect, mock_SPARQLClient, mock_FDPClient, xnat_to_FDP, isolated_cli_runner, monkeypatch):
+    """ Test CLI push to FDP, using environment variables configuration """
     connect.__enter__.return_value = True
 
     mock_FDPClient.return_value = None
@@ -310,17 +311,21 @@ def test_fdp_cli_env(connect, mock_SPARQLClient, mock_FDPClient, xnat_to_FDP, is
 def test_output_project(
     xnat_to_DCATDataset,
     connect,
-    dummy_dcat_dataset,
+    mock_dataset,
     empty_graph,
     isolated_cli_runner,
 ):
+    """ Test CLI for one project, stdout
+
+    This CLI should only retrieve metadata of the project `test_project` and only return that dataset.
+    The output is parsed from stdout.
+    """
     # patch the session.projects such that it returns the id it was called with
     connect.return_value.__enter__.return_value.projects.__getitem__.side_effect = lambda x: x
 
     # Always return a mock DCATDataset object and URI
-    xnat_to_DCATDataset.return_value = (dummy_dcat_dataset, URIRef("http://example.com"))
+    xnat_to_DCATDataset.return_value = (mock_dataset, URIRef("http://example.com"))
 
-    # with patch.object(dummy_dcat_dataset, "to_graph", return_value=empty_graph) as serializer:
     result = isolated_cli_runner.invoke(
         cli_click,
         ["--verbose", "-s", "http://example.com", "project", "test_project"],
@@ -342,15 +347,20 @@ def test_output_project(
 def test_output_project_file(
     xnat_to_DCATDataset,
     connect,
-    dummy_dcat_dataset,
+    mock_dataset,
     empty_graph,
     isolated_cli_runner,
 ):
+    """ Test CLI for one project, output file
+
+    This CLI should only retrieve metadata of the project `test_project` and only return that dataset.
+    The output is parsed from an output file.
+    """
     # patch the session.projects such that it returns the id it was called with
     connect.return_value.__enter__.return_value.projects.__getitem__.side_effect = lambda x: x
 
     # Always return a mock DCATDataset object and URI
-    xnat_to_DCATDataset.return_value = (dummy_dcat_dataset, URIRef("http://example.com"))
+    xnat_to_DCATDataset.return_value = (mock_dataset, URIRef("http://example.com"))
 
     isolated_cli_runner.invoke(
         cli_click,

@@ -1,10 +1,10 @@
 # This workflow will install Python dependencies and run tests
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: Run Tests
+name: Run Tests including integration tests
 
 on:
-  push:
+  pull_request:
 
 jobs:
   test:
@@ -14,6 +14,12 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+    services:
+      docker:
+        image: docker:dind
+        options: --privileged
+        ports:
+          - 2375:2375
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
@@ -33,7 +39,7 @@ jobs:
     #    #flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        hatch run +py=${{ matrix.python-version }} test:cov --doctest-modules --junitxml=junit/test-results.xml
+        hatch run +py=${{ matrix.python-version }} test:cov-integration --doctest-modules --junitxml=junit/test-results.xml
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
