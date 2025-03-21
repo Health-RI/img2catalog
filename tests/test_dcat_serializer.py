@@ -10,7 +10,6 @@ from rdflib.compare import to_isomorphic
 
 from img2catalog.xnat_parser import (
     VCARD,
-    XNATParserError,
     _check_elligibility_project,
     filter_keyword,
     xnat_list_datasets,
@@ -18,7 +17,7 @@ from img2catalog.xnat_parser import (
     xnat_to_FDP,
     xnat_to_RDF,
 )
-
+from img2catalog.inputs.xnat import XNATParserError
 
 
 @patch("xnat.session.BaseXNATSession")

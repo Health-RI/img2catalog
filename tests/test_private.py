@@ -6,7 +6,8 @@ from unittest.mock import patch
 from requests_mock import Mocker
 from xnat.session import XNATSession
 
-from img2catalog.xnat_parser import XNATParserError, xnat_private_project
+from img2catalog.xnat_parser import xnat_private_project
+from img2catalog.inputs.xnat import XNATParserError
 
 logger = logging.getLogger(__name__)
 
