@@ -21,7 +21,7 @@ class Logger:
 
     """
 
-    def __init__(self, logger_name: str, logger_path: Union[str, PathLike] = None):
+    def __init__(self, logger_name: str, logger_path: Union[str, PathLike] = None) -> None:
         logger = logging.getLogger(logger_name)
         logger.setLevel(logging.INFO)
 
@@ -40,7 +40,7 @@ class Logger:
         self.logger = logger
         self.logger_path = logger_path
 
-    def _add_file_handler(self, logger_path: Union[str, PathLike] = None):
+    def _add_file_handler(self, logger_path: Union[str, PathLike] = None) -> None:
         """Adds a file handler to logging
 
         Parameters
@@ -60,7 +60,7 @@ class Logger:
         file_handler.setFormatter(self.formatter)
         self.logger.addHandler(file_handler)
 
-    def setLevel(self, loglevel):
+    def setLevel(self, loglevel: str) -> None:
         """Sets loglevel for both the logfile as well as stderr output
 
         Parameters

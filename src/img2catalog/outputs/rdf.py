@@ -1,4 +1,6 @@
 import logging
+from pathlib import Path
+from typing import Dict, List, Union
 
 from rdflib import Graph, DCAT, DCTERMS, FOAF
 from sempyro.vcard import VCARD
@@ -6,11 +8,11 @@ from sempyro.vcard import VCARD
 logger = logging.getLogger(__name__)
 
 class RDFOutput:
-    def __init__(self, config, format):
+    def __init__(self, config: Dict, format: str) -> None:
         self.config = config
         self.format = format
 
-    def create_graph(self, input_obj):
+    def create_graph(self, input_obj: Dict[str, List[Dict]]) -> None:
         self.graph = Graph()
         # To make output cleaner, bind these prefixes to namespaces
         self.graph.bind("dcat", DCAT)
@@ -22,12 +24,12 @@ class RDFOutput:
                 self.graph += obj['model_object'].to_graph(obj['uri'])
         logger.debug("Finished acquiring RDF graph")
 
-    def to_stdout(self, input_obj):
+    def to_stdout(self, input_obj: Dict[str, List[Dict]]) -> None:
         self.create_graph(input_obj)
         logger.debug("Sending output to stdout")
         print(self.graph.serialize(format=self.format))
 
-    def to_file(self, input_obj, output_path):
+    def to_file(self, input_obj: Dict[str, List[Dict]], output_path: Union[str, Path]) -> None:
         self.create_graph(input_obj)
         logger.debug("Output option set, serializing output to file %s in %s format",
                      output_path, self.format)

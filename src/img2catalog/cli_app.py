@@ -1,16 +1,11 @@
 import logging
 from pathlib import Path
-from typing import List, Dict
 
 import click
 import xnat
 from click_option_group import MutuallyExclusiveOptionGroup, optgroup
-from fairclient.fdpclient import FDPClient
-from fairclient.sparqlclient import FDPSPARQLClient
-from rdflib import URIRef, Graph, DCAT, DCTERMS, FOAF
-from sempyro.foaf import Agent
-from sempyro.hri_dcat import HRICatalog, HRIDataset
-from sempyro.vcard import VCard, VCARD
+from rdflib import URIRef
+from xnat import XNATSession
 
 from img2catalog import log
 from img2catalog.__about__ import __version__
@@ -33,12 +28,11 @@ from img2catalog.mappings.xnat import map_xnat_to_healthriv1
 from img2catalog.outputs.fdp import FDPOutput
 from img2catalog.outputs.rdf import RDFOutput
 
-# from img2catalog.xnat_parser import xnat_to_DCATDataset, xnat_to_FDP, xnat_to_RDF
 
 logger = logging.getLogger(__name__)
 
 
-def __connect_xnat(server: str, username, password):
+def __connect_xnat(server: str, username: str, password: str) -> XNATSession:
     """This function collects credentials and connects to XNAT
 
     Parameters

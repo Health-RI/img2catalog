@@ -1,10 +1,12 @@
+from typing import Dict, List
+
 from rdflib import URIRef
 from sempyro.foaf import Agent
 from sempyro.hri_dcat import HRICatalog, HRIDataset
 from sempyro.vcard import VCard
 
 
-def map_xnat_to_healthriv1(unmapped_objects):
+def map_xnat_to_healthriv1(unmapped_objects: Dict[str, List[Dict]]) -> Dict[str, List]:
     xnat_catalog = unmapped_objects['catalog'][0]
     xnat_datasets = unmapped_objects['dataset']
     catalog_obj = {
