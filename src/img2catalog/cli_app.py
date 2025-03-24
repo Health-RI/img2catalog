@@ -297,6 +297,35 @@ def output_project(ctx: click.Context, project_id: str, output: click.Path, form
         logger.debug("Sending output to stdout")
         print(dataset_graph.serialize(format=format))
 
+    with ctx.obj["xnat_conn"] as session:
+        project = session.projects[project_id]
+        logger.debug("Connected to XNAT server")
+        xnat_input = XNATInput(config, session)
+        config_input = ConfigInput(config)
+
+        xnat_catalog = xnat_input.get_metadata_catalogs()
+        config_catalog = config_input.get_metadata_concept('catalog')
+        xnat_catalog = config_input.update_metadata(xnat_catalog, config_catalog)
+
+        xnat_datasets = [xnat_input.project_to_dataset(project)]
+        config_dataset = config_input.get_metadata_concept('dataset')
+        xnat_datasets = config_input.update_metadata(xnat_datasets, config_dataset)
+
+    unmapped_objects = {
+        'catalog': xnat_catalog,
+        'dataset': xnat_datasets
+    }
+
+    mapped_objects = map_xnat_to_healthriv1(unmapped_objects)
+
+    rdf_output = RDFOutput(config, format)
+
+    if output:
+        rdf_output.to_file(mapped_objects, output)
+
+    else:
+        rdf_output.to_stdout(mapped_objects)
+
 
 if __name__ == "__main__":
     cli_click()

@@ -60,10 +60,6 @@ class XNATInput:
 
         for p in tqdm(self.session.projects.values()):
             try:
-                if not self._check_elligibility_project(p):
-                    logger.debug("Project %s not elligible, skipping", p.id)
-                    continue
-
                 dcat_dataset = self.project_to_dataset(p)
 
             except XNATParserError as v:
@@ -74,14 +70,15 @@ class XNATInput:
                 failure_counter += 1
                 continue
 
-            dataset_list.append(dcat_dataset)
+            if dcat_dataset:
+                dataset_list.append(dcat_dataset)
 
         if failure_counter > 0:
             logger.warning("There were %d projects with invalid data for DCAT generation", failure_counter)
 
         return dataset_list
 
-    def project_to_dataset(self, project: XNATBaseObject) -> Dict:
+    def project_to_dataset(self, project: XNATBaseObject) -> Union[Dict, None]:
         """This function populates a DCAT Dataset class from an XNat project
 
         Currently fills in the title, description and keywords. The first two are mandatory fields
@@ -103,6 +100,10 @@ class XNATInput:
         URIRef
             Subject that could be used
         """
+        if not self._check_elligibility_project(project):
+            logger.debug("Project %s not elligible, skipping", project.id)
+            return None
+
         # Specification from XNAT:  Optional: Enter searchable keywords. Each word, separated by a space,
         # can be used independently as a search string.
         keywords = filter_keyword(split_keywords(project.keywords), self.config)
