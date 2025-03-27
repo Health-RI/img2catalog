@@ -7,6 +7,19 @@ from sempyro.vcard import VCard
 
 
 def map_xnat_to_healthriv1(unmapped_objects: Dict[str, List[Dict]]) -> Dict[str, List]:
+    """ Map XNAT metadata dictionaries to Health-RI concept objects
+
+    Parameters
+    ----------
+    unmapped_objects: Dict[str, List[Dict]]
+        Dictionary containing a list of metadata dictionaries per concept type.
+
+    Returns
+    -------
+    Dict[str, List]
+        Dictionary with a list of Health-RI concept objects per concept type
+    """
+
     xnat_catalog = unmapped_objects['catalog'][0]
     xnat_datasets = unmapped_objects['dataset']
     catalog_obj = {

@@ -23,7 +23,7 @@ from img2catalog.const import (
     SPARQL_ENV,
 )
 from img2catalog.inputs.config import ConfigInput
-from img2catalog.inputs.xnat import XNATInput, xnat_to_DCATDataset
+from img2catalog.inputs.xnat import XNATInput
 from img2catalog.mappings.xnat import map_xnat_to_healthriv1
 from img2catalog.outputs.fdp import FDPOutput
 from img2catalog.outputs.rdf import RDFOutput

@@ -9,6 +9,24 @@ from rdflib import DCTERMS
 logger = logging.getLogger(__name__)
 
 class FDPOutput:
+    """ Output class that handles output to a FAIR Data Point (FDP)
+
+    Parameters
+    ----------
+    config : Dict
+        Dictionary containing the contents of the configuration
+    fdp : str
+        URL to the FDP to push to
+    fdp_username: str
+        Username for the FDP to push to
+    fdp_password: str
+        Password for the FDP to push to
+    catalog_uri: Union[str, None]
+        URI for the catalog on the FDP to add the datasets under
+    sparql: Union[str, None]
+        URL to the SparQL endpoint
+
+    """
     def __init__(self, config: Dict, fdp: str, fdp_username: str, fdp_password: str,
                  catalog_uri: Union[str, None]=None,
                  sparql: Union[str, None]=None):
@@ -28,7 +46,15 @@ class FDPOutput:
         if not self.catalog_uri:
             raise ValueError("FDP Error: No catalog URI set to push to")
 
-    def push_to_fdp(self, input_obj: Dict[str, List[Dict]]):
+    def push_to_fdp(self, input_obj: Dict[str, List[Dict]]) -> None:
+        """ Push concept object to a FAIR Data Point
+
+        Parameters
+        ----------
+        input_obj: Dict[str, List[Dict]]
+            Dictionary with a list of Health-RI concept objects per concept type
+
+        """
         dataset_obj = input_obj['dataset']
         for dataset in dataset_obj:
             graph = dataset['model_object'].to_graph(dataset['uri'])

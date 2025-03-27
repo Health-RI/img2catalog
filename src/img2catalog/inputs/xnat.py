@@ -4,8 +4,6 @@ import logging
 import re
 from typing import Dict, List, Union
 
-from rdflib import Graph, URIRef
-from sempyro.hri_dcat.hri_dataset import HRIDataset
 from tqdm import tqdm
 from xnat.core import XNATBaseObject
 from xnat.session import XNATSession
@@ -15,46 +13,30 @@ from img2catalog.const import REMOVE_OPTIN_KEYWORD
 logger = logging.getLogger(__name__)
 
 class XNATInput:
+    """ Input class that handles getting the metadata from XNAT
+
+    Parameters
+    ----------
+    config : Dict
+        Dictionary containing the contents of the configuration
+    session : XNATSession
+        Logged in session of the XNAT that you want to gather metadata from
+
+    """
+
     def __init__(self, config: Dict, session: XNATSession):
         self.config = config
         self.session = session
 
     def get_metadata_datasets(self) -> List[Dict]:
-        """Creates a DCAT-AP compliant Catalog of Datasets from XNAT
-
-        Parameters
-        ----------
-        session : XNATSession
-            An XNATSession of the XNAT instance that is going to be queried
-        config : Dict
-            A dictionary containing the configuration of img2catalog
+        """Gathers metadata for datasets from XNAT projects
 
         Returns
         -------
-        Graph
-            An RDF graph containing DCAT-AP
+        List[Dict]
+            A list with dictionaries containing metadata per dataset
         """
 
-        dataset_list = self.list_datasets()
-
-        return dataset_list
-
-    def list_datasets(self) -> List[Dict]:
-        """Acquires a list of elligible XNAT datasets
-
-        Parameters
-        ----------
-        session : XNATSession
-            An XNATSession of the XNAT instance that is going to be queried
-        config : Dict
-            A dictionary containing the configuration of img2catalog
-
-        Returns
-        -------
-        List[HRIDataset]
-            List of DCAT models of elligible datasets
-
-        """
         failure_counter = 0
         dataset_list = []
 
@@ -79,7 +61,7 @@ class XNATInput:
         return dataset_list
 
     def project_to_dataset(self, project: XNATBaseObject) -> Union[Dict, None]:
-        """This function populates a DCAT Dataset class from an XNat project
+        """Gather Dataset metadata from an XNAT project
 
         Currently fills in the title, description and keywords. The first two are mandatory fields
         for a dataset in DCAT-AP, the latter is a bonus.
@@ -88,20 +70,16 @@ class XNATInput:
 
         Parameters
         ----------
-        project : XNatListing
+        project : XNATBaseObject
             An XNat project instance which is to be generated
-        config : Dict
-            A dictionary containing the configuration of img2catalog
 
         Returns
         -------
-        HRIDataset
-            HRIDataset object with fields filled in
-        URIRef
-            Subject that could be used
+        Union[Dict, None]
+            A dictionary containing the metadata for the project, or None if the project is not eligible
         """
-        if not self._check_elligibility_project(project):
-            logger.debug("Project %s not elligible, skipping", project.id)
+        if not self._check_eligibility_project(project):
+            logger.debug("Project %s not eligible, skipping", project.id)
             return None
 
         # Specification from XNAT:  Optional: Enter searchable keywords. Each word, separated by a space,
@@ -153,6 +131,13 @@ class XNATInput:
         return creator
 
     def get_metadata_catalogs(self) -> List[Dict]:
+        """Gathers metadata for catalogs from the XNAT instance
+
+        Returns
+        -------
+        List[Dict]
+            A list with dictionaries containing metadata per catalog
+        """
         catalog = {
             'uri': self.session.url_for(self.session),
             'dataset': list()
@@ -193,8 +178,8 @@ class XNATInput:
         else:
             return False
 
-    def _check_elligibility_project(self, project) -> bool:
-        """Checks if a project is elligible for indexing given its properties and img2catalog config
+    def _check_eligibility_project(self, project) -> bool:
+        """Checks if a project is eligible for indexing given its properties and img2catalog config
 
         Parameters
         ----------
@@ -208,14 +193,14 @@ class XNATInput:
         """
         # Check if project is private. If it is, skip it
         if self._is_private_project(project):
-            logger.debug("Project %s is private, not elligible", project.id)
+            logger.debug("Project %s is private, not eligible", project.id)
             return False
 
         if not check_optin_optout(project, self.config):
             logger.debug("Skipping project %s due to keywords", project.id)
             return False
 
-        logger.debug("Project %s is elligible for indexing", project)
+        logger.debug("Project %s is eligible for indexing", project)
 
         return True
 
@@ -227,7 +212,7 @@ class XNATParserError(ValueError):
     ----------
     message: str
         Exception message
-    error_list: list
+    error_list: List[str]
         List of strings containing error messages. Default is None
 
     """
@@ -238,7 +223,7 @@ class XNATParserError(ValueError):
 
 
 def filter_keyword(keywords: Union[List[str], None], config: Dict) -> List[str]:
-    """Filters the opt-in keyword from the xnat keywords list
+    """Filters the opt-in keyword from the keywords list
 
     If no opt-in keyword is set, all keywords will be returned.
     If remove_keywords is set to False, all keywords will be returned.
@@ -247,14 +232,14 @@ def filter_keyword(keywords: Union[List[str], None], config: Dict) -> List[str]:
     Parameters
     ----------
     keywords : Union[List[str], None]
-        List of XNAT keywords
+        List of keywords
     config : Dict
         img2catalog configuration dictionary
 
     Returns
     -------
     List[str]
-        List of XNAT keywords, with the opt-in keyword filtered out if necessary
+        List of keywords, with the opt-in keyword filtered out if necessary
     """
     if config["img2catalog"].get("remove_optin", REMOVE_OPTIN_KEYWORD):
         optin_kw = config["img2catalog"].get("optin")
@@ -276,7 +261,7 @@ def filter_keyword(keywords: Union[List[str], None], config: Dict) -> List[str]:
 
 
 def split_keywords(keywords: Union[str, None]) -> List[str]:
-    """Takes an XNAT keyword list and splits it up into a list of keywords
+    """Takes a keyword list and splits it up into a list of keywords
 
     Removes all non alphanumeric characters from the keywords
 
@@ -303,12 +288,12 @@ def split_keywords(keywords: Union[str, None]) -> List[str]:
 
 
 def check_optin_optout(project, config: Dict) -> bool:
-    """This function checks if the project is elligible for indexing, given the opt-in/opt-out keywords
+    """This function checks if the project is eligible for indexing, given the opt-in/opt-out keywords
 
     Parameters
     ----------
-    project : XNAT
-        XNAT project of which the elligiblity needs to be determined
+    project
+        XNAT project of which the eligiblity needs to be determined
     config : Dict
         Configuration dictionary with the opt-in/opt-out keys
 
