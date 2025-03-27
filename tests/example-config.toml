@@ -16,9 +16,12 @@ license = "http://example.com/license#nolicense"
 full_name = "Example Data Management office"
 email = "mailto:datamanager@example.com"
 
-[dataset.publisher]
+[[dataset.publisher]]
 name = ["Example publisher list"]
 identifier = "http://example.com"
+[[dataset.publisher]]
+name = ["Second Example Publisher"]
+identifier = "http://foo.bar"
 
 [catalog]
 title = "Example XNAT catalog"

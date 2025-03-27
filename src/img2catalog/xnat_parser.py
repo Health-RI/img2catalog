@@ -90,7 +90,7 @@ def xnat_to_DCATDataset(project: XNATBaseObject, config: Dict) -> Tuple[HRIDatas
             creator = xnat_investigator_to_Agent(project.investigators[i])
             creator_list.append(creator)
 
-    publisher_foaf = [Agent(**config["dataset"]["publisher"])]
+    publisher_foaf = [Agent(**pub) for pub in config["dataset"]["publisher"]]
 
     dataset_license = URIRef(config["dataset"]["license"])
     themes = [URIRef(config["dataset"]["theme"])]
