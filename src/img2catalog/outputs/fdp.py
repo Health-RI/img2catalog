@@ -47,7 +47,7 @@ class FDPOutput:
             raise ValueError("FDP Error: No catalog URI set to push to")
 
     def push_to_fdp(self, input_obj: Dict[str, List[Dict]]) -> None:
-        """ Push concept object to a FAIR Data Point
+        """ Push Datasets to a FAIR Data Point
 
         Parameters
         ----------

@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from img2catalog.xnat_parser import _check_optin_optout, split_keywords
+from img2catalog.inputs.xnat import split_keywords, check_optin_optout
 
 
 @pytest.mark.parametrize(
@@ -35,17 +35,17 @@ def test_no_optin_optout(project):
     config = {"img2catalog": {}}
 
     # First test no config
-    assert _check_optin_optout(project, config)
+    assert check_optin_optout(project, config)
 
 
 @patch("xnat.core.XNATBaseObject")
 def test_optout(project):
     # project without keywords
     config = {"img2catalog": {"optout": "optout_keyword"}}
-    assert _check_optin_optout(project, config)
+    assert check_optin_optout(project, config)
 
     project.keywords = "test demo optout_keyword"
-    assert not _check_optin_optout(project, config)
+    assert not check_optin_optout(project, config)
 
 
 @patch("xnat.core.XNATBaseObject")
@@ -53,10 +53,10 @@ def test_optin(project):
     config = {"img2catalog": {"optin": "optin_keyword"}}
     project.keywords = "test demo optin_keyword"
 
-    assert _check_optin_optout(project, config)
+    assert check_optin_optout(project, config)
 
     project.keywords = "test demo"
-    assert not _check_optin_optout(project, config)
+    assert not check_optin_optout(project, config)
 
 
 @patch("xnat.core.XNATBaseObject")
@@ -64,4 +64,4 @@ def test_optin_noconfig(project):
     config = {}
     project.keywords = "test demo"
 
-    assert _check_optin_optout(project, config)
+    assert check_optin_optout(project, config)

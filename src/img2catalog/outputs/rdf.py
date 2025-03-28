@@ -18,7 +18,7 @@ class RDFOutput:
         Format to serialize to.
 
     """
-    def __init__(self, config: Dict, format: str) -> None:
+    def __init__(self, config: Dict, format: str = "turtle") -> None:
         self.config = config
         self.format = format
 

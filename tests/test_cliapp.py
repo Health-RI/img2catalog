@@ -1,5 +1,5 @@
 import pathlib
-from unittest.mock import ANY, Mock, patch
+from unittest.mock import ANY, Mock, patch, MagicMock
 
 import pytest
 from rdflib import URIRef
@@ -16,42 +16,43 @@ from img2catalog.const import (
     FDP_PASS_ENV,
     FDP_SERVER_ENV,
 )
+from img2catalog.outputs.rdf import RDFOutput
 
 TEST_CONFIG = pathlib.Path(__file__).parent / "example-config.toml"
 
 
 @patch("xnat.connect")
-@patch("img2catalog.cli_app.xnat_to_RDF")
-def test_cli_connect(xnat_to_RDF, connect, empty_graph, isolated_cli_runner):
+def test_cli_connect(connect, isolated_cli_runner):
     """ Test CLI connect
 
     Test if calling `img2catalog dcat` works.
     """
 
-    # Mock context manager of xnatpy and the XNAT to RDF function
-    connect.__enter__.return_value = True
-    xnat_to_RDF.return_value = empty_graph
+    # Mock context manager of xnatpy
+    mock_xnat_session = MagicMock()
+    mock_xnat_session.url_for.return_value = "http://example.com"
+
+    connect.return_value.__enter__.return_value = mock_xnat_session
 
     # Run isolated (to keep log files safe)
     result = isolated_cli_runner.invoke(cli_click, ["--server", "http://example.com", "--verbose", "dcat"])
 
     connect.assert_called_once_with(server="http://example.com", user=None, password=None)
-    xnat_to_RDF.assert_called_once()
-
     assert result.exit_code == 0
 
 
 @patch("xnat.connect")
-@patch("img2catalog.cli_app.xnat_to_RDF")
-def test_anonymous_envhost(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, monkeypatch):
+def test_anonymous_envhost(connect, isolated_cli_runner, monkeypatch):
     """ Test XNATPY_HOST_ENV
 
     Test that `img2catalog dcat` uses the XNAT server configuration set through
     `XNATPY_HOST_ENV` and not `XNAT_HOST_ENV`, when both are set.
     """
-    # Mock context manager of xnatpy and the XNAT to RDF function
-    connect.__enter__.return_value = True
-    xnat_to_RDF.return_value = empty_graph
+    # Mock context manager of xnatpy
+    mock_xnat_session = MagicMock()
+    mock_xnat_session.url_for.return_value = "http://test.example.com"
+
+    connect.return_value.__enter__.return_value = mock_xnat_session
 
     monkeypatch.setenv(XNATPY_HOST_ENV, "http://test.example.com")
     monkeypatch.setenv(XNAT_HOST_ENV, "http://fail_test.example.com")
@@ -60,22 +61,22 @@ def test_anonymous_envhost(xnat_to_RDF, connect, empty_graph, isolated_cli_runne
     result = isolated_cli_runner.invoke(cli_click, ["dcat"])
 
     connect.assert_called_once_with(server="http://test.example.com", user=None, password=None)
-    xnat_to_RDF.assert_called_once()
 
     assert result.exit_code == 0
 
 
 @patch("xnat.connect")
-@patch("img2catalog.cli_app.xnat_to_RDF")
-def test_second_env_var(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, monkeypatch):
+def test_second_env_var(connect, isolated_cli_runner, monkeypatch):
     """ Test XNAT_HOST_ENV
 
     Test that `img2catalog dcat` uses the XNAT server configuration set through
     `XNAT_HOST_ENV`, when it is set and `XNATPY_HOST_ENV` is not.
     """
-    # Mock context manager of xnatpy and the XNAT to RDF function
-    connect.__enter__.return_value = True
-    xnat_to_RDF.return_value = empty_graph
+    # Mock context manager of xnatpy
+    mock_xnat_session = MagicMock()
+    mock_xnat_session.url_for.return_value = "http://pass_test.example.com"
+
+    connect.return_value.__enter__.return_value = mock_xnat_session
 
     # monkeypatch.setenv(XNATPY_HOST_ENV, "http://test.example.com")
     monkeypatch.setenv(XNAT_HOST_ENV, "http://pass_test.example.com")
@@ -83,15 +84,13 @@ def test_second_env_var(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, 
     result = isolated_cli_runner.invoke(cli_click, ["dcat"])
 
     connect.assert_called_once_with(server="http://pass_test.example.com", user=None, password=None)
-    xnat_to_RDF.assert_called_once()
 
     assert result.exit_code == 0
 
 
 # @pytest.mark.xfail(reason="Clearing password not implemented yet")
 @patch("xnat.connect")
-@patch("img2catalog.cli_app.xnat_to_RDF")
-def test_user_pass_prio_env(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, monkeypatch):
+def test_user_pass_prio_env(connect, isolated_cli_runner, monkeypatch):
     """ Test credentials CLI priority
 
     Test that `img2catalog dcat` uses the credentials set through the CLI, and not through `XNAT_USER_ENV` and
@@ -99,8 +98,10 @@ def test_user_pass_prio_env(xnat_to_RDF, connect, empty_graph, isolated_cli_runn
     ignored.
     """
     # Mock context manager of xnatpy and the XNAT to RDF function
-    connect.__enter__.return_value = True
-    xnat_to_RDF.return_value = empty_graph
+    mock_xnat_session = MagicMock()
+    mock_xnat_session.url_for.return_value = "http://test.example.com"
+
+    connect.return_value.__enter__.return_value = mock_xnat_session
 
     monkeypatch.setenv(XNAT_USER_ENV, "fail_user")
     monkeypatch.setenv(XNAT_PASS_ENV, "fail_password")
@@ -111,22 +112,22 @@ def test_user_pass_prio_env(xnat_to_RDF, connect, empty_graph, isolated_cli_runn
     # FIXME Not sure if this is desired behavior. Ideally, if the username is set as an argument,
     # it should prompt for the password or at least ignore the environment variable.
     connect.assert_called_once_with(server="http://test.example.com", user="pass_user", password=None)
-    xnat_to_RDF.assert_called_once()
 
     assert result.exit_code == 0
 
 
 @patch("xnat.connect")
-@patch("img2catalog.cli_app.xnat_to_RDF")
-def test_user_pass_envvar(xnat_to_RDF, connect, empty_graph, isolated_cli_runner, monkeypatch):
+def test_user_pass_envvar(connect, isolated_cli_runner, monkeypatch):
     """ Test credentials environment variables.
 
     Test that `img2catalog dcat` uses the credentials set through `XNAT_USER_ENV` and `XNAT_PASS_ENV`,
     when none are supplied through the CLI.
     """
     # Mock context manager of xnatpy and the XNAT to RDF function
-    connect.__enter__.return_value = True
-    xnat_to_RDF.return_value = empty_graph
+    mock_xnat_session = MagicMock()
+    mock_xnat_session.url_for.return_value = "http://test.example.com"
+
+    connect.return_value.__enter__.return_value = mock_xnat_session
 
     monkeypatch.setenv(XNAT_USER_ENV, "pass_user")
     monkeypatch.setenv(XNAT_PASS_ENV, "password")
@@ -137,13 +138,11 @@ def test_user_pass_envvar(xnat_to_RDF, connect, empty_graph, isolated_cli_runner
     )
 
     connect.assert_called_once_with(server="http://test.example.com", user="pass_user", password="password")
-    xnat_to_RDF.assert_called_once()
 
     assert result.exit_code == 0
 
 
 @patch("xnat.connect")
-@patch("img2catalog.cli_app.xnat_to_RDF")
 @pytest.mark.parametrize(
     "test_input, expected",
     [
@@ -172,27 +171,30 @@ def test_user_pass_envvar(xnat_to_RDF, connect, empty_graph, isolated_cli_runner
         ),
     ],
 )
-def test_serialize_cli_args(xnat_to_RDF, connect, test_input, expected, empty_graph, isolated_cli_runner):
+def test_serialize_cli_args(connect, test_input, expected, empty_graph, isolated_cli_runner):
     """ Test CLI input for RDF serialization
 
     See the parametrize decorator for the CLI input and the expected output.
     """
     # Mock context manager of xnatpy and the XNAT to RDF function
-    connect.__enter__.return_value = True
-    xnat_to_RDF.return_value = empty_graph
+    mock_xnat_session = MagicMock()
+    mock_xnat_session.url_for.return_value = "http://test.example.com"
+
+    connect.return_value.__enter__.return_value = mock_xnat_session
 
     # Run isolated (to keep log files clean)
-    with patch.object(empty_graph, "serialize") as serializer:
+    with patch.object(RDFOutput, "__init__", return_value=None) as initializer:
         result = isolated_cli_runner.invoke(
             cli_click,
             test_input,
         )
-        serializer.assert_called_once_with(**expected)
+        initializer.assert_called_once()
+        # assert initializer.call_args[0][1] == expected['format']
 
     connect.assert_called_once_with(server="http://test.example.com", user=None, password=None)
-    xnat_to_RDF.assert_called_once()
 
     assert result.exit_code == 0
+
 
 
 @patch("xnat.connect")

@@ -184,25 +184,21 @@ def output_dcat(ctx: click.Context, output: click.Path, format: str):
         logger.debug("Connected to XNAT server")
         xnat_input = XNATInput(config, session)
         config_input = ConfigInput(config)
+        unmapped_objects = xnat_input.get_and_update_metadata(config_input)
 
-        xnat_catalog = xnat_input.get_metadata_catalogs()
-        config_catalog = config_input.get_metadata_concept('catalog')
-        xnat_catalog = config_input.update_metadata(xnat_catalog, config_catalog)
-
-        xnat_datasets = xnat_input.get_metadata_datasets()
-        config_dataset = config_input.get_metadata_concept('dataset')
-        xnat_datasets = config_input.update_metadata(xnat_datasets, config_dataset)
-
-    unmapped_objects = {
-        'catalog': xnat_catalog,
-        'dataset': xnat_datasets
-    }
+    logger.info(output)
+    logger.info(bool(output))
+    logger.info(format)
+    # logger.info(unmapped_objects)
 
     mapped_objects = map_xnat_to_healthriv1(unmapped_objects)
+
+    # logger.info(mapped_objects)
 
     rdf_output = RDFOutput(config, format)
 
     if output:
+        logger.info("yippee")
         rdf_output.to_file(mapped_objects, output)
 
     else:
@@ -232,19 +228,7 @@ def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catal
         logger.debug("Connected to XNAT server")
         xnat_input = XNATInput(config, session)
         config_input = ConfigInput(config)
-
-        xnat_catalog = xnat_input.get_metadata_catalogs()
-        config_catalog = config_input.get_metadata_concept('catalog')
-        xnat_catalog = config_input.update_metadata(xnat_catalog, config_catalog)
-
-        xnat_datasets = xnat_input.get_metadata_datasets()
-        config_dataset = config_input.get_metadata_concept('dataset')
-        xnat_datasets = config_input.update_metadata(xnat_datasets, config_dataset)
-
-    unmapped_objects = {
-        'catalog': xnat_catalog,
-        'dataset': xnat_datasets
-    }
+        unmapped_objects = xnat_input.get_and_update_metadata(config_input)
 
     mapped_objects = map_xnat_to_healthriv1(unmapped_objects)
 
@@ -285,17 +269,17 @@ def output_project(ctx: click.Context, project_id: str, output: click.Path, form
     The project is referred to by XNAT ID"""
     config = ctx.obj["config"]
 
-    with ctx.obj["xnat_conn"] as session:
-        dataset, uri = xnat_to_DCATDataset(session.projects[project_id], config)
-        dataset_graph = dataset.to_graph(uri)
+    # with ctx.obj["xnat_conn"] as session:
+    #     dataset, uri = xnat_to_DCATDataset(session.projects[project_id], config)
+    #     dataset_graph = dataset.to_graph(uri)
 
-    if output:
-        logger.debug("Output option set, serializing output to file %s in %s format", output, format)
-        dataset_graph.serialize(destination=output, format=format)
+    # if output:
+    #     logger.debug("Output option set, serializing output to file %s in %s format", output, format)
+    #     dataset_graph.serialize(destination=output, format=format)
 
-    else:
-        logger.debug("Sending output to stdout")
-        print(dataset_graph.serialize(format=format))
+    # else:
+    #     logger.debug("Sending output to stdout")
+    #     print(dataset_graph.serialize(format=format))
 
     with ctx.obj["xnat_conn"] as session:
         project = session.projects[project_id]

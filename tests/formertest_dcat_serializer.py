@@ -8,17 +8,19 @@ from freezegun import freeze_time
 from rdflib import DCTERMS, Graph, URIRef
 from rdflib.compare import to_isomorphic
 
-from img2catalog.xnat_parser import (
-    VCARD,
-    _check_elligibility_project,
-    filter_keyword,
-    xnat_list_datasets,
-    xnat_to_DCATDataset,
-    xnat_to_FDP,
-    xnat_to_RDF,
-)
-from img2catalog.inputs.xnat import XNATParserError
-
+from img2catalog.inputs.config import ConfigInput
+from img2catalog.mappings.xnat import map_xnat_to_healthriv1
+from img2catalog.outputs.rdf import RDFOutput
+# from img2catalog.xnat_parser import (
+#     VCARD,
+#     _check_elligibility_project,
+#     filter_keyword,
+#     xnat_list_datasets,
+#     xnat_to_DCATDataset,
+#     xnat_to_FDP,
+#     xnat_to_RDF,
+# )
+from img2catalog.inputs.xnat import XNATParserError, XNATInput
 
 @patch("xnat.session.BaseXNATSession")
 def test_empty_xnat(session, empty_graph: Graph, config: Dict[str, Any]):
@@ -29,18 +31,26 @@ def test_empty_xnat(session, empty_graph: Graph, config: Dict[str, Any]):
 
     empty_graph = empty_graph.parse(source="tests/references/empty_xnat.ttl")
 
-    expected = xnat_to_RDF(session, config)
+    xnat_input = XNATInput(config, session)
+    config_input = ConfigInput(config)
+    unmapped_objects = xnat_input.get_and_update_metadata(config_input)
+
+    mapped_objects = map_xnat_to_healthriv1(unmapped_objects)
+
+    rdf_output = RDFOutput(config)
+    rdf_output.create_graph(mapped_objects)
 
     # Compare to reference graph
-    assert to_isomorphic(expected) == to_isomorphic(empty_graph)
+    assert to_isomorphic(rdf_output.graph) == to_isomorphic(empty_graph)
 
 
 @freeze_time("2024-04-01")
+@patch("xnat.session.BaseXNATSession")
 @patch("xnat.core.XNATBaseObject")
-def test_valid_project_no_investigator(project, empty_graph: Graph, config: Dict[str, Any]):
+def test_valid_project_no_investigator(session, project, empty_graph: Graph, config: Dict[str, Any]):
     """Test if a valid project generates valid output; only PI, no other investigators"""
     project.name = "Basic test project to test the img2catalog"
-    project.description = "In this project, we test xnat and dcat and make sure a description appears."
+    project.description = "In this project, we test ,[xnat and dcat and make sure a description appears."
     project.external_uri.return_value = "http://localhost/data/archive/projects/test_img2catalog"
     project.keywords = "test demo dcat"
     project.pi.firstname = "Albus"
@@ -56,8 +66,9 @@ def test_valid_project_no_investigator(project, empty_graph: Graph, config: Dict
 
 
 @freeze_time("2024-04-01")
+@patch("xnat.session.BaseXNATSession")
 @patch("xnat.core.XNATBaseObject")
-def test_valid_project(project, empty_graph: Graph, config: Dict[str, Any]):
+def test_valid_project(session, project, empty_graph: Graph, config: Dict[str, Any]):
     """Test if a valid project generates valid output; multiple investigators"""
     project.name = "Basic test project to test the img2catalog"
     project.description = "In this project, we test &quot;xnat&quot; &amp; dcat and make sure a description appears."

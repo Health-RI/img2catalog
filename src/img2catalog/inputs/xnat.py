@@ -9,6 +9,7 @@ from xnat.core import XNATBaseObject
 from xnat.session import XNATSession
 
 from img2catalog.const import REMOVE_OPTIN_KEYWORD
+from img2catalog.inputs.config import ConfigInput
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,49 @@ class XNATInput:
     def __init__(self, config: Dict, session: XNATSession):
         self.config = config
         self.session = session
+
+    def get_and_update_metadata(self, config_input: ConfigInput) -> Dict[str, List[Dict]]:
+        """Gathers metadata from XNAT and updates them using ConfigInput
+
+        Parameters
+        ----------
+        config_input: ConfigInput:
+             ConfigInput object
+
+        Returns
+        -------
+        List[Dict]
+            A list with dictionaries containing metadata per dataset
+        """
+        unmapped_objects = self.get_metadata()
+        config_catalog = config_input.get_metadata_concept('catalog')
+        config_dataset = config_input.get_metadata_concept('dataset')
+
+        unmapped_objects = {
+            'catalog': config_input.update_metadata(unmapped_objects['catalog'], config_catalog),
+            'dataset': config_input.update_metadata(unmapped_objects['dataset'], config_dataset)
+        }
+
+        return unmapped_objects
+
+    def get_metadata(self) -> Dict[str, List[Dict]]:
+        """Gathers metadata from XNAT
+
+        Returns
+        -------
+        List[Dict]
+            A list with dictionaries containing metadata per dataset
+        """
+        xnat_catalogs = self.get_metadata_catalogs()
+        xnat_datasets = self.get_metadata_datasets()
+
+        xnat_catalogs[0]['dataset'] = [dataset['uri'] for dataset in xnat_datasets]
+
+        unmapped_objects = {
+            'catalog': xnat_catalogs,
+            'dataset': xnat_datasets
+        }
+        return unmapped_objects
 
     def get_metadata_datasets(self) -> List[Dict]:
         """Gathers metadata for datasets from XNAT projects
@@ -47,8 +91,9 @@ class XNATInput:
             except XNATParserError as v:
                 logger.info(f"Project {p.name} could not be converted into DCAT: {v}")
 
-                for err in v.error_list:
-                    logger.info(f"- {err}")
+                if v.error_list:
+                    for err in v.error_list:
+                        logger.info(f"- {err}")
                 failure_counter += 1
                 continue
 
@@ -241,21 +286,10 @@ def filter_keyword(keywords: Union[List[str], None], config: Dict) -> List[str]:
     List[str]
         List of keywords, with the opt-in keyword filtered out if necessary
     """
-    if config["img2catalog"].get("remove_optin", REMOVE_OPTIN_KEYWORD):
+    if config.get("img2catalog") and config["img2catalog"].get("remove_optin", REMOVE_OPTIN_KEYWORD):
         optin_kw = config["img2catalog"].get("optin")
         if optin_kw in keywords:
             keywords.remove(optin_kw)
-
-    # try:
-    # except KeyError:
-    #     # If key not found, means config is not set, so no opt-in/opt-out set so all are included
-    #     return xnat_keywords
-
-    # remove_keyword = config["img2catalog"].get("remove_optin", REMOVE_OPTIN_KEYWORD)
-
-    # if remove_keyword:
-    #     if optin_kw in xnat_keywords:
-    #         return xnat_keywords
 
     return keywords
 
