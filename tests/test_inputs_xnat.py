@@ -298,6 +298,53 @@ def test_no_keywords(mock_check_eligibility, session, project, empty_graph: Grap
 
     assert unmapped_objects == expected_unmapped_objects
 
+
+@freeze_time("2024-04-01")
+@patch("xnat.session.BaseXNATSession")
+@patch("xnat.core.XNATBaseObject")
+@patch.object(XNATInput, "_check_eligibility_project", return_value=True)
+def test_no_pi(mock_check_eligibility, session, project, empty_graph: Graph, config: Dict[str, Any]):
+    """Valid project without keywords, make the property `keywords` it is not defined in output"""
+
+    project.name = "Basic test project to test the img2catalog"
+    project.description = "In this project, we test xnat and dcat and make sure a description appears."
+    project.external_uri.return_value = "http://localhost/data/archive/projects/test_img2catalog"
+    project.keywords = ""
+    project.pi.firstname = None
+    project.pi.lastname = None
+    project.investigators = False
+
+    session.projects = {'example_project': project}
+    session.url_for.return_value = "https://example.com"
+
+    xnat_input = XNATInput(config, session)
+    with pytest.raises(XNATParserError) as exc:
+        _ = xnat_input.project_to_dataset(project)
+
+
+@freeze_time("2024-04-01")
+@patch("xnat.session.BaseXNATSession")
+@patch("xnat.core.XNATBaseObject")
+@patch.object(XNATInput, "_check_eligibility_project", return_value=True)
+def test_no_description(mock_check_eligibility, session, project, empty_graph: Graph, config: Dict[str, Any]):
+    """Valid project without keywords, make the property `keywords` it is not defined in output"""
+
+    project.name = "Basic test project to test the img2catalog"
+    project.description = None
+    project.external_uri.return_value = "http://localhost/data/archive/projects/test_img2catalog"
+    project.keywords = ""
+    project.pi.firstname = "Albus"
+    project.pi.lastname = "Dumbledore"
+    project.pi.title = "prof."
+    project.investigators = False
+
+    session.projects = {'example_project': project}
+    session.url_for.return_value = "https://example.com"
+
+    xnat_input = XNATInput(config, session)
+    with pytest.raises(XNATParserError) as exc:
+        _ = xnat_input.project_to_dataset(project)
+
 @pytest.mark.parametrize(
     "private, optin, expected", [
         (False, True, True),
