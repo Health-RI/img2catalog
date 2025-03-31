@@ -11,12 +11,14 @@
     dcterms:description "In this project, we test xnat and dcat and make sure a description appears." ;
     dcterms:identifier "http://localhost/data/archive/projects/test_img2catalog" ;
     dcterms:title "Basic test project to test the img2catalog" ;
-    dcat:keyword "dcat",
-        "demo",
-        "test" ;
+    dcat:keyword "test" ;
     dcterms:publisher [ a foaf:Agent ;
             dcterms:identifier "http://example.com" ;
-            foaf:name "Example publisher list" ] ;
+            foaf:name "Example publisher list"
+    ] , [ a foaf:Agent ;
+            dcterms:identifier "http://example.com" ;
+            foaf:name "Second publisher example" ;
+    ] ;
     dcterms:issued "2024-04-01T00:00:00.00000"^^xsd:dateTime ;
     dcterms:license <http://example.com/license#nolicense> ;
     dcterms:modified "2024-04-01T00:00:00.00000"^^xsd:dateTime ;

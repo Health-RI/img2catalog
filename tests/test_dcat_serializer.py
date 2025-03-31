@@ -128,6 +128,35 @@ def test_no_keywords(project, empty_graph: Graph, config: Dict[str, Any]):
     assert to_isomorphic(empty_graph) == to_isomorphic(gen)
 
 
+@freeze_time("2024-04-01")
+@patch("xnat.core.XNATBaseObject")
+def test_parse_multiple_publishers(project, empty_graph: Graph):
+    """Test if multiple publishers are parsed and serialized."""
+    project.name = "Basic test project to test the img2catalog"
+    project.description = "In this project, we test xnat and dcat and make sure a description appears."
+    project.external_uri.return_value = "http://localhost/data/archive/projects/test_img2catalog"
+    project.keywords = "test"
+    project.pi.firstname = "Albus"
+    project.pi.lastname = "Dumbledore"
+    project.pi.title = "prof."
+    project.investigators = False
+
+    import pathlib
+    try:
+        import tomllib
+    except ModuleNotFoundError:
+        import tomli as tomllib
+    test_config = pathlib.Path(__file__).parent / "multi-publisher-config.toml"
+    with open(test_config, "rb") as f:
+        config = tomllib.load(f)
+
+    empty_graph = empty_graph.parse(source="tests/references/multiple_publishers.ttl")
+    dcat, uri = xnat_to_DCATDataset(project, config)
+    gen = dcat.to_graph(uri)
+
+    assert to_isomorphic(empty_graph) == to_isomorphic(gen)
+
+
 @pytest.mark.parametrize(
     "private, optin, expected", [
         (False, True, True),
