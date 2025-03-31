@@ -53,7 +53,7 @@ def map_xnat_to_healthriv1(unmapped_objects: Dict[str, List[Dict]]) -> Dict[str,
                 issued=dataset.get('issued', None),
                 modified=dataset.get('modified', None),
                 publisher=[Agent(**publisher_dict) for publisher_dict in dataset['publisher']] \
-                    if 'publisher' in xnat_catalog else None,
+                    if 'publisher' in dataset else None,
                 theme=[URIRef(dataset['theme'])] if 'theme' in dataset else None,
                 contact_point=[VCard(
                     full_name=[dataset['contact_point']['full_name']] \

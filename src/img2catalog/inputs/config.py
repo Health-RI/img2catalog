@@ -29,7 +29,7 @@ class ConfigInput:
         List[Union[Dict, None]]
             List containing a dictionary with the metadata, or None if no metadata could be found.
         """
-        return [self.config.get(concept_type, dict())]
+        return [self.config.get(concept_type, {})]
 
     def update_metadata(self, source_objects: List[Dict], config_object: List[Dict]) -> List[Dict]:
         """ Update the metadata for a concept with additional metadata

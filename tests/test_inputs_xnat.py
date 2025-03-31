@@ -60,11 +60,8 @@ def test_empty_xnat_no_config(session, config: Dict[str, Any]):
     xnat_input = XNATInput(config, session)
     unmapped_objects = xnat_input.get_metadata()
     expected_unmapped_objects = {
-        'catalog' : [{
-            'uri': "https://example.com",
-            'dataset': list(),
-        }],
-        'dataset': []
+        'catalog': [{'uri': "https://example.com", 'dataset': []}],
+        'dataset': [],
     }
 
     assert unmapped_objects == expected_unmapped_objects
@@ -81,17 +78,19 @@ def test_empty_xnat(session, config: Dict[str, Any]):
     config_input = ConfigInput(config)
     unmapped_objects = xnat_input.get_and_update_metadata(config_input)
     expected_unmapped_objects = {
-        'catalog' : [{
-            'uri': "https://example.com",
-            'title': 'Example XNAT catalog',
-            'description': 'This is an example XNAT catalog description',
-            'publisher': {
-                'identifier': 'http://www.example.com/institution#example',
-                'name': ['Example publishing institution']
-            },
-            'dataset': list(),
-        }],
-        'dataset': []
+        'catalog': [
+            {
+                'uri': "https://example.com",
+                'title': 'Example XNAT catalog',
+                'description': 'This is an example XNAT catalog description',
+                'publisher': {
+                    'identifier': 'http://www.example.com/institution#example',
+                    'name': ['Example publishing institution'],
+                },
+                'dataset': [],
+            }
+        ],
+        'dataset': [],
     }
     assert unmapped_objects == expected_unmapped_objects
 

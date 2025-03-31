@@ -37,7 +37,7 @@ class RDFOutput:
         self.graph.bind("dcterms", DCTERMS)
         self.graph.bind("foaf", FOAF)
         self.graph.bind("vcard", VCARD)
-        for _, concept_obj in input_obj.items():
+        for concept_obj in input_obj.values():
             for obj in concept_obj:
                 self.graph += obj['model_object'].to_graph(obj['uri'])
         logger.debug("Finished acquiring RDF graph")

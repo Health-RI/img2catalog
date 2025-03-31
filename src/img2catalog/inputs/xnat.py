@@ -186,10 +186,7 @@ class XNATInput:
         List[Dict]
             A list with dictionaries containing metadata per catalog
         """
-        catalog = {
-            'uri': self.session.url_for(self.session),
-            'dataset': list()
-        }
+        catalog = {'uri': self.session.url_for(self.session), 'dataset': []}
         return [catalog]
 
     def _is_private_project(self, project) -> bool:
@@ -221,10 +218,7 @@ class XNATInput:
         if accessibility.casefold() not in known_accesibilities:
             raise XNATParserError(f"Unknown permissions of XNAT project: accessibility is '{accessibility}'")
 
-        if accessibility == "private".casefold():
-            return True
-        else:
-            return False
+        return accessibility == "private".casefold()
 
     def _check_eligibility_project(self, project) -> bool:
         """Checks if a project is eligible for indexing given its properties and img2catalog config
@@ -313,12 +307,12 @@ def split_keywords(keywords: Union[str, None]) -> List[str]:
         List of keywords, empty list if there are no keywords
     """
     keyword_list = []
-    if keywords:
-        if len(keywords.strip()) > 0:
-            keyword_list = [
-                kw.strip()
-                for kw in re.split(r"[\.,;: ]", keywords)
-            ]
+    if keywords and len(keywords.strip()) > 0:
+        keyword_list = [
+            kw.strip()
+            for kw in re.split(r"[\.,;: ]", keywords)
+        ]
+
 
     # Filter out all empty strings, then return list
     return list(filter(None, keyword_list))
