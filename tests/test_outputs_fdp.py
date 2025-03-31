@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import fairclient
+import pytest
 from fairclient.fdpclient import FDPClient
 from rdflib import URIRef, DCTERMS
 
@@ -65,3 +66,14 @@ def test_xnat_to_fdp_push_error(mock_fdp_client, mock_add_or_update_dataset, moc
                DCTERMS.isPartOf,
                URIRef("http://example.com/catalog"),
            ) in mock_add_or_update_dataset.call_args_list[1].args[0], "FDP catalog reference missing"
+
+@patch.object(FDPClient, "__init__", return_value=None)
+def test_fdp_catalog_uri_from_config(mock_fdp_client, config):
+    fdp_output = FDPOutput(config, fdp="http://localhost", fdp_username=None, fdp_password=None)
+    assert fdp_output.catalog_uri == URIRef('http://example.com')
+
+
+@patch.object(FDPClient, "__init__", return_value=None)
+def test_fdp_no_catalog_uri(mock_fdp_client):
+    with pytest.raises(ValueError):
+        _ = FDPOutput({}, fdp="http://localhost", fdp_username=None, fdp_password=None)

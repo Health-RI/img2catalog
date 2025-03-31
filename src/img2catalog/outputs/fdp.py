@@ -42,7 +42,7 @@ class FDPOutput:
 
         self.catalog_uri = catalog_uri
         if not self.catalog_uri:
-            self.catalog_uri = self.config.get('catalog', None)
+            self.catalog_uri = self.config['fdp'].get('catalog', None) if 'fdp' in self.config else None
         if not self.catalog_uri:
             raise ValueError("FDP Error: No catalog URI set to push to")
         if isinstance(self.catalog_uri, str):
