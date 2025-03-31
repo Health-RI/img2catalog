@@ -4,7 +4,7 @@ from typing import Dict, List, Union
 from fairclient.fdpclient import FDPClient
 from fairclient.sparqlclient import FDPSPARQLClient
 from fairclient.utils import add_or_update_dataset
-from rdflib import DCTERMS
+from rdflib import DCTERMS, URIRef
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,8 @@ class FDPOutput:
             self.catalog_uri = self.config.get('catalog', None)
         if not self.catalog_uri:
             raise ValueError("FDP Error: No catalog URI set to push to")
+        if isinstance(self.catalog_uri, str):
+            self.catalog_uri = URIRef(self.catalog_uri)
 
     def push_to_fdp(self, input_obj: Dict[str, List[Dict]]) -> None:
         """ Push Datasets to a FAIR Data Point

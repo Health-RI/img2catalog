@@ -105,7 +105,7 @@ class XNATInput:
 
         return dataset_list
 
-    def project_to_dataset(self, project: XNATBaseObject) -> Union[Dict, None]:
+    def project_to_dataset(self, project: Union[XNATBaseObject, str]) -> Union[Dict, None]:
         """Gather Dataset metadata from an XNAT project
 
         Currently fills in the title, description and keywords. The first two are mandatory fields
@@ -115,14 +115,17 @@ class XNATInput:
 
         Parameters
         ----------
-        project : XNATBaseObject
-            An XNat project instance which is to be generated
+        project : XNATBaseObject, str
+            An XNat project instance, or its name, which is to be converted to a dataset
 
         Returns
         -------
         Union[Dict, None]
             A dictionary containing the metadata for the project, or None if the project is not eligible
         """
+        if isinstance(project, str):
+            project = self.session.projects[project]
+
         if not self._check_eligibility_project(project):
             logger.debug("Project %s not eligible, skipping", project.id)
             return None

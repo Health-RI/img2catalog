@@ -15,6 +15,7 @@ license = "http://example.com/license#nolicense"
 # override = true
 full_name = "Example Data Management office"
 email = "mailto:datamanager@example.com"
+identifier = "http://example.com"
 
 [dataset.publisher]
 name = ["Example publisher list"]

@@ -186,19 +186,11 @@ def output_dcat(ctx: click.Context, output: click.Path, format: str):
         config_input = ConfigInput(config)
         unmapped_objects = xnat_input.get_and_update_metadata(config_input)
 
-    logger.info(output)
-    logger.info(bool(output))
-    logger.info(format)
-    # logger.info(unmapped_objects)
-
     mapped_objects = map_xnat_to_healthriv1(unmapped_objects)
-
-    # logger.info(mapped_objects)
 
     rdf_output = RDFOutput(config, format)
 
     if output:
-        logger.info("yippee")
         rdf_output.to_file(mapped_objects, output)
 
     else:
