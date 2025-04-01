@@ -1,8 +1,12 @@
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
+import pathlib
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 
 import pytest
-
 import xnat
 from freezegun import freeze_time
 from rdflib import DCTERMS, Graph, URIRef
@@ -18,12 +22,6 @@ from img2catalog.xnat_parser import (
     xnat_to_FDP,
     xnat_to_RDF,
 )
-
-import pathlib
-try:
-    import tomllib
-except ModuleNotFoundError:
-    import tomli as tomllib
 
 
 @patch("xnat.session.BaseXNATSession")
