@@ -1,0 +1,29 @@
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix v: <http://www.w3.org/2006/vcard/ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<http://localhost/data/archive/projects/test_img2catalog> a dcat:Dataset ;
+    dcterms:creator [ a foaf:Agent ;
+            foaf:name "prof. Albus Dumbledore" ;
+            dcterms:identifier "http://example.com" ] ;
+    dcterms:description "In this project, we test xnat and dcat and make sure a description appears." ;
+    dcterms:identifier "http://localhost/data/archive/projects/test_img2catalog" ;
+    dcterms:title "Basic test project to test the img2catalog" ;
+    dcat:keyword "test" ;
+    dcterms:publisher [ a foaf:Agent ;
+            dcterms:identifier "http://example.com" ;
+            foaf:name "Example publisher list"
+    ] , [ a foaf:Agent ;
+            dcterms:identifier "http://example.com" ;
+            foaf:name "Second publisher example" ;
+    ] ;
+    dcterms:issued "2024-04-01T00:00:00.00000"^^xsd:dateTime ;
+    dcterms:license <http://example.com/license#nolicense> ;
+    dcterms:modified "2024-04-01T00:00:00.00000"^^xsd:dateTime ;
+    dcat:theme <http://publications.europa.eu/resource/authority/data-theme/HEAL> ;
+    dcat:contactPoint [ a v:Kind ;
+            v:fn "Example Data Management office" ;
+            v:hasEmail <mailto:datamanager@example.com> ;
+            v:hasUID <http://example.com/>  ] .
