@@ -1,4 +1,5 @@
 import logging
+import sys
 from pathlib import Path
 
 import click
@@ -7,6 +8,18 @@ from click_option_group import MutuallyExclusiveOptionGroup, optgroup
 from fairclient.fdpclient import FDPClient
 from fairclient.sparqlclient import FDPSPARQLClient
 from rdflib import URIRef
+
+if sys.stdout.isatty():
+    try:
+        from pygments import highlight
+        from pygments.formatters import TerminalFormatter
+        from pygments.lexers import TurtleLexer
+
+        syntax_highlight = True
+    except ImportError:
+        syntax_highlight = False
+else:
+    syntax_highlight = False
 
 from img2catalog import log
 from img2catalog.__about__ import __version__
@@ -187,7 +200,11 @@ def output_dcat(ctx: click.Context, output: click.Path, format: str):
 
     else:
         logger.debug("Sending output to stdout")
-        print(g.serialize(format=format))
+        serialized_output = g.serialize(format=format)
+        if format == "turtle" and syntax_highlight:
+            click.echo(highlight(serialized_output, TurtleLexer(), TerminalFormatter(bg="dark")))
+        else:
+            print(serialized_output)
 
 
 @click.option("-f", "--fdp", envvar=FDP_SERVER_ENV, type=str, required=True, help="URL of FDP to push datasets to")
