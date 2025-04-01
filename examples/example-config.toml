@@ -7,13 +7,13 @@ remove_optin = true
 # Theme should be Health, according to the EU Data Theme vocabulary
 theme = "http://publications.europa.eu/resource/authority/data-theme/HEAL"
 # Default License for datasets is "available upon reasonable request"
-# I can't find that, so putting a placeholder here
 license = "http://example.com/license#nolicense"
 
 [dataset.contact_point]
 # override = true
 full_name = "Health-RI servicedesk"
 email = "mailto:datamanager@example.com"
+identifier = "http://example.com"
 
 [dataset.publisher]
 name = ["Health-RI"]

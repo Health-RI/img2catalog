@@ -3,6 +3,9 @@
 # optout = "exclude_catalog"
 # remove_optin = true
 
+[fdp]
+catalog = "http://example.com"
+
 [dataset]
 # Theme should be Health, according to the EU Data Theme vocabulary
 theme = "http://publications.europa.eu/resource/authority/data-theme/HEAL"
@@ -15,6 +18,7 @@ license = "http://example.com/license#nolicense"
 # override = true
 full_name = "Example Data Management office"
 email = "mailto:datamanager@example.com"
+identifier = "http://example.com"
 
 [dataset.publisher]
 name = ["Example publisher list"]

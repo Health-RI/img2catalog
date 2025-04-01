@@ -151,7 +151,7 @@ ban-relative-imports = "all"
 "tests/**/*" = ["PLR2004", "S101", "TID252", "N803"]
 
 [tool.coverage.run]
-source_pkgs = ["img2catalog", "tests"]
+source_pkgs = ["img2catalog"]
 branch = true
 parallel = true
 omit = ["src/img2catalog/__about__.py", "src/img2catalog/__main__.py", "tests/xnatpy_fixtures.py"]

@@ -4,9 +4,8 @@ from pathlib import Path
 import click
 import xnat
 from click_option_group import MutuallyExclusiveOptionGroup, optgroup
-from fairclient.fdpclient import FDPClient
-from fairclient.sparqlclient import FDPSPARQLClient
 from rdflib import URIRef
+from xnat import XNATSession
 
 from img2catalog import log
 from img2catalog.__about__ import __version__
@@ -23,12 +22,17 @@ from img2catalog.const import (
     XNATPY_HOST_ENV,
     SPARQL_ENV,
 )
-from img2catalog.xnat_parser import xnat_to_DCATDataset, xnat_to_FDP, xnat_to_RDF
+from img2catalog.inputs.config import ConfigInput
+from img2catalog.inputs.xnat import XNATInput
+from img2catalog.mappings.xnat import map_xnat_to_healthriv1
+from img2catalog.outputs.fdp import FDPOutput
+from img2catalog.outputs.rdf import RDFOutput
+
 
 logger = logging.getLogger(__name__)
 
 
-def __connect_xnat(server: str, username, password):
+def __connect_xnat(server: str, username: str, password: str) -> XNATSession:
     """This function collects credentials and connects to XNAT
 
     Parameters
@@ -178,16 +182,19 @@ def output_dcat(ctx: click.Context, output: click.Path, format: str):
     config = ctx.obj["config"]
     with ctx.obj["xnat_conn"] as session:
         logger.debug("Connected to XNAT server")
-        g = xnat_to_RDF(session, config)
-        logger.debug("Finished acquiring RDF graph")
+        xnat_input = XNATInput(config, session)
+        config_input = ConfigInput(config)
+        unmapped_objects = xnat_input.get_and_update_metadata(config_input)
+
+    mapped_objects = map_xnat_to_healthriv1(unmapped_objects)
+
+    rdf_output = RDFOutput(config, format)
 
     if output:
-        logger.debug("Output option set, serializing output to file %s in %s format", output, format)
-        g.serialize(destination=output, format=format)
+        rdf_output.to_file(mapped_objects, output)
 
     else:
-        logger.debug("Sending output to stdout")
-        print(g.serialize(format=format))
+        rdf_output.to_stdout(mapped_objects)
 
 
 @click.option("-f", "--fdp", envvar=FDP_SERVER_ENV, type=str, required=True, help="URL of FDP to push datasets to")
@@ -209,20 +216,18 @@ def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catal
     """ Extracts the metadata of all projects and pushes them to an FDP. """
     config = ctx.obj["config"]
 
-    # For some reason, in testing, execution doesn't progress beyond this line
-    fdpclient = FDPClient(fdp, username, password)
-
-    if sparql:
-        sparqlclient = FDPSPARQLClient(sparql)
-    else:
-        sparqlclient = None
-
-    if not catalog:
-        if not (catalog := config["img2catalog"]["fdp"]["catalog"]):
-            raise ValueError("No catalog uri set")
-
     with ctx.obj["xnat_conn"] as session:
-        xnat_to_FDP(session, config, catalog, fdpclient, sparqlclient=sparqlclient)
+        logger.debug("Connected to XNAT server")
+        xnat_input = XNATInput(config, session)
+        config_input = ConfigInput(config)
+        unmapped_objects = xnat_input.get_and_update_metadata(config_input)
+
+    mapped_objects = map_xnat_to_healthriv1(unmapped_objects)
+
+    fdp_output = FDPOutput(config, fdp, username, password,
+                           catalog_uri=catalog, sparql=sparql)
+
+    fdp_output.push_to_fdp(mapped_objects)
 
 
 @cli_click.command(name="project")
@@ -256,17 +261,46 @@ def output_project(ctx: click.Context, project_id: str, output: click.Path, form
     The project is referred to by XNAT ID"""
     config = ctx.obj["config"]
 
+    # with ctx.obj["xnat_conn"] as session:
+    #     dataset, uri = xnat_to_DCATDataset(session.projects[project_id], config)
+    #     dataset_graph = dataset.to_graph(uri)
+
+    # if output:
+    #     logger.debug("Output option set, serializing output to file %s in %s format", output, format)
+    #     dataset_graph.serialize(destination=output, format=format)
+
+    # else:
+    #     logger.debug("Sending output to stdout")
+    #     print(dataset_graph.serialize(format=format))
+
     with ctx.obj["xnat_conn"] as session:
-        dataset, uri = xnat_to_DCATDataset(session.projects[project_id], config)
-        dataset_graph = dataset.to_graph(uri)
+        project = session.projects[project_id]
+        logger.debug("Connected to XNAT server")
+        xnat_input = XNATInput(config, session)
+        config_input = ConfigInput(config)
+
+        xnat_catalog = xnat_input.get_metadata_catalogs()
+        config_catalog = config_input.get_metadata_concept('catalog')
+        xnat_catalog = config_input.update_metadata(xnat_catalog, config_catalog)
+
+        xnat_datasets = [xnat_input.project_to_dataset(project)]
+        config_dataset = config_input.get_metadata_concept('dataset')
+        xnat_datasets = config_input.update_metadata(xnat_datasets, config_dataset)
+
+    unmapped_objects = {
+        'catalog': xnat_catalog,
+        'dataset': xnat_datasets
+    }
+
+    mapped_objects = map_xnat_to_healthriv1(unmapped_objects)
+
+    rdf_output = RDFOutput(config, format)
 
     if output:
-        logger.debug("Output option set, serializing output to file %s in %s format", output, format)
-        dataset_graph.serialize(destination=output, format=format)
+        rdf_output.to_file(mapped_objects, output)
 
     else:
-        logger.debug("Sending output to stdout")
-        print(dataset_graph.serialize(format=format))
+        rdf_output.to_stdout(mapped_objects)
 
 
 if __name__ == "__main__":
