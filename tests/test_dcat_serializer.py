@@ -19,6 +19,11 @@ from img2catalog.xnat_parser import (
     xnat_to_RDF,
 )
 
+import pathlib
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 
 
 @patch("xnat.session.BaseXNATSession")
@@ -141,11 +146,6 @@ def test_parse_multiple_publishers(project, empty_graph: Graph):
     project.pi.title = "prof."
     project.investigators = False
 
-    import pathlib
-    try:
-        import tomllib
-    except ModuleNotFoundError:
-        import tomli as tomllib
     test_config = pathlib.Path(__file__).parent / "multi-publisher-config.toml"
     with open(test_config, "rb") as f:
         config = tomllib.load(f)
