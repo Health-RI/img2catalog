@@ -24,7 +24,7 @@ from img2catalog.const import (
 )
 from img2catalog.inputs.config import ConfigInput
 from img2catalog.inputs.xnat import XNATInput
-from img2catalog.mappings.xnat import map_xnat_to_healthriv1
+from img2catalog.mappings.xnat import map_xnat_to_healthriv2
 from img2catalog.outputs.fdp import FDPOutput
 from img2catalog.outputs.rdf import RDFOutput
 
@@ -186,7 +186,7 @@ def output_dcat(ctx: click.Context, output: click.Path, format: str):
         config_input = ConfigInput(config)
         unmapped_objects = xnat_input.get_and_update_metadata(config_input)
 
-    mapped_objects = map_xnat_to_healthriv1(unmapped_objects)
+    mapped_objects = map_xnat_to_healthriv2(unmapped_objects)
 
     rdf_output = RDFOutput(config, format)
 
@@ -222,7 +222,7 @@ def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catal
         config_input = ConfigInput(config)
         unmapped_objects = xnat_input.get_and_update_metadata(config_input)
 
-    mapped_objects = map_xnat_to_healthriv1(unmapped_objects)
+    mapped_objects = map_xnat_to_healthriv2(unmapped_objects)
 
     fdp_output = FDPOutput(config, fdp, username, password,
                            catalog_uri=catalog, sparql=sparql)
@@ -292,7 +292,7 @@ def output_project(ctx: click.Context, project_id: str, output: click.Path, form
         'dataset': xnat_datasets
     }
 
-    mapped_objects = map_xnat_to_healthriv1(unmapped_objects)
+    mapped_objects = map_xnat_to_healthriv2(unmapped_objects)
 
     rdf_output = RDFOutput(config, format)
 

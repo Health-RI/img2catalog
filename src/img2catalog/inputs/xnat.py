@@ -174,7 +174,7 @@ class XNATInput:
     def _format_investigator(self, investigator) -> Dict:
         creator = {
             'name': [f"{investigator.title or ''} {investigator.firstname} {investigator.lastname}".strip()],
-            'identifier': "http://example.com",  # Should be ORCID?
+            # 'identifier': "http://example.com",  # Should be ORCID?
         }
         return creator
 

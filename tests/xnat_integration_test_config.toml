@@ -6,20 +6,28 @@ optout = "exclude_catalogue"
 [dataset]
 # Theme should be Health, according to the EU Data Theme vocabulary
 theme = "http://publications.europa.eu/resource/authority/data-theme/HEAL"
+applicable_legislation = ["http://data.europa.eu/eli/reg/2025/327/oj"]
+access_rights = "http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC"
 
 # Default License for datasets is "available upon reasonable request"
 # I can't find that, so putting a placeholder here
-license = "http://example.com/license#nolicense"
+# license = "http://example.com/license#nolicense"
 
 [dataset.contact_point]
 # override = true
-full_name = "Example Data Management office"
+formatted_name = "Example Data Management office"
 email = "mailto:datamanager@example.com"
-identifier = "http://example.com"
 
 [dataset.publisher]
 name = ["Example publisher list"]
-identifier = "http://example.com"
+identifier = ["http://example.com"]
+mbox = "publisher@example.com"
+homepage = "http://www.example.com"
+
+[dataset.creator]
+identifier = ['http://example.com']
+mbox = "example@example.com"
+homepage = "http://www.example.com"
 
 [catalog]
 title = "Example XNAT catalog"
@@ -27,7 +35,14 @@ description = "This is an example XNAT catalog description"
 
 [catalog.publisher]
 name = ["Example publishing institution"]
-identifier = "http://www.example.com/institution#example"
+identifier = ["http://www.example.com/institution#example"]
+mbox = "publisher@example.com"
+homepage = "http://www.example.com"
+
+[catalog.contact_point]
+# override = true
+formatted_name = "Example Data Management office"
+email = "mailto:datamanager@example.com"
 
 [distribution.default]
 title = "XNAT imaging distribution"

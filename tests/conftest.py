@@ -50,6 +50,15 @@ def empty_graph():
 
 
 @pytest.fixture()
+def second_empty_graph():
+    graph = Graph()
+    graph.bind("dcat", DCAT)
+    graph.bind("dcterms", DCTERMS)
+    graph.bind("v", VCARD)
+    return graph
+
+
+@pytest.fixture()
 def toml_patch_target():
     # Python 3.11 and up has tomllib built-in, for 3.10 and lower we use tomli which provides
     # the same functonality. We check if it's Python 3.10 or lower to patch the correct target.
