@@ -2,11 +2,89 @@ from typing import Dict, List
 
 from rdflib import URIRef
 from sempyro.foaf import Agent
-from sempyro.hri_dcat import HRICatalog, HRIDataset
-from sempyro.vcard import VCard
+from sempyro.hri_dcat import HRICatalog, HRIDataset, HRIVCard, HRIAgent
 
 
-def map_xnat_to_healthriv1(unmapped_objects: Dict[str, List[Dict]]) -> Dict[str, List]:
+# def map_xnat_to_healthriv1(unmapped_objects: Dict[str, List[Dict]]) -> Dict[str, List]:
+#     """ Map XNAT metadata dictionaries to Health-RI concept objects
+#
+#     Parameters
+#     ----------
+#     unmapped_objects: Dict[str, List[Dict]]
+#         Dictionary containing a list of metadata dictionaries per concept type.
+#
+#     Returns
+#     -------
+#     Dict[str, List]
+#         Dictionary with a list of Health-RI concept objects per concept type
+#     """
+#
+#     xnat_catalog = unmapped_objects['catalog'][0]
+#     xnat_datasets = unmapped_objects['dataset']
+#
+#
+#     if xnat_catalog.get('publisher') and not isinstance(xnat_catalog['publisher'], list):
+#         xnat_catalog['publisher'] = [xnat_catalog['publisher']]
+#
+#     catalog_obj = {
+#         'uri': URIRef(xnat_catalog['uri']),
+#         'model_object': HRICatalog(
+#             title=[xnat_catalog.get('title', None)],
+#             description=[xnat_catalog.get('description', None)],
+#             publisher=[Agent(**publisher_dict) for publisher_dict in xnat_catalog['publisher']] \
+#                 if 'publisher' in xnat_catalog else None,
+#             dataset=xnat_catalog.get('dataset', None)
+#         )
+#     }
+#
+#     datasets = []
+#     for dataset in xnat_datasets:
+#         if dataset.get('publisher') and not isinstance(dataset['publisher'], list):
+#             dataset['publisher'] = [dataset['publisher']]
+#         datasets.append({
+#             'uri': URIRef(dataset['uri']),
+#             'model_object': HRIDataset(
+#                 title=dataset.get('title', [None]),
+#                 description=dataset.get('description', None),
+#                 creator=[Agent(**creator_dict) for creator_dict in dataset.get('creator', [{}])],
+#                 keyword=dataset.get('keyword', None),
+#                 identifier=dataset.get('identifier', None),
+#                 issued=dataset.get('issued', None),
+#                 modified=dataset.get('modified', None),
+#                 publisher=[Agent(**publisher_dict) for publisher_dict in dataset['publisher']] \
+#                     if 'publisher' in dataset else None,
+#                 theme=[URIRef(dataset['theme'])] if 'theme' in dataset else None,
+#                 contact_point=[VCard(
+#                     full_name=[dataset['contact_point']['full_name']] \
+#                         if 'contact_point' in dataset and 'full_name' in dataset['contact_point'] else None,
+#                     hasEmail=[URIRef(dataset['contact_point']['email'])] \
+#                         if 'contact_point' in dataset and 'email' in dataset['contact_point'] else None,
+#                     hasUID=URIRef(dataset['contact_point']['identifier']) \
+#                         if 'contact_point' in dataset and 'identifier' in dataset['contact_point'] else None,
+#                 )],
+#                 license=dataset.get('license', None)
+#             ),
+#         })
+#
+#     mapped_objects = {
+#         'catalog': [catalog_obj],
+#         'dataset': datasets
+#     }
+#     return mapped_objects
+
+def get_dict_double_depth(dictionary, first_key, second_key):
+    return dictionary[first_key][second_key] \
+        if first_key in dictionary and second_key in dictionary[first_key] \
+        else None
+
+
+def get_dict_double_depth_uriref(dictionary, first_key, second_key):
+    return URIRef(dictionary[first_key][second_key]) \
+        if first_key in dictionary and second_key in dictionary[first_key] \
+        else None
+
+
+def map_xnat_to_healthriv2(unmapped_objects: Dict[str, List[Dict]]) -> Dict[str, List]:
     """ Map XNAT metadata dictionaries to Health-RI concept objects
 
     Parameters
@@ -24,46 +102,48 @@ def map_xnat_to_healthriv1(unmapped_objects: Dict[str, List[Dict]]) -> Dict[str,
     xnat_datasets = unmapped_objects['dataset']
 
 
-    if xnat_catalog.get('publisher') and not isinstance(xnat_catalog['publisher'], list):
-        xnat_catalog['publisher'] = [xnat_catalog['publisher']]
+    if xnat_catalog.get('publisher') and isinstance(xnat_catalog['publisher'], list):
+        xnat_catalog['publisher'] = xnat_catalog['publisher'][0]
 
     catalog_obj = {
         'uri': URIRef(xnat_catalog['uri']),
         'model_object': HRICatalog(
             title=[xnat_catalog.get('title', None)],
             description=[xnat_catalog.get('description', None)],
-            publisher=[Agent(**publisher_dict) for publisher_dict in xnat_catalog['publisher']] \
-                if 'publisher' in xnat_catalog else None,
-            dataset=xnat_catalog.get('dataset', None)
+            publisher=HRIAgent(**xnat_catalog['publisher']) if 'publisher' in xnat_catalog else None,
+            dataset=xnat_catalog.get('dataset', None),
+            contact_point=HRIVCard(
+                formatted_name=get_dict_double_depth(xnat_catalog, "contact_point", "formatted_name"),
+                hasEmail=get_dict_double_depth_uriref(xnat_catalog, "contact_point", "email")
+            ),
         )
     }
 
     datasets = []
     for dataset in xnat_datasets:
-        if dataset.get('publisher') and not isinstance(dataset['publisher'], list):
-            dataset['publisher'] = [dataset['publisher']]
+        if dataset.get('publisher') and isinstance(dataset['publisher'], list):
+            dataset['publisher'] = dataset['publisher'][0]
+        if dataset.get('theme') and not isinstance(dataset['theme'], list):
+            dataset['theme'] = [dataset['theme']]
+
         datasets.append({
             'uri': URIRef(dataset['uri']),
             'model_object': HRIDataset(
                 title=dataset.get('title', [None]),
                 description=dataset.get('description', None),
-                creator=[Agent(**creator_dict) for creator_dict in dataset.get('creator', [{}])],
+                creator=[HRIAgent(**creator_dict) for creator_dict in dataset.get('creator', [{}])],
                 keyword=dataset.get('keyword', None),
                 identifier=dataset.get('identifier', None),
-                issued=dataset.get('issued', None),
-                modified=dataset.get('modified', None),
-                publisher=[Agent(**publisher_dict) for publisher_dict in dataset['publisher']] \
-                    if 'publisher' in dataset else None,
-                theme=[URIRef(dataset['theme'])] if 'theme' in dataset else None,
-                contact_point=[VCard(
-                    full_name=[dataset['contact_point']['full_name']] \
-                        if 'contact_point' in dataset and 'full_name' in dataset['contact_point'] else None,
-                    hasEmail=[URIRef(dataset['contact_point']['email'])] \
-                        if 'contact_point' in dataset and 'email' in dataset['contact_point'] else None,
-                    hasUID=URIRef(dataset['contact_point']['identifier']) \
-                        if 'contact_point' in dataset and 'identifier' in dataset['contact_point'] else None,
-                )],
-                license=dataset.get('license', None)
+                publisher=HRIAgent(**dataset['publisher']) if 'publisher' in dataset else None,
+                theme=[URIRef(theme) for theme in dataset['theme']] if 'theme' in dataset else None,
+                contact_point=HRIVCard(
+                    formatted_name=get_dict_double_depth(dataset, "contact_point", "formatted_name"),
+                    hasEmail=get_dict_double_depth_uriref(dataset, "contact_point", "email"),
+                ),
+                license=dataset.get('license', None),
+                access_rights=URIRef(dataset['access_rights']) if 'access_rights' in dataset else None,
+                applicable_legislation=[URIRef(app_leg) for app_leg in dataset['applicable_legislation']] if
+                    'applicable_legislation' in dataset else None
             ),
         })
 

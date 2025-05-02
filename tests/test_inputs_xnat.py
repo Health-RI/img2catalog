@@ -84,8 +84,14 @@ def test_empty_xnat(session, config: Dict[str, Any]):
                 'title': 'Example XNAT catalog',
                 'description': 'This is an example XNAT catalog description',
                 'publisher': {
-                    'identifier': 'http://www.example.com/institution#example',
+                    'identifier': ['http://www.example.com/institution#example'],
                     'name': ['Example publishing institution'],
+                    'mbox': 'publisher@example.com',
+                    'homepage': 'http://www.example.com'
+                },
+                'contact_point': {
+                    'formatted_name': 'Example Data Management office',
+                    'email': 'mailto:datamanager@example.com'
                 },
                 'dataset': [],
             }
@@ -123,30 +129,40 @@ def test_valid_project_no_investigator(mock_check_eligibility, session, project,
             'title': 'Example XNAT catalog',
             'description': 'This is an example XNAT catalog description',
             'publisher': {
-                'identifier': 'http://www.example.com/institution#example',
-                'name': ['Example publishing institution']
+                'identifier': ['http://www.example.com/institution#example'],
+                'name': ['Example publishing institution'],
+                'mbox': 'publisher@example.com',
+                'homepage': 'http://www.example.com'
             },
             'dataset': ["http://localhost/data/archive/projects/test_img2catalog"],
-        }],
-        'dataset': [{
             "contact_point": {
                 "email": "mailto:datamanager@example.com",
-                "full_name": "Example Data Management office",
-                "identifier": "http://example.com"
+                "formatted_name": "Example Data Management office"
+            },
+        }],
+        'dataset': [{
+            "access_rights": "http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC",
+            "applicable_legislation": ["http://data.europa.eu/eli/reg/2025/327/oj"],
+            "contact_point": {
+                "email": "mailto:datamanager@example.com",
+                "formatted_name": "Example Data Management office"
             },
             "creator": [{
-                'identifier': 'http://example.com',
-                'name': ['prof. Albus Dumbledore']
+                'identifier': ['http://example.com'],
+                'name': ['prof. Albus Dumbledore'],
+                'mbox': 'example@example.com',
+                'homepage': 'http://www.example.com'
             }],
             "description": ["In this project, we test xnat and dcat and make sure a description appears."],
             "issued": datetime(2024, 4, 1, 0, 0),
             "identifier": "http://localhost/data/archive/projects/test_img2catalog",
             "keyword": ['test', 'demo', 'dcat'],
-            "license": 'http://example.com/license#nolicense',
             "modified": datetime(2024, 4, 1, 0, 0),
             "publisher": {
                 'identifier': 'http://example.com',
-                'name': ['Example publisher list']
+                'name': ['Example publisher list'],
+                'mbox': 'publisher@example.com',
+                'homepage': 'http://www.example.com'
             },
             'theme': 'http://publications.europa.eu/resource/authority/data-theme/HEAL',
             'title': ["Basic test project to test the img2catalog"],
@@ -193,36 +209,48 @@ def test_valid_project(mock_check_eligibility, session, project, config: Dict[st
             'title': 'Example XNAT catalog',
             'description': 'This is an example XNAT catalog description',
             'publisher': {
-                'identifier': 'http://www.example.com/institution#example',
-                'name': ['Example publishing institution']
+                'identifier': ['http://www.example.com/institution#example'],
+                'name': ['Example publishing institution'],
+                'mbox': 'publisher@example.com',
+                'homepage': 'http://www.example.com'
             },
             'dataset': ["http://localhost/data/archive/projects/test_img2catalog"],
-        }],
-        'dataset': [{
             "contact_point": {
                 "email": "mailto:datamanager@example.com",
-                "full_name": "Example Data Management office",
-                "identifier": "http://example.com"
+                "formatted_name": "Example Data Management office"
+            },
+        }],
+        'dataset': [{
+            "access_rights": "http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC",
+            "applicable_legislation": ["http://data.europa.eu/eli/reg/2025/327/oj"],
+            "contact_point": {
+                "email": "mailto:datamanager@example.com",
+                "formatted_name": "Example Data Management office",
             },
             "creator": [
                 {
-                'identifier': 'http://example.com',
-                'name': ['prof. Albus Dumbledore']
+                'identifier': ['http://example.com'],
+                'name': ['prof. Albus Dumbledore'],
+                'mbox': 'example@example.com',
+                'homepage': 'http://www.example.com'
                 },
                 {
-                    'identifier': 'http://example.com',
-                    'name': ['Prof. Minerva McGonagall']
+                    'identifier': ['http://example.com'],
+                    'name': ['Prof. Minerva McGonagall'],
+                    'mbox': 'example@example.com',
+                    'homepage': 'http://www.example.com'
                 }
             ],
             "description": ['In this project, we test "xnat" & dcat and make sure a description appears.'],
             "issued": datetime(2024, 4, 1, 0, 0),
             "identifier": "http://localhost/data/archive/projects/test_img2catalog",
             "keyword": ['test', 'demo', 'dcat'],
-            "license": 'http://example.com/license#nolicense',
             "modified": datetime(2024, 4, 1, 0, 0),
             "publisher": {
                 'identifier': 'http://example.com',
-                'name': ['Example publisher list']
+                'name': ['Example publisher list'],
+                'mbox': 'publisher@example.com',
+                'homepage': 'http://www.example.com'
             },
             'theme': 'http://publications.europa.eu/resource/authority/data-theme/HEAL',
             'title': ["Basic test project to test the img2catalog"],
@@ -263,32 +291,42 @@ def test_no_keywords(mock_check_eligibility, session, project, empty_graph: Grap
             'title': 'Example XNAT catalog',
             'description': 'This is an example XNAT catalog description',
             'publisher': {
-                'identifier': 'http://www.example.com/institution#example',
-                'name': ['Example publishing institution']
+                'identifier': ['http://www.example.com/institution#example'],
+                'name': ['Example publishing institution'],
+                'mbox': 'publisher@example.com',
+                'homepage': 'http://www.example.com'
             },
             'dataset': ["http://localhost/data/archive/projects/test_img2catalog"],
-        }],
-        'dataset': [{
             "contact_point": {
                 "email": "mailto:datamanager@example.com",
-                "full_name": "Example Data Management office",
-                "identifier": "http://example.com"
+                "formatted_name": "Example Data Management office"
+            },
+        }],
+        'dataset': [{
+            "access_rights": "http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC",
+            "applicable_legislation": ["http://data.europa.eu/eli/reg/2025/327/oj"],
+            "contact_point": {
+                "email": "mailto:datamanager@example.com",
+                "formatted_name": "Example Data Management office",
             },
             "creator": [
                 {
-                    'identifier': 'http://example.com',
-                    'name': ['prof. Albus Dumbledore']
+                    'identifier': ['http://example.com'],
+                    'name': ['prof. Albus Dumbledore'],
+                    'mbox': 'example@example.com',
+                    'homepage': 'http://www.example.com'
                 }
             ],
             "description": ['In this project, we test xnat and dcat and make sure a description appears.'],
             "issued": datetime(2024, 4, 1, 0, 0),
             "identifier": "http://localhost/data/archive/projects/test_img2catalog",
             "keyword": [],
-            "license": 'http://example.com/license#nolicense',
             "modified": datetime(2024, 4, 1, 0, 0),
             "publisher": {
                 'identifier': 'http://example.com',
-                'name': ['Example publisher list']
+                'name': ['Example publisher list'],
+                'mbox': 'publisher@example.com',
+                'homepage': 'http://www.example.com'
             },
             'theme': 'http://publications.europa.eu/resource/authority/data-theme/HEAL',
             'title': ["Basic test project to test the img2catalog"],
