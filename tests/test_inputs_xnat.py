@@ -159,7 +159,7 @@ def test_valid_project_no_investigator(mock_check_eligibility, session, project,
             "keyword": ['test', 'demo', 'dcat'],
             "modified": datetime(2024, 4, 1, 0, 0),
             "publisher": {
-                'identifier': 'http://example.com',
+                'identifier': ['http://example.com'],
                 'name': ['Example publisher list'],
                 'mbox': 'publisher@example.com',
                 'homepage': 'http://www.example.com'
@@ -247,7 +247,7 @@ def test_valid_project(mock_check_eligibility, session, project, config: Dict[st
             "keyword": ['test', 'demo', 'dcat'],
             "modified": datetime(2024, 4, 1, 0, 0),
             "publisher": {
-                'identifier': 'http://example.com',
+                'identifier': ['http://example.com'],
                 'name': ['Example publisher list'],
                 'mbox': 'publisher@example.com',
                 'homepage': 'http://www.example.com'
@@ -323,7 +323,7 @@ def test_no_keywords(mock_check_eligibility, session, project, empty_graph: Grap
             "keyword": [],
             "modified": datetime(2024, 4, 1, 0, 0),
             "publisher": {
-                'identifier': 'http://example.com',
+                'identifier': ['http://example.com'],
                 'name': ['Example publisher list'],
                 'mbox': 'publisher@example.com',
                 'homepage': 'http://www.example.com'
