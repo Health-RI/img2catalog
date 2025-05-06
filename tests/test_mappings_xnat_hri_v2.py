@@ -90,3 +90,64 @@ def test_invalid_project():
 
     with pytest.raises(ValidationError):
         map_xnat_to_healthriv2(unmapped_objects)
+
+
+def test_invalid_project_no_keywords(empty_graph):
+    unmapped_objects = {
+        'catalog': [{
+            'uri': "https://example.com",
+            'title': 'Example XNAT catalog',
+            'description': 'This is an example XNAT catalog description',
+            'publisher': {
+                'identifier': ['http://www.example.com/institution#example'],
+                'name': ['Example publishing institution'],
+                'mbox': "example@example.com",
+                'homepage': 'http://www.example.com'
+            },
+            'contact_point': {
+                'email': 'mailto:example@example.com',
+                'formatted_name': 'Servicedesk at Example Institution'
+            },
+            'dataset': ["http://localhost/data/archive/projects/test_img2catalog"],
+        }],
+        'dataset': [{
+            "contact_point": {
+                "email": "mailto:datamanager@example.com",
+                "formatted_name": "Example Data Management office",
+                "identifier": "http://example.com"
+            },
+            "creator": [
+                {
+                    'identifier': ['http://example.com', "http://anotherone.example.com"],
+                    'name': ['prof. Albus Dumbledore', "Hogwarts' Headmaster"],
+                    'mbox': "mailto:example@example.com",
+                    'homepage': 'http://www.example.com'
+                },
+                {
+                    'identifier': ['http://example.com'],
+                    'name': ['Prof. Minerva McGonagall'],
+                    'mbox': "mailto:example@example.com",
+                    'homepage': 'http://www.example.com'
+                }
+            ],
+            "description": ['In this project, we test "xnat" & dcat and make sure a description appears.'],
+            "issued": datetime(2024, 4, 1, 0, 0),
+            "identifier": "http://localhost/data/archive/projects/test_img2catalog",
+            # "keyword": ['test', 'demo', 'dcat'],
+            "modified": datetime(2024, 4, 1, 0, 0),
+            "publisher": {
+                'identifier': ['http://example.com'],
+                'name': ['Example publisher list'],
+                'mbox': "mailto:example@example.com",
+                'homepage': 'http://www.example.com'
+            },
+            'theme': 'http://publications.europa.eu/resource/authority/data-theme/HEAL',
+            'title': ["Basic test project to test the img2catalog"],
+            "uri": "http://localhost/data/archive/projects/test_img2catalog",
+            "access_rights": "http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC",
+            "applicable_legislation": ["http://data.europa.eu/eli/reg/2025/327/oj"]
+        }]
+    }
+
+    with pytest.raises(ValidationError):
+        map_xnat_to_healthriv2(unmapped_objects)

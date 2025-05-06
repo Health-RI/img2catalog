@@ -41,7 +41,7 @@ email = "datamanager@example.com"
 
 [dataset.publisher]
 name = ["Example publisher list",]
-identifier = "http://example.com"
+identifier = ["http://example.com"]
 mbox = "publisher@example.com"
 homepage = "http://www.example.com"
 
