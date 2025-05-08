@@ -37,6 +37,7 @@
     dcat:contactPoint [ a vcard:Kind ;
             vcard:fn "Example Data Management office" ;
             vcard:hasEmail <mailto:datamanager@example.com> ] ;
+    dcat:keyword "xnat" ;
     dcat:theme <http://publications.europa.eu/resource/authority/data-theme/HEAL> .
 
 <http://localhost:8080/data/archive/projects/public_optin> a dcat:Dataset ;
@@ -58,4 +59,5 @@
     dcat:contactPoint [ a vcard:Kind ;
             vcard:fn "Example Data Management office" ;
             vcard:hasEmail <mailto:datamanager@example.com> ] ;
+    dcat:keyword "xnat" ;
     dcat:theme <http://publications.europa.eu/resource/authority/data-theme/HEAL> .

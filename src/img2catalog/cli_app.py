@@ -31,6 +31,13 @@ from img2catalog.outputs.rdf import RDFOutput
 
 logger = logging.getLogger(__name__)
 
+# img2catalog --config config_path --version --verbose --logfile logfile
+# xnat -s server -u username -p (triggers password) --optin/--optout
+# xnat-project -s server -u username -p (triggers password) --optin/--optout
+# mapping healthriv2
+# dcat -o output_file --format format
+# fdp --sparql sparql_endpoint -c catalog -u username -p (triggers_password)
+
 
 def __connect_xnat(server: str, username: str, password: str) -> XNATSession:
     """This function collects credentials and connects to XNAT
@@ -59,34 +66,6 @@ def __connect_xnat(server: str, username: str, password: str) -> XNATSession:
 @click.group(invoke_without_command=True)
 # wontfix
 # https://github.com/pallets/click/issues/714
-@click.option(
-    "-s",
-    "--server",
-    type=str,
-    envvar=[XNATPY_HOST_ENV, XNAT_HOST_ENV],
-    required=True,
-    help=f"URI of the server to connect to (including http:// or https://). If not set, will use environment variables {XNATPY_HOST_ENV} or {XNAT_HOST_ENV}.",
-)
-@click.option(
-    "-u",
-    "--username",
-    type=str,
-    default=None,
-    envvar=XNAT_USER_ENV,
-    help=f"Username to use, leave empty to use netrc entry or anonymous login or environment variable {XNAT_USER_ENV}.",
-)
-@click.option(
-    "-p",
-    "--password",
-    type=str,
-    default=None,
-    envvar=XNAT_PASS_ENV,
-    help=(
-        "Password to use with the username, leave empty when using netrc. If a"
-        " username is given and no password or environment variable, there will be a prompt on the console"
-        f" requesting the password. Environment variable: {XNAT_PASS_ENV}"
-    ),
-)
 @click.option(
     "-c",
     "--config",
@@ -118,9 +97,6 @@ def __connect_xnat(server: str, username: str, password: str) -> XNATSession:
 @click.version_option(__version__)
 def cli_click(
     ctx: click.Context,
-    server: str,
-    username: str,
-    password: str,
     config: click.Path,
     verbose: bool,
     logfile: click.Path,
@@ -142,6 +118,41 @@ def cli_click(
         config["img2catalog"]["optin"] = optin
         config["img2catalog"]["optout"] = optout
 
+    ctx.obj["config"] = config
+
+
+@click.group(name="xnat")
+@click.option(
+    "-s",
+    "--server",
+    type=str,
+    envvar=[XNATPY_HOST_ENV, XNAT_HOST_ENV],
+    required=True,
+    help=f"URI of the server to connect to (including http:// or https://). If not set, will use environment variables {XNATPY_HOST_ENV} or {XNAT_HOST_ENV}.",
+)
+@click.option(
+    "-u",
+    "--username",
+    type=str,
+    default=None,
+    envvar=XNAT_USER_ENV,
+    help=f"Username to use, leave empty to use netrc entry or anonymous login or environment variable {XNAT_USER_ENV}.",
+)
+@click.option(
+    "-p",
+    "--password",
+    type=str,
+    default=None,
+    envvar=XNAT_PASS_ENV,
+    help=(
+            "Password to use with the username, leave empty when using netrc. If a"
+            " username is given and no password or environment variable, there will be a prompt on the console"
+            f" requesting the password. Environment variable: {XNAT_PASS_ENV}"
+    ),
+)
+@click.pass_context
+def input_xnat(ctx: click.Context, server: str, username: str, password: str):
+    config = ctx.obj['config']
     # with connect_cli(cli=False, **kwargs) as session:
     # If username is not environment variable and password is, that's usually not intended
     # Thus we clear password so xnatpy can deal with it
@@ -150,10 +161,30 @@ def cli_click(
             password = None
 
     ctx.obj["xnat_conn"] = __connect_xnat(server, username, password)
-    ctx.obj["config"] = config
+
+    with ctx.obj["xnat_conn"] as session:
+        logger.debug("Connected to XNAT server")
+        xnat_input = XNATInput(config, session)
+        config_input = ConfigInput(config)
+        unmapped_objects = xnat_input.get_and_update_metadata(config_input)
+    ctx.obj['unmapped_objects'] = unmapped_objects
+
+cli_click.add_command(input_xnat)
 
 
-@cli_click.command(name="dcat")
+@click.group("map-xnat-hriv2")
+@click.pass_context
+def mapping_xnat_healthriv2(ctx: click.Context):
+    unmapped_objects = ctx.obj['unmapped_objects']
+
+    mapped_objects = map_xnat_to_healthriv2(unmapped_objects)
+
+    ctx.obj['mapped_objects'] = mapped_objects
+
+input_xnat.add_command(mapping_xnat_healthriv2)
+
+
+@mapping_xnat_healthriv2.command(name="rdf")
 @click.option(
     "-o",
     "--output",
@@ -177,14 +208,10 @@ def cli_click(
     ),
 )
 @click.pass_context
-def output_dcat(ctx: click.Context, output: click.Path, format: str):
+def output_rdf(ctx: click.Context, output: click.Path, format: str):
     """ Extracts the metadata of all projects and write them to file. """
     config = ctx.obj["config"]
-    with ctx.obj["xnat_conn"] as session:
-        logger.debug("Connected to XNAT server")
-        xnat_input = XNATInput(config, session)
-        config_input = ConfigInput(config)
-        unmapped_objects = xnat_input.get_and_update_metadata(config_input)
+    unmapped_objects = ctx.obj['unmapped_objects']
 
     mapped_objects = map_xnat_to_healthriv2(unmapped_objects)
 
@@ -210,17 +237,13 @@ def output_dcat(ctx: click.Context, output: click.Path, format: str):
     type=URIRef,
     help=" URL of SPARQL endpoint of FDP, used for querying which dataset to update",
 )
-@cli_click.command(name="fdp")
+@mapping_xnat_healthriv2.command(name="fdp")
 @click.pass_context
 def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catalog: URIRef, sparql: str):
     """ Extracts the metadata of all projects and pushes them to an FDP. """
     config = ctx.obj["config"]
 
-    with ctx.obj["xnat_conn"] as session:
-        logger.debug("Connected to XNAT server")
-        xnat_input = XNATInput(config, session)
-        config_input = ConfigInput(config)
-        unmapped_objects = xnat_input.get_and_update_metadata(config_input)
+    unmapped_objects = ctx.obj['unmapped_objects']
 
     mapped_objects = map_xnat_to_healthriv2(unmapped_objects)
 
@@ -230,48 +253,50 @@ def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catal
     fdp_output.push_to_fdp(mapped_objects)
 
 
-@cli_click.command(name="project")
+@click.group(name="xnat-project")
 @click.argument("project_id", default=None, type=str)
 @click.option(
-    "-o",
-    "--output",
-    "output",
-    default=None,
-    type=click.Path(writable=True, dir_okay=False),
-    help="Destination file to write output to. If not set, the script will print serialized output to stdout.",
+    "-s",
+    "--server",
+    type=str,
+    envvar=[XNATPY_HOST_ENV, XNAT_HOST_ENV],
+    required=True,
+    help=f"URI of the server to connect to (including http:// or https://). If not set, will use environment variables {XNATPY_HOST_ENV} or {XNAT_HOST_ENV}.",
 )
 @click.option(
-    "-f",
-    "--format",
-    default="turtle",
-    type=click.Choice(
-        ["xml", "n3", "turtle", "nt", "pretty-xml", "trix", "trig", "nquads", "json-ld", "hext"], case_sensitive=False
-    ),
+    "-u",
+    "--username",
+    type=str,
+    default=None,
+    envvar=XNAT_USER_ENV,
+    help=f"Username to use, leave empty to use netrc entry or anonymous login or environment variable {XNAT_USER_ENV}.",
+)
+@click.option(
+    "-p",
+    "--password",
+    type=str,
+    default=None,
+    envvar=XNAT_PASS_ENV,
     help=(
-        "The format that the output should be written in. This value references a"
-        " Serializer plugin in RDFlib. Supportd values are: "
-        ' "xml", "n3", "turtle", "nt", "pretty-xml", "trix", "trig", "nquads",'
-        ' "json-ld" and "hext". Defaults to "turtle".'
+            "Password to use with the username, leave empty when using netrc. If a"
+            " username is given and no password or environment variable, there will be a prompt on the console"
+            f" requesting the password. Environment variable: {XNAT_PASS_ENV}"
     ),
 )
 @click.pass_context
-def output_project(ctx: click.Context, project_id: str, output: click.Path, format: str):
+def input_xnat_project(ctx: click.Context, project_id: str, server: str, username: str, password: str):
     """Specify one project for DCAT extraction.
 
     The project is referred to by XNAT ID"""
     config = ctx.obj["config"]
+    # with connect_cli(cli=False, **kwargs) as session:
+    # If username is not environment variable and password is, that's usually not intended
+    # Thus we clear password so xnatpy can deal with it
+    if ctx.get_parameter_source("username") != click.core.ParameterSource.ENVIRONMENT:
+        if ctx.get_parameter_source("password") == click.core.ParameterSource.ENVIRONMENT:
+            password = None
 
-    # with ctx.obj["xnat_conn"] as session:
-    #     dataset, uri = xnat_to_DCATDataset(session.projects[project_id], config)
-    #     dataset_graph = dataset.to_graph(uri)
-
-    # if output:
-    #     logger.debug("Output option set, serializing output to file %s in %s format", output, format)
-    #     dataset_graph.serialize(destination=output, format=format)
-
-    # else:
-    #     logger.debug("Sending output to stdout")
-    #     print(dataset_graph.serialize(format=format))
+    ctx.obj["xnat_conn"] = __connect_xnat(server, username, password)
 
     with ctx.obj["xnat_conn"] as session:
         project = session.projects[project_id]
@@ -291,16 +316,20 @@ def output_project(ctx: click.Context, project_id: str, output: click.Path, form
         'catalog': xnat_catalog,
         'dataset': xnat_datasets
     }
+    ctx.obj['unmapped_objects'] = unmapped_objects
 
-    mapped_objects = map_xnat_to_healthriv2(unmapped_objects)
+    # mapped_objects = map_xnat_to_healthriv2(unmapped_objects)
 
-    rdf_output = RDFOutput(config, format)
+    # rdf_output = RDFOutput(config, format)
 
-    if output:
-        rdf_output.to_file(mapped_objects, output)
+    # if output:
+    #     rdf_output.to_file(mapped_objects, output)
 
-    else:
-        rdf_output.to_stdout(mapped_objects)
+    # else:
+    #     rdf_output.to_stdout(mapped_objects)
+
+cli_click.add_command(input_xnat_project)
+input_xnat_project.add_command(mapping_xnat_healthriv2)
 
 
 if __name__ == "__main__":

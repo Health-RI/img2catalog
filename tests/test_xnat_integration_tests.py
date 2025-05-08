@@ -26,10 +26,11 @@ def test_xnat_integration(tmp_path, xnat4tests_connection, xnat4tests_uri, isola
     Of these projects only the last two should be serialized.
     """
     # XNAT integration tests
-    result = isolated_cli_runner.invoke(cli_click, ["--server", xnat4tests_uri, "--verbose",
-                                                    "-u", "admin", "-p", "admin",
-                                                    "--config", f"{TEST_CONFIG}", "dcat",
-                                                    "-o", f"{tmp_path}/output.ttl"])
+    result = isolated_cli_runner.invoke(cli_click, ["--verbose", "--config", f"{TEST_CONFIG}",
+                                                    "xnat", "--server", xnat4tests_uri, "-u", "admin", "-p", "admin",
+                                                    "map-xnat-hriv2",
+                                                    "rdf", "-o", f"{tmp_path}/output.ttl"])
+    print(result.stdout)
     result_graph = empty_graph.parse(source=f"{tmp_path}/output.ttl")
     reference_graph = second_empty_graph.parse(
         source=pathlib.Path(__file__).parent / "references" / "xnat_integration_test.ttl")
@@ -56,11 +57,11 @@ def test_xnat_integration_single_dataset(tmp_path, xnat4tests_connection, xnat4t
     In this test only 'protected_optin' will be serialized
     """
     # XNAT integration tests
-    result = isolated_cli_runner.invoke(cli_click, ["--server", xnat4tests_uri, "--verbose",
-                                                    "-u", "admin", "-p", "admin",
-                                                    "--config", f"{TEST_CONFIG}", "project",
+    result = isolated_cli_runner.invoke(cli_click, ["--verbose", "--config", f"{TEST_CONFIG}",
+                                                    "xnat-project", "--server", xnat4tests_uri, "-u", "admin", "-p", "admin",
                                                     "protected_optin",
-                                                    "-o", f"{tmp_path}/output.ttl"])
+                                                    "map-xnat-hriv2",
+                                                    "rdf", "-o", f"{tmp_path}/output.ttl"])
     result_graph = empty_graph.parse(source=f"{tmp_path}/output.ttl")
     reference_graph = second_empty_graph.parse(source=pathlib.Path(__file__).parent / "references" / "xnat_integration_test-single_dataset.ttl")
 
