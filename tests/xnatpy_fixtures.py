@@ -164,11 +164,11 @@ def xnat4tests_fixture(config) -> str:
         # add_data("dummydicom", config_name=config)
         # add_data("user-training", config_name=config)
         project_dicts = [
-            {'project_id': 'public_optout', 'accessibility': 'public', 'keywords': 'exclude_catalogue'},
-            {'project_id': 'public_optin', 'accessibility': 'public', 'keywords': 'include_catalogue'},
+            {'project_id': 'public_optout', 'accessibility': 'public', 'keywords': 'exclude_catalogue xnat'},
+            {'project_id': 'public_optin', 'accessibility': 'public', 'keywords': 'include_catalogue xnat'},
             {'project_id': 'public_nokeyword', 'accessibility': 'public', 'keywords': ''},
-            {'project_id': 'protected_optin', 'accessibility': 'protected', 'keywords': 'include_catalogue'},
-            {'project_id': 'private_optin', 'accessibility': 'private', 'keywords': 'include_catalogue'}
+            {'project_id': 'protected_optin', 'accessibility': 'protected', 'keywords': 'include_catalogue xnat'},
+            {'project_id': 'private_optin', 'accessibility': 'private', 'keywords': 'include_catalogue xnat'}
         ]
         with xnat4tests.connect(config) as login:
             for project_dict in project_dicts:
