@@ -61,6 +61,9 @@ An example configuration file `config.toml` is supplied with this project. By de
 will use the configuration file `~/.img2catalog/config.toml`, if it exists.
 If the file does not exist, a default configuration will be used.
 
+Currently, it is not possible to gather all the information for the Health-RI v2 model from a regular XNAT project.
+The metadata can be supplemented by defining fallback values in the configuration file.
+
 ### Environment Variables
 
 The tool can also be configured using environment variables. Here are the environment variables that can be used:
