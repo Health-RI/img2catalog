@@ -83,7 +83,6 @@ def __connect_xnat(server: str, username: str, password: str) -> XNATSession:
 @optgroup.option(
     "--optout", type=str, help="Opt-out keyword. If set, projects with this keyword will be excluded", default=None
 )
-# @xnatpy_login_options
 @click.pass_context
 @click.version_option(__version__)
 def cli_click(
@@ -145,7 +144,6 @@ def cli_click(
 def input_xnat(ctx: click.Context, server: str, username: str, password: str):
     """ Extract metadata from the projects on an XNAT server."""
     config = ctx.obj['config']
-    # with connect_cli(cli=False, **kwargs) as session:
     # If username is not environment variable and password is, that's usually not intended
     # Thus we clear password so xnatpy can deal with it
     if ctx.get_parameter_source("username") != click.core.ParameterSource.ENVIRONMENT:
@@ -277,7 +275,6 @@ def input_xnat_project(ctx: click.Context, project_id: str, server: str, usernam
 
      The XNAT project is specified by project ID."""
     config = ctx.obj["config"]
-    # with connect_cli(cli=False, **kwargs) as session:
     # If username is not environment variable and password is, that's usually not intended
     # Thus we clear password so xnatpy can deal with it
     if ctx.get_parameter_source("username") != click.core.ParameterSource.ENVIRONMENT:
