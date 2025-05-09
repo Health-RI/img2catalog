@@ -1,0 +1,86 @@
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix dcatap: <http://data.europa.eu/r5r/> .
+@prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
+
+<http://localhost:8080/data/archive> a dcat:Catalog ;
+    dcterms:description "This is an example XNAT catalog description" ;
+    dcterms:publisher [ a foaf:Agent ;
+            dcterms:identifier "http://www.example.com/institution#example" ;
+            foaf:homepage <http://www.example.com/> ;
+            foaf:mbox <mailto:publisher@example.com> ;
+            foaf:name "Example publishing institution" ] ;
+    dcterms:title "Example XNAT catalog" ;
+    dcat:contactPoint [ a vcard:Kind ;
+            vcard:fn "Example Data Management office" ;
+            vcard:hasEmail <mailto:datamanager@example.com> ] ;
+    dcat:dataset <http://localhost:8080/data/archive/projects/protected_optin>,
+        <http://localhost:8080/data/archive/projects/public_optin>,
+        <http://localhost:8080/data/archive/projects/private_optin> .
+
+<http://localhost:8080/data/archive/projects/protected_optin> a dcat:Dataset ;
+    dcatap:applicableLegislation <http://data.europa.eu/eli/reg/2025/327/oj> ;
+    dcterms:accessRights <http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC> ;
+    dcterms:creator [ a foaf:Agent ;
+            dcterms:identifier "http://example.com" ;
+            foaf:homepage <http://www.example.com/> ;
+            foaf:mbox <mailto:example@example.com> ;
+            foaf:name "Prof. Example Exampleton" ] ;
+    dcterms:description "protected_optin" ;
+    dcterms:identifier "http://localhost:8080/data/archive/projects/protected_optin" ;
+    dcterms:publisher [ a foaf:Agent ;
+            dcterms:identifier "http://example.com" ;
+            foaf:homepage <http://www.example.com/> ;
+            foaf:mbox <mailto:publisher@example.com> ;
+            foaf:name "Example publisher list" ] ;
+    dcterms:title "protected_optin" ;
+    dcat:contactPoint [ a vcard:Kind ;
+            vcard:fn "Example Data Management office" ;
+            vcard:hasEmail <mailto:datamanager@example.com> ] ;
+    dcat:keyword "xnat" ;
+    dcat:theme <http://publications.europa.eu/resource/authority/data-theme/HEAL> .
+
+<http://localhost:8080/data/archive/projects/private_optin> a dcat:Dataset ;
+    dcatap:applicableLegislation <http://data.europa.eu/eli/reg/2025/327/oj> ;
+    dcterms:accessRights <http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC> ;
+    dcterms:creator [ a foaf:Agent ;
+            dcterms:identifier "http://example.com" ;
+            foaf:homepage <http://www.example.com/> ;
+            foaf:mbox <mailto:example@example.com> ;
+            foaf:name "Prof. Example Exampleton" ] ;
+    dcterms:description "private_optin" ;
+    dcterms:identifier "http://localhost:8080/data/archive/projects/private_optin" ;
+    dcterms:publisher [ a foaf:Agent ;
+            dcterms:identifier "http://example.com" ;
+            foaf:homepage <http://www.example.com/> ;
+            foaf:mbox <mailto:publisher@example.com> ;
+            foaf:name "Example publisher list" ] ;
+    dcterms:title "private_optin" ;
+    dcat:contactPoint [ a vcard:Kind ;
+            vcard:fn "Example Data Management office" ;
+            vcard:hasEmail <mailto:datamanager@example.com> ] ;
+    dcat:keyword "xnat" ;
+    dcat:theme <http://publications.europa.eu/resource/authority/data-theme/HEAL> .
+
+<http://localhost:8080/data/archive/projects/public_optin> a dcat:Dataset ;
+    dcatap:applicableLegislation <http://data.europa.eu/eli/reg/2025/327/oj> ;
+    dcterms:accessRights <http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC> ;
+    dcterms:creator [ a foaf:Agent ;
+            dcterms:identifier "http://example.com" ;
+            foaf:homepage <http://www.example.com/> ;
+            foaf:mbox <mailto:example@example.com> ;
+            foaf:name "Prof. Example Exampleton" ] ;
+    dcterms:description "public_optin" ;
+    dcterms:identifier "http://localhost:8080/data/archive/projects/public_optin" ;
+    dcterms:publisher [ a foaf:Agent ;
+            dcterms:identifier "http://example.com" ;
+            foaf:homepage <http://www.example.com/> ;
+            foaf:mbox <mailto:publisher@example.com> ;
+            foaf:name "Example publisher list" ] ;
+    dcterms:title "public_optin" ;
+    dcat:contactPoint [ a vcard:Kind ;
+            vcard:fn "Example Data Management office" ;
+            vcard:hasEmail <mailto:datamanager@example.com> ] ;
+    dcat:keyword "xnat" ;
+    dcat:theme <http://publications.europa.eu/resource/authority/data-theme/HEAL> .
