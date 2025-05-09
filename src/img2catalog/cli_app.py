@@ -11,7 +11,6 @@ from img2catalog import log
 from img2catalog.__about__ import __version__
 from img2catalog.configmanager import load_img2catalog_configuration
 
-# from xnat.client.helpers import xnatpy_login_options, connect_cli
 from img2catalog.const import (
     FDP_PASS_ENV,
     FDP_SERVER_ENV,
@@ -30,14 +29,6 @@ from img2catalog.outputs.rdf import RDFOutput
 
 
 logger = logging.getLogger(__name__)
-
-# img2catalog --config config_path --version --verbose --logfile logfile
-# xnat -s server -u username -p (triggers password) --optin/--optout
-# xnat-project -s server -u username -p (triggers password) --optin/--optout
-# mapping healthriv2
-# dcat -o output_file --format format
-# fdp --sparql sparql_endpoint -c catalog -u username -p (triggers_password)
-
 
 def __connect_xnat(server: str, username: str, password: str) -> XNATSession:
     """This function collects credentials and connects to XNAT
@@ -104,7 +95,7 @@ def cli_click(
     optout: str,
     **kwargs,
 ):
-    """This tool queries metadata from an XNAT server"""
+    """Extract metadata from an imaging data repository."""
     ctx.ensure_object(dict)
     log._add_file_handler(logfile)
     logger.info("======= img2catalog New Run ========")
@@ -152,6 +143,7 @@ def cli_click(
 )
 @click.pass_context
 def input_xnat(ctx: click.Context, server: str, username: str, password: str):
+    """ Extract metadata from the projects on an XNAT server."""
     config = ctx.obj['config']
     # with connect_cli(cli=False, **kwargs) as session:
     # If username is not environment variable and password is, that's usually not intended
@@ -175,6 +167,7 @@ cli_click.add_command(input_xnat)
 @click.group("map-xnat-hriv2")
 @click.pass_context
 def mapping_xnat_healthriv2(ctx: click.Context):
+    """ Map metadata extracted from XNAT to the Health-RI v2 model."""
     unmapped_objects = ctx.obj['unmapped_objects']
 
     mapped_objects = map_xnat_to_healthriv2(unmapped_objects)
@@ -209,7 +202,7 @@ input_xnat.add_command(mapping_xnat_healthriv2)
 )
 @click.pass_context
 def output_rdf(ctx: click.Context, output: click.Path, format: str):
-    """ Extracts the metadata of all projects and write them to file. """
+    """ Serialize metadata to RDF, either to file or stdout. """
     config = ctx.obj["config"]
     unmapped_objects = ctx.obj['unmapped_objects']
 
@@ -240,7 +233,7 @@ def output_rdf(ctx: click.Context, output: click.Path, format: str):
 @mapping_xnat_healthriv2.command(name="fdp")
 @click.pass_context
 def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catalog: URIRef, sparql: str):
-    """ Extracts the metadata of all projects and pushes them to an FDP. """
+    """ Push metadata to a FAIR Data Point (FDP). """
     config = ctx.obj["config"]
 
     unmapped_objects = ctx.obj['unmapped_objects']
@@ -285,9 +278,9 @@ def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catal
 )
 @click.pass_context
 def input_xnat_project(ctx: click.Context, project_id: str, server: str, username: str, password: str):
-    """Specify one project for DCAT extraction.
+    """ Extract metadata from one XNAT project.
 
-    The project is referred to by XNAT ID"""
+     The XNAT project is specified by project ID."""
     config = ctx.obj["config"]
     # with connect_cli(cli=False, **kwargs) as session:
     # If username is not environment variable and password is, that's usually not intended
@@ -318,15 +311,6 @@ def input_xnat_project(ctx: click.Context, project_id: str, server: str, usernam
     }
     ctx.obj['unmapped_objects'] = unmapped_objects
 
-    # mapped_objects = map_xnat_to_healthriv2(unmapped_objects)
-
-    # rdf_output = RDFOutput(config, format)
-
-    # if output:
-    #     rdf_output.to_file(mapped_objects, output)
-
-    # else:
-    #     rdf_output.to_stdout(mapped_objects)
 
 cli_click.add_command(input_xnat_project)
 input_xnat_project.add_command(mapping_xnat_healthriv2)
