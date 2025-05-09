@@ -167,7 +167,7 @@ cli_click.add_command(input_xnat)
 @click.group("map-xnat-hriv2")
 @click.pass_context
 def mapping_xnat_healthriv2(ctx: click.Context):
-    """ Map metadata extracted from XNAT to the Health-RI v2 model."""
+    """ Map metadata from XNAT to the Health-RI v2 model."""
     unmapped_objects = ctx.obj['unmapped_objects']
 
     mapped_objects = map_xnat_to_healthriv2(unmapped_objects)
@@ -204,9 +204,7 @@ input_xnat.add_command(mapping_xnat_healthriv2)
 def output_rdf(ctx: click.Context, output: click.Path, format: str):
     """ Serialize metadata to RDF, either to file or stdout. """
     config = ctx.obj["config"]
-    unmapped_objects = ctx.obj['unmapped_objects']
-
-    mapped_objects = map_xnat_to_healthriv2(unmapped_objects)
+    mapped_objects = ctx.obj['mapped_objects']
 
     rdf_output = RDFOutput(config, format)
 
@@ -235,10 +233,7 @@ def output_rdf(ctx: click.Context, output: click.Path, format: str):
 def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catalog: URIRef, sparql: str):
     """ Push metadata to a FAIR Data Point (FDP). """
     config = ctx.obj["config"]
-
-    unmapped_objects = ctx.obj['unmapped_objects']
-
-    mapped_objects = map_xnat_to_healthriv2(unmapped_objects)
+    mapped_objects = ctx.obj['mapped_objects']
 
     fdp_output = FDPOutput(config, fdp, username, password,
                            catalog_uri=catalog, sparql=sparql)
