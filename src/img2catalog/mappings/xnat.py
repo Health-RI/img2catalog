@@ -1,7 +1,6 @@
 import logging
 from typing import Dict, List
 
-from pydantic import ValidationError
 from rdflib import URIRef
 from sempyro.hri_dcat import HRICatalog, HRIDataset, HRIVCard, HRIAgent
 
