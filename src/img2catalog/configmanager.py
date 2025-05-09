@@ -42,12 +42,12 @@ email = "datamanager@example.com"
 [dataset.publisher]
 name = ["Example publisher list",]
 identifier = ["http://example.com"]
-mbox = "publisher@example.com"
+mbox = "mailto:publisher@example.com"
 homepage = "http://www.example.com"
 
 [dataset.creator]
 identifier = ['http://example.com']
-mbox = "example@example.com"
+mbox = "mailto:example@example.com"
 homepage = "http://www.example.com"
 
 [catalog]
@@ -57,13 +57,13 @@ description = "This is an example XNAT catalog description"
 [catalog.publisher]
 name = ["Example publishing institution",]
 identifier = ["http://www.example.com/institution#example"]
-mbox = "publisher@example.com"
+mbox = "mailto:publisher@example.com"
 homepage = "http://www.example.com"
 
 [catalog.contact_point]
 # override = true
 formatted_name = "Example Data Management office"
-email = "datamanager@example.com"
+email = "mailto:datamanager@example.com"
 
 [distribution.default]
 title = "XNAT imaging distribution"

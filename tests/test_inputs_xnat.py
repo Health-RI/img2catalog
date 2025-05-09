@@ -86,7 +86,7 @@ def test_empty_xnat(session, config: Dict[str, Any]):
                 'publisher': {
                     'identifier': ['http://www.example.com/institution#example'],
                     'name': ['Example publishing institution'],
-                    'mbox': 'publisher@example.com',
+                    'mbox': 'mailto:publisher@example.com',
                     'homepage': 'http://www.example.com'
                 },
                 'contact_point': {
@@ -131,7 +131,7 @@ def test_valid_project_no_investigator(mock_check_eligibility, session, project,
             'publisher': {
                 'identifier': ['http://www.example.com/institution#example'],
                 'name': ['Example publishing institution'],
-                'mbox': 'publisher@example.com',
+                'mbox': 'mailto:publisher@example.com',
                 'homepage': 'http://www.example.com'
             },
             'dataset': ["http://localhost/data/archive/projects/test_img2catalog"],
@@ -150,7 +150,7 @@ def test_valid_project_no_investigator(mock_check_eligibility, session, project,
             "creator": [{
                 'identifier': ['http://example.com'],
                 'name': ['prof. Albus Dumbledore'],
-                'mbox': 'example@example.com',
+                'mbox': 'mailto:example@example.com',
                 'homepage': 'http://www.example.com'
             }],
             "description": ["In this project, we test xnat and dcat and make sure a description appears."],
@@ -161,7 +161,7 @@ def test_valid_project_no_investigator(mock_check_eligibility, session, project,
             "publisher": {
                 'identifier': ['http://example.com'],
                 'name': ['Example publisher list'],
-                'mbox': 'publisher@example.com',
+                'mbox': 'mailto:publisher@example.com',
                 'homepage': 'http://www.example.com'
             },
             'theme': 'http://publications.europa.eu/resource/authority/data-theme/HEAL',
@@ -211,7 +211,7 @@ def test_valid_project(mock_check_eligibility, session, project, config: Dict[st
             'publisher': {
                 'identifier': ['http://www.example.com/institution#example'],
                 'name': ['Example publishing institution'],
-                'mbox': 'publisher@example.com',
+                'mbox': 'mailto:publisher@example.com',
                 'homepage': 'http://www.example.com'
             },
             'dataset': ["http://localhost/data/archive/projects/test_img2catalog"],
@@ -231,13 +231,13 @@ def test_valid_project(mock_check_eligibility, session, project, config: Dict[st
                 {
                 'identifier': ['http://example.com'],
                 'name': ['prof. Albus Dumbledore'],
-                'mbox': 'example@example.com',
+                'mbox': 'mailto:example@example.com',
                 'homepage': 'http://www.example.com'
                 },
                 {
                     'identifier': ['http://example.com'],
                     'name': ['Prof. Minerva McGonagall'],
-                    'mbox': 'example@example.com',
+                    'mbox': 'mailto:example@example.com',
                     'homepage': 'http://www.example.com'
                 }
             ],
@@ -249,7 +249,7 @@ def test_valid_project(mock_check_eligibility, session, project, config: Dict[st
             "publisher": {
                 'identifier': ['http://example.com'],
                 'name': ['Example publisher list'],
-                'mbox': 'publisher@example.com',
+                'mbox': 'mailto:publisher@example.com',
                 'homepage': 'http://www.example.com'
             },
             'theme': 'http://publications.europa.eu/resource/authority/data-theme/HEAL',
@@ -293,7 +293,7 @@ def test_no_keywords(mock_check_eligibility, session, project, empty_graph: Grap
             'publisher': {
                 'identifier': ['http://www.example.com/institution#example'],
                 'name': ['Example publishing institution'],
-                'mbox': 'publisher@example.com',
+                'mbox': 'mailto:publisher@example.com',
                 'homepage': 'http://www.example.com'
             },
             'dataset': ["http://localhost/data/archive/projects/test_img2catalog"],
@@ -313,7 +313,7 @@ def test_no_keywords(mock_check_eligibility, session, project, empty_graph: Grap
                 {
                     'identifier': ['http://example.com'],
                     'name': ['prof. Albus Dumbledore'],
-                    'mbox': 'example@example.com',
+                    'mbox': 'mailto:example@example.com',
                     'homepage': 'http://www.example.com'
                 }
             ],
@@ -325,7 +325,7 @@ def test_no_keywords(mock_check_eligibility, session, project, empty_graph: Grap
             "publisher": {
                 'identifier': ['http://example.com'],
                 'name': ['Example publisher list'],
-                'mbox': 'publisher@example.com',
+                'mbox': 'mailto:publisher@example.com',
                 'homepage': 'http://www.example.com'
             },
             'theme': 'http://publications.europa.eu/resource/authority/data-theme/HEAL',
