@@ -2,6 +2,7 @@
 optin = "include_catalogue"
 optout = "exclude_catalogue"
 remove_optin = true
+include_private = true
 
 [dataset]
 # Theme should be Health, according to the EU Data Theme vocabulary
