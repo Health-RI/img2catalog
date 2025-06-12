@@ -1,6 +1,6 @@
 import logging
 import sys
-from logging import FileHandler, StreamHandler
+from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
 from os import PathLike
 from typing import Union
@@ -29,14 +29,10 @@ class Logger:
         console_handler = StreamHandler(sys.stderr)
         console_handler.setLevel(logging.WARNING)
 
-        # file_handler = FileHandler(f'./{logger_name}.log')
-        # file_handler.setLevel(logging.INFO)
         self.formatter = logging.Formatter(LOGGING_FORMAT, datefmt=LOGGING_DATEFMT)
-        # file_handler.setFormatter(formatter)
         console_handler.setFormatter(self.formatter)
 
         logger.addHandler(console_handler)
-        # logger.addHandler(file_handler)
         self.logger_name = logger_name
         self.logger = logger
         self.logger_path = logger_path
