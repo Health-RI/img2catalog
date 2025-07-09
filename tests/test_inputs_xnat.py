@@ -384,22 +384,17 @@ def test_no_description(mock_check_eligibility, session, project, empty_graph: G
         _ = xnat_input.project_to_dataset(project)
 
 @pytest.mark.parametrize(
-    "private, optin, include_private, expected", [
-        (False, True, False, True),
-        (True, True, False, False),
-        (False, False, False, False),
-        (True, False, False, False),
-        (False, True, True, True),
-        (True, True, True, True),
-        (False, False, True, False),
-        (True, False, True, False),
+    "private, optin, expected", [
+        (False, True, True),
+        (True, True, False),
+        (False, False, False),
+        (True, False, False),
     ]
 )
 @patch("xnat.core.XNATBaseObject")
 @patch.object(XNATInput, "_is_private_project")
 @patch.object(inputs_xnat, "check_optin_optout")
-def test_project_eligibility(mock_check_optin_optout, mock_is_private_project, project, private, optin,
-                             include_private, expected):
+def test_project_eligibility(mock_check_optin_optout, mock_is_private_project, project, private, optin, expected):
     """ Test project eligibility; it should only be eligible if it's not private, but does have opt-in. """
     mock_is_private_project.return_value = private
     mock_check_optin_optout.return_value = optin
@@ -407,7 +402,7 @@ def test_project_eligibility(mock_check_optin_optout, mock_is_private_project, p
     project.__str__.return_value = "test project"
     project.id = "test"
 
-    xnat_input = XNATInput({'img2catalog': {'include_private': include_private}}, None)
+    xnat_input = XNATInput({}, None)
 
     assert xnat_input._check_eligibility_project(project) == expected
 

@@ -233,9 +233,7 @@ class XNATInput:
             Returns True if the project could be indexed, False if not.
         """
         # Check if project is private. If it is, skip it
-        if self._is_private_project(project) and not (
-                self.config.get("img2catalog", INCLUDE_PRIVATE) and
-                self.config["img2catalog"].get("include_private", INCLUDE_PRIVATE)):
+        if self._is_private_project(project):
             logger.debug("Project %s is private, not eligible", project.id)
             return False
 

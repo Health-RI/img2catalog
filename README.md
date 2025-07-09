@@ -90,8 +90,9 @@ For more information regarding this, see the [XNATpy documentation](https://xnat
 
 ## Inclusion and exclusion of projects
 
-By default, all public and protected projects are indexed. Private projects are only indexed by
-configuring `include_private = true` in the `[img2catalog]` section of your configuration file.
+By default, all public and protected projects are indexed. 
+Since private projects are not shown on XNAT, they will also not be harvested to be represented in a public 
+catalogue.
 
 By specifying either opt-in or opt-out keywords, projects can be included and excluded.
 If an opt-in keyword is given, only projects with that keyword are included; if an opt-out keyword is given
