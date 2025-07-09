@@ -11,7 +11,8 @@ TEST_CONFIG = pathlib.Path(__file__).parent / "xnat_integration_test_config.toml
 
 @freeze_time("2024-04-01")
 @pytest.mark.integration
-def test_xnat_integration(tmp_path, xnat4tests_connection, xnat4tests_uri, isolated_cli_runner, empty_graph):
+def test_xnat_integration(tmp_path, xnat4tests_connection, xnat4tests_uri, isolated_cli_runner,
+                          empty_graph, second_empty_graph):
     """ XNAT Integration test
 
     Using xnat4tests, there is a local XNAT prepared with 5 projects:
@@ -25,12 +26,14 @@ def test_xnat_integration(tmp_path, xnat4tests_connection, xnat4tests_uri, isola
     Of these projects only the last two should be serialized.
     """
     # XNAT integration tests
-    result = isolated_cli_runner.invoke(cli_click, ["--server", xnat4tests_uri, "--verbose",
-                                                    "-u", "admin", "-p", "admin",
-                                                    "--config", f"{TEST_CONFIG}", "dcat",
-                                                    "-o", f"{tmp_path}/output.ttl"])
+    result = isolated_cli_runner.invoke(cli_click, ["--verbose", "--config", f"{TEST_CONFIG}",
+                                                    "xnat", "--server", xnat4tests_uri, "-u", "admin", "-p", "admin",
+                                                    "map-xnat-hriv2",
+                                                    "rdf", "-o", f"{tmp_path}/output.ttl"])
+    print(result.stdout)
     result_graph = empty_graph.parse(source=f"{tmp_path}/output.ttl")
-    reference_graph = empty_graph.parse(source=pathlib.Path(__file__).parent / "references" / "xnat_integration_test.ttl")
+    reference_graph = second_empty_graph.parse(
+        source=pathlib.Path(__file__).parent / "references" / "xnat_integration_test.ttl")
 
     # Verify known output
     assert result.exit_code == 0
@@ -39,7 +42,8 @@ def test_xnat_integration(tmp_path, xnat4tests_connection, xnat4tests_uri, isola
 
 @freeze_time("2024-04-01")
 @pytest.mark.integration
-def test_xnat_integration_single_dataset(tmp_path, xnat4tests_connection, xnat4tests_uri, isolated_cli_runner, empty_graph):
+def test_xnat_integration_single_dataset(tmp_path, xnat4tests_connection, xnat4tests_uri, isolated_cli_runner,
+                                         empty_graph, second_empty_graph):
     """ XNAT Integration test
 
     Using xnat4tests, there is a local XNAT prepared with 5 projects:
@@ -53,13 +57,13 @@ def test_xnat_integration_single_dataset(tmp_path, xnat4tests_connection, xnat4t
     In this test only 'protected_optin' will be serialized
     """
     # XNAT integration tests
-    result = isolated_cli_runner.invoke(cli_click, ["--server", xnat4tests_uri, "--verbose",
-                                                    "-u", "admin", "-p", "admin",
-                                                    "--config", f"{TEST_CONFIG}", "project",
+    result = isolated_cli_runner.invoke(cli_click, ["--verbose", "--config", f"{TEST_CONFIG}",
+                                                    "xnat-project", "--server", xnat4tests_uri, "-u", "admin", "-p", "admin",
                                                     "protected_optin",
-                                                    "-o", f"{tmp_path}/output.ttl"])
+                                                    "map-xnat-hriv2",
+                                                    "rdf", "-o", f"{tmp_path}/output.ttl"])
     result_graph = empty_graph.parse(source=f"{tmp_path}/output.ttl")
-    reference_graph = empty_graph.parse(source=pathlib.Path(__file__).parent / "references" / "xnat_integration_test-single_dataset.ttl")
+    reference_graph = second_empty_graph.parse(source=pathlib.Path(__file__).parent / "references" / "xnat_integration_test-single_dataset.ttl")
 
     # Verify known output
     assert result.exit_code == 0

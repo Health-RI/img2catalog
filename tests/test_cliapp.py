@@ -36,7 +36,8 @@ def test_cli_connect(connect, isolated_cli_runner):
     connect.return_value.__enter__.return_value = mock_xnat_session
 
     # Run isolated (to keep log files safe)
-    result = isolated_cli_runner.invoke(cli_click, ["--server", "http://example.com", "--verbose", "dcat"])
+    result = isolated_cli_runner.invoke(cli_click, ["--verbose", "xnat", "--server", "http://example.com",
+                                                    "map-xnat-hriv2", "rdf"])
 
     connect.assert_called_once_with(server="http://example.com", user=None, password=None)
     assert result.exit_code == 0
@@ -59,7 +60,7 @@ def test_anonymous_envhost(connect, isolated_cli_runner, monkeypatch):
     monkeypatch.setenv(XNAT_HOST_ENV, "http://fail_test.example.com")
 
     # Run isolated (to keep log files safe)
-    result = isolated_cli_runner.invoke(cli_click, ["dcat"])
+    result = isolated_cli_runner.invoke(cli_click, ["xnat", "map-xnat-hriv2", "rdf"])
 
     connect.assert_called_once_with(server="http://test.example.com", user=None, password=None)
 
@@ -82,7 +83,7 @@ def test_second_env_var(connect, isolated_cli_runner, monkeypatch):
     # monkeypatch.setenv(XNATPY_HOST_ENV, "http://test.example.com")
     monkeypatch.setenv(XNAT_HOST_ENV, "http://pass_test.example.com")
     # Run isolated (to keep log files safe)
-    result = isolated_cli_runner.invoke(cli_click, ["dcat"])
+    result = isolated_cli_runner.invoke(cli_click, ["xnat", "map-xnat-hriv2", "rdf"])
 
     connect.assert_called_once_with(server="http://pass_test.example.com", user=None, password=None)
 
@@ -108,7 +109,8 @@ def test_user_pass_prio_env(connect, isolated_cli_runner, monkeypatch):
     monkeypatch.setenv(XNAT_PASS_ENV, "fail_password")
     # monkeypatch.setenv(XNAT_HOST_ENV, "http://fail_test.example.com")
     # Run isolated (to keep log files safe)
-    result = isolated_cli_runner.invoke(cli_click, ["-u", "pass_user", "-s", "http://test.example.com", "dcat"])
+    result = isolated_cli_runner.invoke(cli_click, ["xnat", "-u", "pass_user", "-s", "http://test.example.com",
+                                                    "map-xnat-hriv2", "rdf"])
 
     # FIXME Not sure if this is desired behavior. Ideally, if the username is set as an argument,
     # it should prompt for the password or at least ignore the environment variable.
@@ -134,8 +136,7 @@ def test_user_pass_envvar(connect, isolated_cli_runner, monkeypatch):
     monkeypatch.setenv(XNAT_PASS_ENV, "password")
     # Run isolated (to keep log files safe)
     result = isolated_cli_runner.invoke(
-        cli_click,
-        ["-s", "http://test.example.com", "dcat"],
+        cli_click, ["xnat", "-s", "http://test.example.com", "map-xnat-hriv2", "rdf"],
     )
 
     connect.assert_called_once_with(server="http://test.example.com", user="pass_user", password="password")
@@ -147,26 +148,20 @@ def test_user_pass_envvar(connect, isolated_cli_runner, monkeypatch):
 @pytest.mark.parametrize(
     "test_input, expected",
     [
-        (["-s", "http://test.example.com", "dcat"], {"format": "turtle"}),
+        (["xnat", "-s", "http://test.example.com", "map-xnat-hriv2", "rdf"], {"format": "turtle"}),
         (
             [
-                "-s",
-                "http://test.example.com",
-                "dcat",
-                "-o",
-                "tester_1.ttl",
-                "-f",
-                "xml",
+                "xnat", "-s", "http://test.example.com",
+                "map-xnat-hriv2",
+                "rdf", "-o", "tester_1.ttl", "-f", "xml",
             ],
             {"destination": "tester_1.ttl", "format": "xml"},
         ),
         (
             [
-                "-s",
-                "http://test.example.com",
-                "dcat",
-                "-o",
-                "tester_2.ttl",
+                "xnat", "-s", "http://test.example.com",
+                "map-xnat-hriv2",
+                "rdf", "-o", "tester_2.ttl",
             ],
             {"destination": "tester_2.ttl", "format": "turtle"},
         ),
@@ -209,7 +204,8 @@ def test_nonexisting_config(connect, isolated_cli_runner):
     The CLI should return exit code 2 and not proceed to connecting to XNAT if a nonexisting configuration
     file is supplied.
     """
-    result = isolated_cli_runner.invoke(cli_click, ["-s", "http://example.com", "--config", "non_existing_file.toml"])
+    result = isolated_cli_runner.invoke(cli_click, ["--config", "non_existing_file.toml",
+                                                    "xnat", "-s", "http://example.com"])
 
     assert not connect.called, "Function was called despite having to error out"
 
@@ -260,8 +256,10 @@ def test_fdp_cli(connect, mock_FDPClient, mock_FDPOutput, isolated_cli_runner):
         cli_click,
         [
             "--verbose",
+            "xnat",
             "-s",
             "http://example.com",
+            "map-xnat-hriv2",
             "fdp",
             "--fdp",
             "http://fdp.example.com",
@@ -298,6 +296,8 @@ def test_fdp_cli_env(connect, mock_SPARQLClient, mock_FDPClient, isolated_cli_ru
         cli_click,
         [
             "--verbose",
+            "xnat",
+            "map-xnat-hriv2",
             "fdp",
             "-c",
             "http://catalog.example.com",
@@ -327,81 +327,9 @@ def test_output_project(
 
     result = isolated_cli_runner.invoke(
         cli_click,
-        ["--verbose", "-s", "http://example.com", "project", "test_project"],
+        ["--verbose", "xnat-project", "-s", "http://example.com", "test_project",
+         "map-xnat-hriv2", "rdf"],
     )
 
     connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
     mock_project_to_dataset.assert_called_once_with('test_project')
-
-
-# @patch("xnat.connect")
-# @patch("img2catalog.cli_app.xnat_to_DCATDataset")
-# def test_output_project(
-#     xnat_to_DCATDataset,
-#     connect,
-#     mock_dataset,
-#     empty_graph,
-#     isolated_cli_runner,
-# ):
-#     """ Test CLI for one project, stdout
-#
-#     This CLI should only retrieve metadata of the project `test_project` and only return that dataset.
-#     The output is parsed from stdout.
-#     """
-#     # patch the session.projects such that it returns the id it was called with
-#     connect.return_value.__enter__.return_value.projects.__getitem__.side_effect = lambda x: x
-#
-#     # Always return a mock DCATDataset object and URI
-#     xnat_to_DCATDataset.return_value = (mock_dataset, URIRef("http://example.com"))
-#
-#     result = isolated_cli_runner.invoke(
-#         cli_click,
-#         ["--verbose", "-s", "http://example.com", "project", "test_project"],
-#     )
-#
-#     result_graph = empty_graph.parse(result.stdout_bytes, format="ttl")
-#     reference_graph = empty_graph.parse(source=pathlib.Path(__file__).parent / "references" / "mock_dataset.ttl")
-#
-#     # Verify known output
-#     assert to_isomorphic(reference_graph) == to_isomorphic(result_graph)
-#
-#     connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
-#     xnat_to_DCATDataset.assert_called_with("test_project", ANY)
-#     connect.return_value.__enter__.return_value.projects.__getitem__.assert_called_once_with("test_project")
-
-
-# @patch("xnat.connect")
-# @patch("img2catalog.cli_app.xnat_to_DCATDataset")
-# def test_output_project_file(
-#     xnat_to_DCATDataset,
-#     connect,
-#     mock_dataset,
-#     empty_graph,
-#     isolated_cli_runner,
-# ):
-#     """ Test CLI for one project, output file
-#
-#     This CLI should only retrieve metadata of the project `test_project` and only return that dataset.
-#     The output is parsed from an output file.
-#     """
-#     # patch the session.projects such that it returns the id it was called with
-#     connect.return_value.__enter__.return_value.projects.__getitem__.side_effect = lambda x: x
-#
-#     # Always return a mock DCATDataset object and URI
-#     xnat_to_DCATDataset.return_value = (mock_dataset, URIRef("http://example.com"))
-#
-#     isolated_cli_runner.invoke(
-#         cli_click,
-#         ["--verbose", "-s", "http://example.com", "project", "test_project", "-o", "test_project.xml", "-f", "xml"],
-#     )
-#
-#     result_graph = empty_graph.parse(source="test_project.xml", format="xml")
-#     reference_graph = empty_graph.parse(source=pathlib.Path(__file__).parent / "references" / "mock_dataset.ttl")
-#
-#     # Verify known output
-#     assert to_isomorphic(reference_graph) == to_isomorphic(result_graph)
-#
-#     # Make sure right functions are called
-#     connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
-#     xnat_to_DCATDataset.assert_called_with("test_project", ANY)
-#     connect.return_value.__enter__.return_value.projects.__getitem__.assert_called_once_with("test_project")

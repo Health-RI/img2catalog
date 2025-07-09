@@ -1,114 +1,68 @@
-# XNAT to DCAT-AP
+# `img2catalog`: From the shelves to the spotlight
 
 ![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FHealth-RI%2Fimg2catalog%2Fmain%2Fpyproject.toml)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Health-RI/img2catalog/python-test-package.yml)
 ![Codecov](https://img.shields.io/codecov/c/github/Health-RI/img2catalog)
 
-This tool queries an XNAT instance and generates DCAT-AP 3.0 metadata. Every XNAT project is
-considered to be a separate Dataset. Only 'public' and 'protected' datasets are queried.
-
-The metadata is compliant with the [Health-RI core v1 specification](https://github.com/Health-RI/health-ri-metadata/).
-Some fields are still left as placeholders. These will be updated in due time.
+This tool `img2catalog` is built to extract metadata from imaging data repositories, map it to a model class,
+and export it to a catalog. The tool is set up to be modular, but it currently supports extracting metadata from 
+an XNAT server, converting it to the [Health-RI Core v2 metadata model](https://github.com/Health-RI/health-ri-metadata/tree/v2.0.0),
+based on DCAT-AP v3 and Health-DCAT AP,
+as defined in Pydantic classes using [SeMPyRO](https://github.com/Health-RI/SeMPyRO), and either writing it 
+to an RDF file, or pushing it to a [FAIR Data Point (FDP)](https://www.fairdatapoint.org/).
 
 ## Installation
 
-This tool requires an installation of Python 3.8 or higher.
-Download a wheel file from releases and install using `pip install`. The tool can then be run by
-running the `img2catalog` command from the commandline.
+`img2catalog` requires an installation of Python 3.8 or higher. It can be installed by running
+
+```shell
+pip install img2catalog
+```
 
 ## Usage
 
-Basic example: `img2catalog https://xnat.bmia.nl`; output will appear at stdout. A log file `img2catalog.log` will be
-created in the directory from which you run this program.
+`img2catalog` consists of:
+- an input
+- a mapping
+- and an output.
 
-The tool supports both public and private XNAT instances. For authentication, you can either supply
-a username and/or password at the commandline or use a `.netrc` file. For more information regarding
-this, see the [XNATpy documentation](https://xnat.readthedocs.io/en/latest/static/tutorial.html#credentials).
-
-By default, output of the tool is in turtle format at stdout to make for easy piping, but it can be
-written in a variety of formats to a file, too. For all options, see `img2catalog --help`:
-
-```sh
-Usage: img2catalog [OPTIONS] COMMAND [ARGS]...
-
-  This tool queries metadata from an XNAT server
-
-Options:
-  -s, --server TEXT      URI of the server to connect to (including http:// or
-                         https://). If not set, will use environment variables
-                         XNATPY_HOST or XNAT_HOST.  [required]
-  -u, --username TEXT    Username to use, leave empty to use netrc entry or
-                         anonymous login or environment variable XNAT_USER.
-  -p, --password TEXT    Password to use with the username, leave empty when
-                         using netrc. If a username is given and no password
-                         or environment variable, there will be a prompt on
-                         the console requesting the password. Environment
-                         variable: XNAT_PASS
-  -c, --config PATH      Configuration file to use. If not set, will use
-                         ~/.img2catalog/config.toml if it exists.
-  -v, --verbose          Enables debugging mode.
-  -l, --logfile FILE     Path of logfile to use. Default is img2catalog.log in
-                         current directory
-  [mutually_exclusive]:
-    --optin TEXT         Opt-in keyword. If set, only projects with this
-                         keyword will be included
-    --optout TEXT        Opt-out keyword. If set, projects with this keyword
-                         will be excluded
-  --version              Show the version and exit.
-  --help                 Show this message and exit.
-
-Commands:
-  dcat
-  fdp
-
-
-Usage: img2catalog dcat [OPTIONS]
-
-Options:
-  -o, --output FILE               Destination file to write output to. If not
-                                  set, the script will print serialized output
-                                  to stdout.
-  -f, --format [xml|n3|turtle|nt|pretty-xml|trix|trig|nquads|json-ld|hext]
-                                  The format that the output should be written
-                                  in. This value references a Serializer
-                                  plugin in RDFlib. Supportd values are:
-                                  "xml", "n3", "turtle", "nt", "pretty-xml",
-                                  "trix", "trig", "nquads", "json-ld" and
-                                  "hext". Defaults to "turtle".
-  --help                          Show this message and exit.
-
-Usage: img2catalog fdp [OPTIONS]
-
-Options:
-  -s, --sparql URIREF   URL of SPARQL endpoint of FDP, used for querying which
-                        dataset to update
-  -c, --catalog URIREF  Catalog URI where datasets will be placed in
-                        [required]
-  -p, --password TEXT   Password of FDP to push to  [required]
-  -u, --username TEXT   Username of FDP to push to  [required]
-  -f, --fdp TEXT        URL of FDP to push datasets to  [required]
-  --help                Show this message and exit.
-
+A basic example:
+```shell 
+img2catalog xnat --server https://xnat.bmia.nl map-xnat-hriv2 rdf
 ```
+In this example we use the input `xnat`, that connects to the server `https://xnat.health-ri.nl`,
+uses the mapping `map-xnat-hriv2` that maps the extracted metadata to the Health-RI Core v2 metadata model, 
+and serializes that to RDF and outputs it to the terminal using the output `rdf`. 
 
-### Example with SPARQL endpoint
+In this mapping the XNAT itself will be converted to a Catalog object, and the projects to Datasets.
+
+### Pushing to a FAIR Data Point (FDP)
+
+Using `img2catalog` one can directly push the Datasets created from XNAT projects to an existing Catalog on an FDP. 
+To do so, run the following command with the output `fdp`:
+
+```shell 
+img2catalog xnat --server https://xnat.bmia.nl map-xnat-hriv2 fdp --fdp "https://fdp.healthdata.nl" -u "albert.einstein@example.com" -p "password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d"
+```
+This will add the new Datasets to the Catalog. In order to update the Datasets on the FAIR Data Point when rerunning 
+`img2catalog`, it is necessary to first perform a SPARQL query on the GraphDB, or another triple store, that contains
+the metadata stored in your FDP. To do so, supply the SPARQL endpoint as an argument to the `fdp` output.
 
 ```sh
-img2catalog --verbose -s "https://xnat-acc.health-ri.nl" fdp --fdp "https://fdp-acc.healthdata.nl" -u "albert.einstein@example.com" -p "check 1 Password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d" -s "https://sparql-acc.healthdata.nl/repositories/fdp"
+img2catalog xnat --server https://xnat.bmia.nl map-xnat-hriv2 fdp --fdp "https://fdp.healthdata.nl" -u "albert.einstein@example.com" -p "password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d" -s "https://sparql-acc.healthdata.nl/repositories/fdp"
 ```   
 
-## Configuration
+### Configuration
+
+A number of configuration option are available through the command line interface (CLI). To get an overview of these
+options, run `img2catalog --help` and on any subsequent submodules, e.g., `img2catalog xnat`.
 
 An example configuration file `config.toml` is supplied with this project. By default, `img2catalog`
-will look for a configuration file in `~/.img2catalog/config.toml`. The tool will not create the file
-or folder if it does not exist, you will have to do so manually. If the file does not exist, a
-hard-coded example file will be used.
+will use the configuration file `~/.img2catalog/config.toml`, if it exists.
+If the file does not exist, a default configuration will be used.
 
-A limited number of properties can be set in the configuration, including the title and name of the
-xnat (DCAT) catalog and the publisher of the catalog. A default contact point for datasets can also
-be provided and will be included in the Dataset properties.
-
-The tool can also be configured using environment variables. Here are the environment variables that can be used:
+Currently, it is not possible to gather all the information for the Health-RI v2 model from a regular XNAT project.
+The metadata can be supplemented by defining fallback values in the configuration file.
 
 ### Environment Variables
 
@@ -125,31 +79,25 @@ The tool can also be configured using environment variables. Here are the enviro
 Commandline arguments take precedence over environment variables. Environment variables take
 precedence over `.netrc` login.
 
-## Metadata
+### Authentication
 
-THe current metadata complies to the Health-RI core v1 shapes. This is an extension of DCAT-AP,
-output of the tool is thus fully compliant with DCAT-AP. A few fields that cannot be extracted
-from XNAT, are set at a more global level. This includes *dcat:contactPoint*, *dcat:theme* and
-*dcat:publisher*. The value of those fields can be set in the configuration.
+Authentication for XNAT can be done using, in order of precedence:
+- Command line arguments
+- Environment variables
+- `.netrc` file.
 
-A few fields are currently set with stub values. That includes the *dcterms:identifier* of the
-*creator*, the *dcterms:license*, and the *dcterms:issued* and *dcterms:modified* fields. We hope
-to be able to expand XNAT to include these fields as well.
+For more information regarding this, see the [XNATpy documentation](https://xnat.readthedocs.io/en/latest/static/tutorial.html#credentials).
 
 ## Inclusion and exclusion of projects
 
-By default, all public and protected projects are indexed. Private projects are *not* indexed, even
-if you provide user credentials that have relevant permissions for them. We can make an override
-for this behavior, please file an issue if you'd like to see this changed.
+By default, all public and protected projects are indexed. 
+Since private projects are not shown on XNAT, they will also not be harvested to be represented in a public 
+catalogue.
 
-Further granularity can be provided by using keywords. There is functionality for an opt-in keyword
-and an opt-out keyword, though only one of these at the time. If an opt-in keyword is set, only
-projects containing this magic keyword in their metadata will be indexed. All other projects will be
-ignored. If an opt-out keyword is set, all projects except for those containing the magic opt-out
-keyword will be indexed. The keywords can be configured in either the settings or the CLI, see the
-example configuration file.
-
-Note that private projects will currently not be indexed, not even if an opt-in keyword is set in them.
+By specifying either opt-in or opt-out keywords, projects can be included and excluded.
+If an opt-in keyword is given, only projects with that keyword are included; if an opt-out keyword is given
+all projects except those with that keyword are included. If none are supplied, all projects will be included;
+if both opt-in and opt-out keywords are given, then only the opt-in keyword is applied.
 
 ## Development
 

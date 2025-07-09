@@ -8,7 +8,7 @@ from tqdm import tqdm
 from xnat.core import XNATBaseObject
 from xnat.session import XNATSession
 
-from img2catalog.const import REMOVE_OPTIN_KEYWORD
+from img2catalog.const import REMOVE_OPTIN_KEYWORD, INCLUDE_PRIVATE
 from img2catalog.inputs.config import ConfigInput
 
 logger = logging.getLogger(__name__)
@@ -174,7 +174,6 @@ class XNATInput:
     def _format_investigator(self, investigator) -> Dict:
         creator = {
             'name': [f"{investigator.title or ''} {investigator.firstname} {investigator.lastname}".strip()],
-            'identifier': "http://example.com",  # Should be ORCID?
         }
         return creator
 
@@ -324,20 +323,20 @@ def check_optin_optout(project, config: Dict) -> bool:
     Parameters
     ----------
     project
-        XNAT project of which the eligiblity needs to be determined
+        XNAT project of which the eligibility needs to be determined
     config : Dict
         Configuration dictionary with the opt-in/opt-out keys
 
     Returns
     -------
     bool
-        Returns True if a project is elligible for indexing, False if it is not.
+        Returns True if a project is eligible for indexing, False if it is not.
     """
     try:
         optin_kw = config["img2catalog"].get("optin")
         optout_kw = config["img2catalog"].get("optout")
     except KeyError:
-        # If key not found, means config is not set, so no opt-in/opt-out set so always elligible.
+        # If key not found, means config is not set, so no opt-in/opt-out set so always eligible.
         return True
 
     if optin_kw:
