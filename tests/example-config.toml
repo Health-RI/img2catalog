@@ -1,7 +1,4 @@
 [img2catalog]
-# optin = "include_catalog"
-# optout = "exclude_catalog"
-# remove_optin = true
 
 [fdp]
 catalog = "http://example.com"
@@ -12,12 +9,7 @@ theme = "http://publications.europa.eu/resource/authority/data-theme/HEAL"
 applicable_legislation = ["http://data.europa.eu/eli/reg/2025/327/oj"]
 access_rights = "http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC"
 
-# Default License for datasets is "available upon reasonable request"
-# I can't find that, so putting a placeholder here
-# license = "http://example.com/license#nolicense"
-
 [dataset.contact_point]
-# override = true
 formatted_name = "Example Data Management office"
 email = "mailto:datamanager@example.com"
 
@@ -43,7 +35,6 @@ mbox = "mailto:publisher@example.com"
 homepage = "http://www.example.com"
 
 [catalog.contact_point]
-# override = true
 formatted_name = "Example Data Management office"
 email = "mailto:datamanager@example.com"
 
