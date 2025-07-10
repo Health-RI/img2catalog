@@ -456,3 +456,108 @@ def test_xnat_lister(mock_session):
         ]
 
         assert xnat_input.project_to_dataset.call_count == 4
+
+
+# Custom Form Tests
+@patch("xnat.core.XNATBaseObject")
+def test_get_custom_form_metadata_success(project, xnatpy_mock: Mocker, xnatpy_connection: XNATSession):
+    """Test successful custom form metadata retrieval with real API response format"""
+    config = {
+        'xnat': {
+            'dataset_form_id': 'e2c04eef-6333-41ae-8977-33e2f0793788'
+        }
+    }
+    
+    # Mock the custom form API response in the actual format
+    custom_form_response = {
+        '81057367-f72c-46d6-b6c2-1c409d49f61e': {
+            'condition': '25370001 - Hepatocellular Carcinoma'
+        },
+        '9b82df19-6639-4b87-b851-850cbc809c06': {
+            'yup': False
+        },
+        'e2c04eef-6333-41ae-8977-33e2f0793788': {
+            'submit': False,
+            'creators': [
+                {
+                    'name': 'Prof. C. Reator',
+                    'email': 'example@example.org',
+                    'identifier': 'https://example.org'
+                },
+                {
+                    'name': 'Hon. Example Exampleton',
+                    'email': 'example2@example.org',
+                    'identifier': 'https://example.org/0118-999'
+                }
+            ],
+            'accessRights': 'restricted',
+            'modificationDate': '2025-06-01T12:00:00+02:00',
+            'maximumTypicalAge': 107,
+            'minimumTypicalAge': 15
+        }
+    }
+    
+    project.name = "test_project"
+    project.xnat_session = xnatpy_connection
+    xnatpy_mock.get("/xapi/custom-fields/projects/test_project/fields", json=custom_form_response)
+    
+    xnat_input = XNATInput(config, xnatpy_connection)
+    result = xnat_input.get_custom_form_metadata(project, 'dataset')
+    
+    expected = {
+        'submit': False,
+        'creators': [
+            {
+                'name': 'Prof. C. Reator',
+                'email': 'example@example.org',
+                'identifier': 'https://example.org'
+            },
+            {
+                'name': 'Hon. Example Exampleton',
+                'email': 'example2@example.org',
+                'identifier': 'https://example.org/0118-999'
+            }
+        ],
+        'accessRights': 'restricted',
+        'modificationDate': '2025-06-01T12:00:00+02:00',
+        'maximumTypicalAge': 107,
+        'minimumTypicalAge': 15
+    }
+    
+    assert result == expected
+
+
+@patch("xnat.core.XNATBaseObject")
+def test_get_custom_form_metadata_no_config(project, xnatpy_connection: XNATSession):
+    """Test custom form metadata retrieval when no custom form ID is configured"""
+    config = {}
+    xnat_input = XNATInput(config, xnatpy_connection)
+    
+    result = xnat_input.get_custom_form_metadata(project, 'dataset')
+    
+    assert result == {}
+
+
+@patch("xnat.core.XNATBaseObject")
+def test_get_custom_form_metadata_form_not_found(project, xnatpy_mock: Mocker, xnatpy_connection: XNATSession):
+    """Test custom form metadata retrieval when form ID is not found"""
+    config = {
+        'xnat': {
+            'dataset_form_id': 'nonexistent-form-id'
+        }
+    }
+    
+    custom_form_response = {
+        '81057367-f72c-46d6-b6c2-1c409d49f61e': {
+            'condition': '25370001 - Hepatocellular Carcinoma'
+        }
+    }
+    
+    project.name = "test_project"
+    project.xnat_session = xnatpy_connection
+    xnatpy_mock.get("/xapi/custom-fields/projects/test_project/fields", json=custom_form_response)
+    
+    xnat_input = XNATInput(config, xnatpy_connection)
+    result = xnat_input.get_custom_form_metadata(project, 'dataset')
+    
+    assert result == {}
