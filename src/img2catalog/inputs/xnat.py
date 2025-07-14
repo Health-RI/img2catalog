@@ -485,11 +485,12 @@ class XNATParserError(ValueError):
 
 
 def filter_keyword(keywords: Union[List[str], None], config: Dict) -> List[str]:
-    """Filters the opt-in keyword from the keywords list
+    """Filters the opt-in keyword from the keywords list and applies fallback keywords if needed
 
     If no opt-in keyword is set, all keywords will be returned.
     If remove_keywords is set to False, all keywords will be returned.
     If the opt-in keyword cannot be found, all keywords will be returned.
+    If keywords are empty after filtering, fallback keywords will be applied.
 
     Parameters
     ----------
@@ -501,12 +502,25 @@ def filter_keyword(keywords: Union[List[str], None], config: Dict) -> List[str]:
     Returns
     -------
     List[str]
-        List of keywords, with the opt-in keyword filtered out if necessary
+        List of keywords, with the opt-in keyword filtered out if necessary and fallback keywords applied if empty
     """
+    # Handle None keywords
+    if keywords is None:
+        keywords = []
+    
+    # Remove opt-in keyword if configured
     if config.get("img2catalog") and config["img2catalog"].get("remove_optin", REMOVE_OPTIN_KEYWORD):
         optin_kw = config["img2catalog"].get("optin")
-        if optin_kw in keywords:
+        if optin_kw and optin_kw in keywords:
             keywords.remove(optin_kw)
+
+    # Apply fallback keywords if the list is empty
+    if not keywords and config.get("img2catalog") and config["img2catalog"].get("fallback_keywords"):
+        fallback_kw = config["img2catalog"]["fallback_keywords"]
+        if isinstance(fallback_kw, list):
+            keywords = fallback_kw.copy()
+        elif isinstance(fallback_kw, str):
+            keywords = [fallback_kw]
 
     return keywords
 

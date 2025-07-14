@@ -2,6 +2,8 @@
 optin = "healthdata_catalog"
 # optout = "exclude_catalog"
 remove_optin = true
+# Fallback keywords to use when no keywords are present (ensures keyword requirement is met)
+fallback_keywords = ["dataset", "research"]
 
 [xnat]
 dataset_form_id = "fd381bf3-78da-43bb-9731-803a2284ea6f"
