@@ -425,6 +425,32 @@ def test_keyword_filter(config, expected):
     assert sorted(filter_keyword(keyword_list, config)) == expected
 
 
+@pytest.mark.parametrize(
+    "keywords, config, expected",
+    [
+        # Test fallback keywords with empty list
+        ([], {"img2catalog": {"fallback_keywords": ["default", "fallback"]}}, ["default", "fallback"]),
+        # Test fallback keywords with None
+        (None, {"img2catalog": {"fallback_keywords": ["default", "fallback"]}}, ["default", "fallback"]),
+        # Test fallback keywords as string
+        ([], {"img2catalog": {"fallback_keywords": "single"}}, ["single"]),
+        # Test no fallback when keywords exist
+        (["existing"], {"img2catalog": {"fallback_keywords": ["default", "fallback"]}}, ["existing"]),
+        # Test fallback when only optin keyword is removed
+        (["optin"], {"img2catalog": {"optin": "optin", "fallback_keywords": ["default"]}}, ["default"]),
+        # Test no fallback when no config
+        ([], {}, []),
+        # Test no fallback when fallback_keywords not configured
+        ([], {"img2catalog": {}}, []),
+        # Test fallback combined with optin removal
+        (["keep", "optin"], {"img2catalog": {"optin": "optin", "fallback_keywords": ["default"]}}, ["keep"]),
+    ],
+)
+def test_keyword_filter_fallback(keywords, config, expected):
+    result = filter_keyword(keywords, config)
+    assert sorted(result) == sorted(expected)
+
+
 @patch("xnat.session.BaseXNATSession")
 def test_xnat_lister(mock_session):
     """ Test if `xnat_list_datasets` returns the right datasets based on eligibility and errors"""
