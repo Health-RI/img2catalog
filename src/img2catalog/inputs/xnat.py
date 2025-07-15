@@ -58,8 +58,6 @@ class XNATInput:
             'catalog': self.apply_custom_form_metadata(unmapped_objects['catalog'], 'catalog'),
             'dataset': self.apply_custom_form_metadata(unmapped_objects['dataset'], 'dataset')
         }
-        from pprint import pprint
-        pprint(unmapped_objects)
 
         return unmapped_objects
 
@@ -272,7 +270,6 @@ class XNATInput:
         """
         # Check if custom form ID is configured for this concept type
         custom_form_id = self.config.get('xnat', {}).get(f'{concept_type}_form_id')
-        print(custom_form_id)
         if not custom_form_id:
             logger.debug("No custom form ID configured for concept type %s", concept_type)
             return {}
