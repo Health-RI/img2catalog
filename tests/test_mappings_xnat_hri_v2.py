@@ -501,7 +501,7 @@ def test_optional_dataset_fields(field_name, field_value):
 
 @pytest.mark.parametrize("field_name,field_value", [
     # Complex fields that require special handling
-    ("other_identifier", {"notation": "ALT-ID-123", "schema_agency": "http://example.com/agency"}),
+    ("other_identifier", [{"notation": "ALT-ID-123", "schema_agency": "http://example.com/agency"}]),
     ("qualified_attribution", [{"agent": "http://example.com/agent1", "role": "http://example.com/role1"}]),
     ("qualified_relation", [{"had_role": ["http://example.com/role1"], "relation": ["http://example.com/relation1"]}]),
     ("quality_annotation", [{"target": "http://example.com/target1", "body": "http://example.com/body1"}]),
@@ -531,8 +531,9 @@ def test_complex_optional_dataset_fields(field_name, field_value):
     # Special handling for different field types
     if field_name == "other_identifier":
         # Should be an Identifier object
-        assert mapped_value.notation == field_value["notation"]
-        assert mapped_value.schema_agency == field_value["schema_agency"]
+        assert len(mapped_value) == 1
+        assert mapped_value[0].notation == field_value["notation"]
+        assert mapped_value[0].schema_agency == field_value["schema_agency"]
     elif field_name == "qualified_attribution":
         # Should be a list of Attribution objects
         assert len(mapped_value) == 1
