@@ -6,7 +6,7 @@ remove_optin = true
 fallback_keywords = ["dataset", "research"]
 
 [xnat]
-dataset_form_id = "fd381bf3-78da-43bb-9731-803a2284ea6f"
+dataset_form_id = "591c8e28-a621-4d4c-aadb-2f6671ecbaa2"
 
 [dataset]
 # Theme should be Health, according to the EU Data Theme vocabulary

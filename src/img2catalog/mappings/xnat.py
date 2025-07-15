@@ -99,16 +99,9 @@ def map_xnat_to_healthriv2(unmapped_objects: Dict[str, List[Dict]]) -> Dict[str,
 
         if 'retention_period' in dataset:
             dataset_kwargs['retention_period'] = PeriodOfTime(**dataset['retention_period'])
-        if 'other_identifier' in dataset:
-            other_identifier = dataset['other_identifier']
-            identifier_kwargs = {}
-            if 'notation' in other_identifier:
-                identifier_kwargs['notation'] = other_identifier['notation']
-            if 'schema_agency' in other_identifier:
-                identifier_kwargs['schema_agency'] = other_identifier['schema_agency']
-            dataset_kwargs['other_identifier'] = Identifier(**identifier_kwargs)
 
-        nested_structures = [('qualified_attribution', Attribution),
+        nested_structures = [('other_identifier', Identifier),
+                             ('qualified_attribution', Attribution),
                              ('qualified_relation', Relationship),
                              ('quality_annotation', QualityCertificate)]
         for struct in nested_structures:

@@ -1,8 +1,15 @@
 {
-  "title": "Health-RI v2 - form version 2",
+  "title": "Health-RI v2 - form version 3",
   "display": "form",
+  "description": "",
   "settings": {},
   "components": [
+    {
+      "label": "General information",
+      "type": "content",
+      "key": "content",
+      "html": "<p>This form is based on the Dataset class of the Health-RI v2 metadata model. For more information, see <a href=\"https://github.com/Health-RI/health-ri-metadata/tree/v2.0.0\" target=\"_blank\">https://github.com/Health-RI/health-ri-metadata/tree/v2.0.0</a>.</p>"
+    },
     {
       "type": "panel",
       "title": "Dataset Metadata",
@@ -63,7 +70,22 @@
         {
           "key": "theme",
           "data": {
-            "url": "http://publications.europa.eu/resource/authority/data-theme"
+            "values": [
+              "http://publications.europa.eu/resource/authority/data-theme/TECH",
+              "http://publications.europa.eu/resource/authority/data-theme/TRAN",
+              "http://publications.europa.eu/resource/authority/data-theme/REGI",
+              "http://publications.europa.eu/resource/authority/data-theme/SOCI",
+              "http://publications.europa.eu/resource/authority/data-theme/AGRI",
+              "http://publications.europa.eu/resource/authority/data-theme/ECON",
+              "http://publications.europa.eu/resource/authority/data-theme/JUST",
+              "http://publications.europa.eu/resource/authority/data-theme/OP_DATPRO",
+              "http://publications.europa.eu/resource/authority/data-theme/HEAL",
+              "http://publications.europa.eu/resource/authority/data-theme/INTR",
+              "http://publications.europa.eu/resource/authority/data-theme/ENVI",
+              "http://publications.europa.eu/resource/authority/data-theme/GOVE",
+              "http://publications.europa.eu/resource/authority/data-theme/EDUC",
+              "http://publications.europa.eu/resource/authority/data-theme/ENER"
+            ]
           },
           "type": "select",
           "label": "Theme",
@@ -71,7 +93,7 @@
           "validate": {
             "required": true
           },
-          "description": "A main category of the resource. All health datasets will use the theme 'HEAL', but additional values are allowed.",
+          "description": "A main category of the resource. A resource can have multiple themes. All health datasets will use the theme 'HEAL', but additional values are allowed.",
           "defaultValue": [
             "http://publications.europa.eu/resource/authority/data-theme/HEAL"
           ],
@@ -87,8 +109,14 @@
     },
     {
       "type": "panel",
-      "title": "Contact Information",
+      "title": "Contact Point",
       "components": [
+        {
+          "label": "Information: Contact Point",
+          "type": "content",
+          "key": "content_contact_point",
+          "html": "<p>Relevant contact information for the cataloged resource. This property points to a contact point (department or person) that can answer questions about the dataset. Whenever possible, use a general contact information (for example from a department) instead of contact information of an individual.</p>"
+        },
         {
           "key": "contact_point",
           "type": "fieldset",
@@ -141,8 +169,14 @@
     },
     {
       "type": "panel",
-      "title": "Creator and Publisher",
+      "title": "Creator",
       "components": [
+        {
+          "label": "Information: Creator",
+          "type": "content",
+          "key": "content_creator",
+          "html": "<p>Creator: This property points to a person (known as Agent) responsible for generating the dataset. In most cases, this should be the project’s Principal Investigator, provided they consent to being listed in the catalogue. If not, the associated department or institute may be specified instead.</p>"
+        },
         {
           "key": "creator",
           "type": "datagrid",
@@ -151,7 +185,7 @@
             "required": true,
             "minLength": 1
         },
-      "components": [
+        "components": [
           {
             "type": "tags",
             "key": "name",
@@ -196,10 +230,20 @@
             "tableView": true
           }
         ],
-          "description": "An entity responsible for making the resource. This should be the project's Principal Investigator or associated department.",
           "input": true,
           "tableView": false
-        },
+        }
+      ],
+      "collapsible": true,
+      "input": false,
+      "key": "panel",
+      "tableView": false,
+      "label": "Panel"
+    },
+    {
+      "type": "panel",
+      "title": "Publisher",
+      "components": [
         {
           "key": "publisher",
           "type": "fieldset",
@@ -209,9 +253,15 @@
           },
           "components": [
             {
+              "label": "Information: Publisher",
+              "type": "content",
+              "key": "content_Publisher",
+              "html": "<p>Publisher: This property identifies the organisation or individual responsible for making the dataset available. For datasets, this is typically the employer of the data creators. In simple cases, the dataset publisher may be the same as the catalog publisher. In more complex settings, such as when datasets come from multiple institutions within a consortium, the consortium should be listed as the publisher where possible. If no formal consortium can be specified, provide the information of the contributing organizations or individuals under dct:creator instead. For more details, refer to the Agent class.</p>"
+            },
+            {
               "type": "tags",
               "key": "publisher.name",
-              "label": "Name(s)",
+              "label": "Publisher: Name(s)",
               "description": "Name",
               "validate": {
                 "required": true,
@@ -224,7 +274,7 @@
             {
               "key": "publisher.identifier",
               "type": "tags",
-              "label": "Identifier",
+              "label": "Publisher: Identifier",
               "validate": {
                 "required": true,
                 "minLength": 1
@@ -237,7 +287,7 @@
             {
               "key": "publisher.mbox",
               "type": "email",
-              "label": "Email",
+              "label": "Publisher: Email",
               "prefix": "mailto:",
               "validate": {
                 "required": true
@@ -248,7 +298,7 @@
             {
               "key": "publisher.homepage",
               "type": "url",
-              "label": "Homepage",
+              "label": "Publisher: Homepage",
               "validate": {
                 "required": true
               },
@@ -257,58 +307,17 @@
             },
             {
               "key": "publisher.publisher_type",
-              "data": {
-                "values": [
-                  {
-                    "label": "Academia/Scientific Organisation",
-                    "value": "http://purl.org/adms/publishertype/Academia-ScientificOrganisation"
-                  },
-                  {
-                    "label": "Company",
-                    "value": "http://purl.org/adms/publishertype/Company"
-                  },
-                  {
-                    "label": "Industry Consortium",
-                    "value": "http://purl.org/adms/publishertype/IndustryConsortium"
-                  },
-                  {
-                    "label": "Local Authority",
-                    "value": "http://purl.org/adms/publishertype/LocalAuthority"
-                  },
-                  {
-                    "label": "National Authority",
-                    "value": "http://purl.org/adms/publishertype/NationalAuthority"
-                  },
-                  {
-                    "label": "Non-Governmental Organisation",
-                    "value": "http://purl.org/adms/publishertype/NonGovernmentalOrganisation"
-                  },
-                  {
-                    "label": "Non-Profit Organisation",
-                    "value": "http://purl.org/adms/publishertype/NonProfitOrganisation"
-                  },
-                  {
-                    "label": "Private Individual",
-                    "value": "http://purl.org/adms/publishertype/PrivateIndividual"
-                  },
-                  {
-                    "label": "Regional Authority",
-                    "value": "http://purl.org/adms/publishertype/RegionalAuthority"
-                  },
-                  {
-                    "label": "Standardisation Body",
-                    "value": "http://purl.org/adms/publishertype/StandardisationBody"
-                  },
-                  {
-                    "label": "Supra-National Authority",
-                    "value": "http://purl.org/adms/publishertype/SupraNationalAuthority"
-                  }
-                ]
-              },
-              "type": "select",
-              "label": "Publisher Type",
+              "type": "textfield",
+              "label": "Publisher: Publisher Type",
               "input": true,
-              "tableView": true
+              "tableView": true,
+              "placeholder": "Enter publisher type URI (e.g., http://purl.org/adms/publishertype/Company)",
+              "validate": {
+                "required": true,
+                "pattern": "^http://purl\\.org/adms/publishertype/.+",
+                "patternMessage": "Value must be from the http://purl.org/adms/publishertype/ domain"
+              },
+              "tooltip": "Enter a valid URI from the http://purl.org/adms/publishertype/ domain"
             },
             {
               "key": "publisher.publisher_note",
@@ -347,7 +356,7 @@
           "key": "coding_system",
           "type": "tags",
           "label": "Coding System",
-          "description": "Coding systems in use (e.g., ICD-10-CM, DRGs, SNOMED-CT). Use wikidata URIs.",
+          "description": "Coding systems in use (e.g., ICD-10-CM, DGRs, SNOMED-CT). Use wikidata URIs.",
           "input": true,
           "tableView": false,
           "storeas": "array"
@@ -416,7 +425,7 @@
           "key": "release_date",
           "type": "datetime",
           "label": "Release Date",
-          "format": "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+          "format": "yyyy-MM-dd",
           "description": "Date of formal issuance of the resource. First known date of issuance, such as publication date.",
           "input": true,
           "tableView": false,
@@ -429,10 +438,10 @@
             "mode": "single",
             "enableTime": true,
             "noCalendar": false,
-            "format": "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+            "format": "yyyy-MM-dd",
             "hourIncrement": 1,
             "minuteIncrement": 1,
-            "time_24hr": false,
+            "time_24hr": true,
             "minDate": null,
             "maxDate": null
           }
@@ -441,7 +450,7 @@
           "key": "modification_date",
           "type": "datetime",
           "label": "Modification Date",
-          "format": "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+          "format": "yyyy-MM-dd",
           "description": "Date on which the resource was changed.",
           "input": true,
           "tableView": false,
@@ -452,12 +461,11 @@
             "useLocaleSettings": false,
             "allowInput": true,
             "mode": "single",
-            "enableTime": true,
             "noCalendar": false,
-            "format": "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+            "format": "yyyy-MM-dd",
             "hourIncrement": 1,
             "minuteIncrement": 1,
-            "time_24hr": false,
+            "time_24hr": true,
             "minDate": null,
             "maxDate": null
           }
@@ -470,7 +478,7 @@
             {
               "key": "temporal.start_date",
               "type": "datetime",
-              "label": "Start Date",
+              "label": "Temporal Coverage: Start Date",
               "input": true,
               "tableView": false,
               "widget": {
@@ -482,10 +490,10 @@
                 "mode": "single",
                 "enableTime": true,
                 "noCalendar": false,
-                "format": "yyyy-MM-dd hh:mm a",
+                "format": "yyyy-MM-dd",
                 "hourIncrement": 1,
                 "minuteIncrement": 1,
-                "time_24hr": false,
+                "time_24hr": true,
                 "minDate": null,
                 "maxDate": null
               }
@@ -493,7 +501,7 @@
             {
               "key": "temporal.end_date",
               "type": "datetime",
-              "label": "End Date",
+              "label": "Temporal Coverage: End Date",
               "input": true,
               "tableView": false,
               "widget": {
@@ -505,10 +513,10 @@
                 "mode": "single",
                 "enableTime": true,
                 "noCalendar": false,
-                "format": "yyyy-MM-dd hh:mm a",
+                "format": "yyyy-MM-dd",
                 "hourIncrement": 1,
                 "minuteIncrement": 1,
-                "time_24hr": false,
+                "time_24hr": true,
                 "minDate": null,
                 "maxDate": null
               }
@@ -528,14 +536,17 @@
         },
         {
           "key": "frequency",
-          "data": {
-            "url": "http://publications.europa.eu/resource/authority/frequency"
-          },
-          "type": "select",
+          "type": "url",
           "label": "Update Frequency",
-          "description": "The frequency with which items are added to a collection.",
           "input": true,
-          "tableView": true
+          "tableView": true,
+          "placeholder": "Enter frequency URI (e.g., http://publications.europa.eu/resource/authority/frequency/WEEKLY)",
+          "validate": {
+            "pattern": "^http://publications\\.europa\\.eu/resource/authority/frequency/.+",
+            "patternMessage": "Value must be from the http://publications.europa.eu/resource/authority/frequency/ domain"
+          },
+          "tooltip": "Enter a valid URI from the http://publications.europa.eu/resource/authority/frequency/ domain",
+          "description": "The frequency with which items are added to a collection."
         },
         {
           "key": "retention_period",
@@ -545,7 +556,7 @@
             {
               "key": "retentionPeriod.start_date",
               "type": "datetime",
-              "label": "Start Date",
+              "label": "Retention period: Start Date",
               "input": true,
               "tableView": false,
               "widget": {
@@ -557,10 +568,10 @@
                 "mode": "single",
                 "enableTime": true,
                 "noCalendar": false,
-                "format": "yyyy-MM-dd hh:mm a",
+                "format": "yyyy-MM-dd",
                 "hourIncrement": 1,
                 "minuteIncrement": 1,
-                "time_24hr": false,
+                "time_24hr": true,
                 "minDate": null,
                 "maxDate": null
               }
@@ -568,7 +579,7 @@
             {
               "key": "retentionPeriod.end_date",
               "type": "datetime",
-              "label": "End Date",
+              "label": "Retention period: End Date",
               "input": true,
               "tableView": false,
               "widget": {
@@ -580,10 +591,10 @@
                 "mode": "single",
                 "enableTime": true,
                 "noCalendar": false,
-                "format": "yyyy-MM-dd hh:mm a",
+                "format": "yyyy-MM-dd",
                 "hourIncrement": 1,
                 "minuteIncrement": 1,
-                "time_24hr": false,
+                "time_24hr": true,
                 "minDate": null,
                 "maxDate": null
               }
@@ -624,18 +635,21 @@
       "type": "panel",
       "title": "Language and Standards",
       "components": [
-        {
-          "key": "language",
-          "data": {
-            "url": "http://publications.europa.eu/resource/authority/language"
-          },
-          "type": "select",
-          "label": "Language",
-          "multiple": true,
-          "description": "A language of the resource. If your Dataset contains multiple languages, this property can be repeated.",
-          "input": true,
-          "tableView": true
-        },
+       {
+         "key": "language",
+         "type": "tags",
+         "label": "Language",
+         "input": true,
+         "tableView": true,
+         "placeholder": "Enter language URI (e.g., http://publications.europa.eu/resource/authority/language/NLD",
+         "validate": {
+           "pattern": "^http://publications\\.europa\\.eu/resource/authority/language/.+",
+           "patternMessage": "Value must be from the http://publications.europa.eu/resource/authority/language/ domain"
+         },
+         "tooltip": "Enter a valid URI from the http://publications.europa.eu/resource/authority/language/ domain",
+         "description": "A language of the resource. If your Dataset contains multiple languages, this property can be repeated. Languages are defined according to this vocabulary: http://publications.europa.eu/resource/authority/language.",
+         "storeas": "array"
+       },
         {
           "key": "conforms_to",
           "type": "tags",
@@ -658,106 +672,48 @@
       "components": [
         {
           "key": "legal_basis",
-          "data": {
-            "values": [
-              {
-                "label": "Consent",
-                "value": "dpv:Consent"
-              },
-              {
-                "label": "Contract",
-                "value": "dpv:Contract"
-              },
-              {
-                "label": "Legal Obligation",
-                "value": "dpv:LegalObligation"
-              },
-              {
-                "label": "Vital Interest",
-                "value": "dpv:VitalInterest"
-              },
-              {
-                "label": "Public Task",
-                "value": "dpv:PublicTask"
-              },
-              {
-                "label": "Legitimate Interest",
-                "value": "dpv:LegitimateInterest"
-              }
-            ]
+          "placeholder": "Enter DPV URI (e.g., https://w3id.org/dpv#Consent)",
+          "validate": {
+            "pattern": "^https://w3id\\.org/dpv#.+",
+            "patternMessage": "Value must be from the https://w3id.org/dpv# domain"
           },
-          "type": "select",
+          "tooltip": "Enter a valid URI from the https://w3id.org/dpv# domain",
+          "type": "tags",
           "label": "Legal Basis",
-          "multiple": true,
-          "description": "The legal basis for initial collection and processing of (personal) data.",
+          "description": "The legal basis for initial collection and processing of (personal) data. Uses the Data Privacy Vocabulary (DPV).",
           "input": true,
-          "tableView": true
+          "tableView": true,
+          "storeas": "array"
         },
         {
           "key": "personal_data",
-          "data": {
-            "values": [
-              {
-                "label": "Gender",
-                "value": "dpv-pd:Gender"
-              },
-              {
-                "label": "Age",
-                "value": "dpv-pd:Age"
-              },
-              {
-                "label": "Name",
-                "value": "dpv-pd:Name"
-              },
-              {
-                "label": "Email",
-                "value": "dpv-pd:EmailAddress"
-              },
-              {
-                "label": "Medical Health",
-                "value": "dpv-pd:MedicalHealth"
-              },
-              {
-                "label": "Genetic",
-                "value": "dpv-pd:Genetic"
-              }
-            ]
+          "placeholder": "Enter DPV-PD URI (e.g., https://w3c.github.io/dpv/2.0/pd#Gender)",
+          "validate": {
+            "pattern": "^https://w3c\\.github\\.io/dpv/2.0/pd#.+",
+            "patternMessage": "Value must be from the https://w3c.github.io/dpv/2.0/pd# domain"
           },
-          "type": "select",
+          "tooltip": "Enter a valid URI from the https://w3c.github.io/dpv/2.0/pd# domain",
+          "type": "tags",
           "label": "Personal Data",
-          "multiple": true,
-          "description": "The different types of personal information collected in the dataset.",
+          "description": "The different types of personal information collected in the dataset. Uses the Personal Data Categories (DPV-PD) vocabulary.",
           "input": true,
-          "tableView": true
+          "tableView": true,
+          "storeas": "array"
         },
         {
           "key": "purpose",
-          "data": {
-            "values": [
-              {
-                "label": "Research and Development",
-                "value": "dpv:ResearchAndDevelopment"
-              },
-              {
-                "label": "Academic Research",
-                "value": "dpv:AcademicResearch"
-              },
-              {
-                "label": "Healthcare",
-                "value": "dpv:ProvideHealthcare"
-              },
-              {
-                "label": "Public Health Monitoring",
-                "value": "dpv:PublicHealthMonitoring"
-              }
-            ]
+          "placeholder": "Enter DPV Purposes URI (e.g., https://w3c.github.io/dpv/2.1/dpv#ResearchAndDevelopment)",
+          "validate": {
+            "pattern": "^https://w3c\\.github\\.io/dpv/2.1/dpv#.+",
+            "patternMessage": "Value must be from the https://w3c.github.io/dpv/2.1/dpv# domain"
           },
-          "type": "select",
+          "tooltip": "Enter a valid URI from the https://w3c.github.io/dpv/2.1/dpv# domain",
+          "type": "tags",
           "label": "Purpose",
-          "multiple": true,
-          "description": "Category of purposes from dpv taxonomy.",
+          "description": "Category of purposes from DPV Purposes taxonomy (https://w3c.github.io/dpv/2.1/dpv#vocab-purposes)",
           "input": true,
-          "tableView": true
+          "tableView": true,
+          "storeas": "array"
         }
       ],
       "collapsible": true,
@@ -818,7 +774,7 @@
         },
         {
           "key": "has_version",
-          "type": "textfield",
+          "type": "url",
           "label": "Has Version",
           "multiple": true,
           "description": "Dataset which is another version of the current dataset.",
@@ -838,25 +794,49 @@
       "components": [
         {
           "key": "type",
-          "data": {
-            "values": [
-              {
-                "label": "Personal Data",
-                "value": "PERSONAL_DATA"
-              }
-            ]
+          "placeholder": "Enter Dataset-type URI (e.g., http://publications.europa.eu/resource/authority/dataset-type/PERSONAL_DATA)",
+          "validate": {
+            "pattern": "^http://publications\\.europa\\.eu/resource/authority/dataset-type/.+",
+            "patternMessage": "Value must be from the http://publications.europa.eu/resource/authority/dataset-type/ domain"
           },
-          "type": "select",
+          "tooltip": "Enter a valid URI from the http://publications.europa.eu/resource/authority/dataset-type/ domain",
+          "type": "tags",
           "label": "Dataset Type",
-          "multiple": true,
-          "description": "The nature or genre of the resource. Health datasets with personal information must use 'personal data'.",
+          "description": "The nature or genre of the resource. Health datasets with personal information must use 'personal data'. Uses the European Dataset-type vocabulary (http://publications.europa.eu/resource/authority/dataset-type).",
           "input": true,
-          "tableView": true
+          "tableView": true,
+          "storeas": "array",
+          "defaultValue": ["http://publications.europa.eu/resource/authority/dataset-type/PERSONAL_DATA"]
         },
         {
           "key": "status",
           "data": {
-            "url": "https://publications.europa.eu/resource/authority/dataset-status"
+            "values": [
+              {
+                "label": "Completed",
+                "value": "http://publications.europa.eu/resource/authority/dataset-status/COMPLETED"
+              },
+              {
+                "label": "Deprecated",
+                "value": "http://publications.europa.eu/resource/authority/dataset-status/DEPRECATED"
+              },
+              {
+                "label": "Develop",
+                "value": "http://publications.europa.eu/resource/authority/dataset-status/DEVELOP"
+              },
+              {
+                "label": "Discontinued",
+                "value": "http://publications.europa.eu/resource/authority/dataset-status/DISCONT"
+              },
+              {
+                "label": "Data Processing",
+                "value": "http://publications.europa.eu/resource/authority/dataset-status/OP_DATPRO"
+              },
+              {
+                "label": "Withdrawn",
+                "value": "http://publications.europa.eu/resource/authority/dataset-status/WITHDRAWN"
+              }
+            ]
           },
           "type": "select",
           "label": "Status",
@@ -905,28 +885,100 @@
           "type": "datagrid",
           "label": "Qualified Attribution",
           "components": [
-            {
-              "key": "role",
-              "data": {
-                "values": [
-                  {
-                    "label": "Funder",
-                    "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#funder"
-                  },
-                  {
-                    "label": "Processor",
-                    "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#processor"
-                  }
-                ]
-              },
-              "type": "select",
-              "label": "Role",
-              "input": true,
-              "tableView": true
-            },
+             {
+               "key": "role",
+               "data": {
+                 "values": [
+                   {
+                     "label": "Resource Provider",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#resourceProvider"
+                   },
+                   {
+                     "label": "Custodian",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#custodian"
+                   },
+                   {
+                     "label": "Owner",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#owner"
+                   },
+                   {
+                     "label": "User",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#user"
+                   },
+                   {
+                     "label": "Distributor",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#distributor"
+                   },
+                   {
+                     "label": "Originator",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#originator"
+                   },
+                   {
+                     "label": "Point of Contact",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#pointOfContact"
+                   },
+                   {
+                     "label": "Principal Investigator",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#principalInvestigator"
+                   },
+                   {
+                     "label": "Processor",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#processor"
+                   },
+                   {
+                     "label": "Publisher",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#publisher"
+                   },
+                   {
+                     "label": "Author",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#author"
+                   },
+                   {
+                     "label": "Sponsor",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#sponsor"
+                   },
+                   {
+                     "label": "Co-Author",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#coAuthor"
+                   },
+                   {
+                     "label": "Collaborator",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#collaborator"
+                   },
+                   {
+                     "label": "Editor",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#editor"
+                   },
+                   {
+                     "label": "Mediator",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#mediator"
+                   },
+                   {
+                     "label": "Rights Holder",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#rightsHolder"
+                   },
+                   {
+                     "label": "Contributor",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#contributor"
+                   },
+                   {
+                     "label": "Funder",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#funder"
+                   },
+                   {
+                     "label": "Stakeholder",
+                     "value": "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#stakeholder"
+                   }
+                 ]
+               },
+               "type": "select",
+               "label": "Role",
+               "input": true,
+               "tableView": true
+             },
             {
               "key": "agent",
-              "type": "textfield",
+              "type": "url",
               "label": "Agent",
               "description": "Reference to the agent (person or organization)",
               "input": true,
@@ -944,17 +996,19 @@
           "components": [
             {
               "key": "relation",
-              "type": "textfield",
+              "type": "url",
               "label": "Related Resource",
               "input": true,
-              "tableView": true
+              "tableView": true,
+              "multiple": true
             },
             {
-              "key": "hadRole",
-              "type": "textfield",
+              "key": "had_role",
+              "type": "url",
               "label": "Relationship Type",
               "input": true,
-              "tableView": true
+              "tableView": true,
+              "multiple": true
             }
           ],
           "description": "Relationship with another resource.",
@@ -963,7 +1017,7 @@
         },
         {
           "key": "source",
-          "type": "textfield",
+          "type": "url",
           "label": "Source",
           "multiple": true,
           "description": "Dataset on which this described dataset is based.",
@@ -972,7 +1026,7 @@
         },
         {
           "key": "in_series",
-          "type": "textfield",
+          "type": "url",
           "label": "In Series",
           "multiple": true,
           "description": "Dataset series of which the dataset is part.",
@@ -992,7 +1046,7 @@
       "components": [
         {
           "key": "distribution",
-          "type": "textfield",
+          "type": "url",
           "label": "Distribution",
           "multiple": true,
           "description": "An available Distribution for the Dataset.",
@@ -1001,7 +1055,7 @@
         },
         {
           "key": "analytics",
-          "type": "textfield",
+          "type": "url",
           "label": "Analytics",
           "multiple": true,
           "description": "An analytics distribution of the dataset. URLs to technical reports, quality measurements, etc.",
@@ -1010,7 +1064,7 @@
         },
         {
           "key": "sample",
-          "type": "textfield",
+          "type": "url",
           "label": "Sample",
           "multiple": true,
           "description": "Links to a sample of the dataset (anonymized/synthetic data or data dictionary).",
