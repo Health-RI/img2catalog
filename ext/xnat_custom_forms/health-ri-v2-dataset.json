@@ -978,11 +978,42 @@
              },
             {
               "key": "agent",
-              "type": "url",
+              "type": "fieldset",
               "label": "Agent",
-              "description": "Reference to the agent (person or organization)",
-              "input": true,
-              "tableView": true
+              "components": [
+                {
+                  "type": "tags",
+                  "key": "agent.name",
+                  "label": "Agent: Name(s)",
+                  "description": "Name",
+                  "storeas": "array",
+                  "input": true,
+                  "tableView": true
+                },
+                {
+                  "key": "agent.identifier",
+                  "type": "textfield",
+                  "label": "Agent: Identifier",
+                  "description": "ROR identifier for organization recommended",
+                  "input": true,
+                  "tableView": true
+                },
+                {
+                  "key": "agent.mbox",
+                  "type": "email",
+                  "label": "Agent: Email",
+                  "prefix": "mailto:",
+                  "input": true,
+                  "tableView": true
+                },
+                {
+                  "key": "agent.homepage",
+                  "type": "url",
+                  "label": "Agent: Homepage",
+                  "input": true,
+                  "tableView": true
+                }
+              ]
             }
           ],
           "description": "Attribution of the dataset to agents with specific roles (e.g., funder).",
