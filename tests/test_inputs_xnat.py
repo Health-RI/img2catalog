@@ -751,6 +751,113 @@ def test_update_metadata_with_custom_form_list_to_non_list():
     assert result == expected
 
 
+@pytest.mark.parametrize("value, expected", [
+    (None, True),
+    ("", True),
+    ("   ", True),  # Whitespace only string
+    ("actual_value", False),
+    ([], True),  # Empty list
+    ([None], True),  # List with None
+    (["", "   "], True),  # List with empty strings
+    (["value"], False),  # List with actual value
+    ([None, "value"], False),  # Mixed list with some valid values
+    ({}, True),  # Empty dict
+    ({"key": None}, True),  # Dict with None value
+    ({"key": ""}, True),  # Dict with empty string
+    ({"key": "value"}, False),  # Dict with actual value
+    ({"key1": None, "key2": "value"}, False),  # Mixed dict
+    ({"nested": {"inner": None}}, True),  # Nested empty dict
+    ({"nested": {"inner": "value"}}, False),  # Nested dict with value
+    (0, False),  # Zero is not empty
+    (False, False),  # False is not empty
+])
+def test_is_empty_value(value, expected):
+    """Test _is_empty_value with various data types"""
+    xnat_input = XNATInput({}, None)
+    result = xnat_input._is_empty_value(value)
+    assert result == expected
+
+
+def test_filter_empty_values():
+    """Test _filter_empty_values with complex nested structures"""
+    xnat_input = XNATInput({}, None)
+    
+    data = {
+        'valid_string': 'keep_this',
+        'empty_string': '',
+        'whitespace_string': '   ',
+        'none_value': None,
+        'valid_list': ['item1', 'item2'],
+        'empty_list': [],
+        'list_with_empty': [None, '', 'valid'],
+        'list_all_empty': [None, '', '   '],
+        'valid_dict': {'nested': 'value'},
+        'empty_dict': {},
+        'dict_with_empty_values': {'key1': None, 'key2': ''},
+        'dict_mixed': {'empty': None, 'valid': 'value'},
+        'zero_value': 0,
+        'false_value': False
+    }
+    
+    result = xnat_input._filter_empty_values(data)
+    
+    expected = {
+        'valid_string': 'keep_this',
+        'valid_list': ['item1', 'item2'],
+        'list_with_empty': [None, '', 'valid'],  # Keep lists with some valid items
+        'valid_dict': {'nested': 'value'},
+        'dict_mixed': {'empty': None, 'valid': 'value'},  # Keep dicts with some valid values
+        'zero_value': 0,
+        'false_value': False
+    }
+    
+    assert result == expected
+
+
+def test_filter_empty_values_nested_structures():
+    """Test _filter_empty_values with deeply nested structures"""
+    xnat_input = XNATInput({}, None)
+    
+    data = {
+        'deeply_nested_empty': {
+            'level1': {
+                'level2': {
+                    'level3': None
+                }
+            }
+        },
+        'deeply_nested_valid': {
+            'level1': {
+                'level2': {
+                    'level3': 'value'
+                }
+            }
+        },
+        'mixed_nested': {
+            'empty_branch': {'all': None},
+            'valid_branch': {'some': 'value'}
+        }
+    }
+    
+    result = xnat_input._filter_empty_values(data)
+    
+    expected = {
+        'deeply_nested_valid': {
+            'level1': {
+                'level2': {
+                    'level3': 'value'
+                }
+            }
+        },
+        'mixed_nested': {
+            'empty_branch': {'all': None},
+            'valid_branch': {'some': 'value'}
+        }
+    }
+    
+    assert result == expected
+
+
 @pytest.mark.parametrize("uri, expected", [
     ("http://localhost/data/archive/projects/test_project", "test_project"),
     ("https://xnat.example.com/projects/PROJECT_NAME", "PROJECT_NAME"),
@@ -858,6 +965,39 @@ def test_get_and_update_metadata_integration(session, project, config: Dict[str,
     assert isinstance(result['catalog'], list)
     assert isinstance(result['dataset'], list)
 
+
+def test_parse_custom_form_response_filtering():
+    """Test _parse_custom_form_response with mixed valid and empty data"""
+    xnat_input = XNATInput({}, None)
+    
+    custom_fields_data = {
+        'target_form_id': {
+            'valid_field': 'valid_value',
+            'empty_field': '',
+            'none_field': None,
+            'whitespace_field': '   ',
+            'valid_list': ['item1', 'item2'],
+            'empty_list': [],
+            'mixed_list': [None, 'valid_item'],
+            'zero_value': 0,
+            'false_value': False
+        },
+        'other_form_id': {
+            'should_not_appear': 'in_result'
+        }
+    }
+    
+    result = xnat_input._parse_custom_form_response(custom_fields_data, 'target_form_id')
+    
+    expected = {
+        'valid_field': 'valid_value',
+        'valid_list': ['item1', 'item2'],
+        'mixed_list': [None, 'valid_item'],
+        'zero_value': 0,
+        'false_value': False
+    }
+    
+    assert result == expected
 
 
 @patch("xnat.session.BaseXNATSession")
