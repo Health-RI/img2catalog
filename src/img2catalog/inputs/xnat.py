@@ -287,85 +287,14 @@ class XNATInput:
             custom_fields_data = response.json()
 
             # Extract data for the specific custom form ID
-            return self._parse_custom_form_response(custom_fields_data, custom_form_id)
+            form_metadata = custom_fields_data.get(custom_form_id, {})
+            logger.debug("Parsed custom form metadata: %s", form_metadata)
+            return form_metadata
             
         except Exception as e:
             logger.warning("Error retrieving custom form metadata for project %s: %s", project.name, e)
             return {}
 
-    def _parse_custom_form_response(self, custom_fields_data: Dict, custom_form_id: str) -> Dict:
-        """Parse custom form response to extract metadata for specific form ID
-        
-        Parameters
-        ----------
-        custom_fields_data : Dict
-            Raw custom fields data from XNAT API - format: {form_id: {field_name: field_value, ...}, ...}
-        custom_form_id : str
-            ID of the custom form to extract data from
-            
-        Returns
-        -------
-        Dict
-            Dictionary containing parsed custom form metadata with correct property names as keys
-        """
-        # The custom fields API returns a dictionary with form IDs as keys
-        # and form field data as values
-        form_metadata = custom_fields_data.get(custom_form_id, {})
-        
-        # Filter out empty values from the form metadata
-        filtered_metadata = self._filter_empty_values(form_metadata)
-
-        logger.debug("Parsed custom form metadata: %s", filtered_metadata)
-        return filtered_metadata
-
-    def _filter_empty_values(self, data: Dict) -> Dict:
-        """Filter out empty values from custom form dictionary
-        
-        Parameters
-        ----------
-        data : Dict
-            Custom form data dictionary
-            
-        Returns
-        -------
-        Dict
-            Filtered dictionary with empty values removed
-        """
-        filtered_dict = {}
-        for key, value in data.items():
-            if self._is_empty_value(value):
-                continue
-            filtered_dict[key] = value
-        return filtered_dict
-    
-    def _is_empty_value(self, value) -> bool:
-        """Check if a value is considered empty
-        
-        Parameters
-        ----------
-        value : Any
-            Value to check
-            
-        Returns
-        -------
-        bool
-            True if the value is empty, False otherwise
-        """
-        if value is None:
-            return True
-        if isinstance(value, str) and not value.strip():
-            return True
-        if isinstance(value, list):
-            if not value:  # Empty list
-                return True
-            # Check if list contains only empty values
-            return all(self._is_empty_value(item) for item in value)
-        if isinstance(value, dict):
-            if not value:  # Empty dict
-                return True
-            # Check if dict contains only empty values
-            return all(self._is_empty_value(val) for val in value.values())
-        return False
 
     def _update_metadata_with_custom_form(self, source_obj: Dict, custom_form_data: Dict) -> Dict:
         """Update metadata object with custom form data
