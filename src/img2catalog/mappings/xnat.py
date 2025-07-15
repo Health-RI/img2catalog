@@ -2,7 +2,11 @@ import logging
 from typing import Dict, List
 
 from rdflib import URIRef
+from sempyro.dcat import Attribution, Relationship
 from sempyro.hri_dcat import HRICatalog, HRIDataset, HRIVCard, HRIAgent
+from sempyro.adms import Identifier
+from sempyro.dqv import QualityCertificate
+from sempyro.time import PeriodOfTime
 
 logger = logging.getLogger(__name__)
 
@@ -70,73 +74,54 @@ def map_xnat_to_healthriv2(unmapped_objects: Dict[str, List[Dict]]) -> Dict[str,
         dataset_kwargs['creator'] = [HRIAgent(**creator_dict) for creator_dict in dataset.get('creator', [{}])]
         dataset_kwargs['keyword'] = dataset.get('keyword', None)
         dataset_kwargs['identifier'] = dataset.get('identifier', None)
-        
-        # Optional fields - only include if present
         if 'publisher' in dataset:
             dataset_kwargs['publisher'] = HRIAgent(**dataset['publisher'])
         if 'theme' in dataset:
             dataset_kwargs['theme'] = [URIRef(theme) for theme in dataset['theme']]
-        if 'access_rights' in dataset:
-            dataset_kwargs['access_rights'] = URIRef(dataset['access_rights'])
-        if 'applicable_legislation' in dataset:
-            dataset_kwargs['applicable_legislation'] = [URIRef(app_leg) for app_leg in dataset['applicable_legislation']]
-        if 'license' in dataset:
-            dataset_kwargs['license'] = dataset['license']
-        if 'maximum_typical_age' in dataset:
-            dataset_kwargs['maximum_typical_age'] = dataset['maximum_typical_age']
-        if 'minimum_typical_age' in dataset:
-            dataset_kwargs['minimum_typical_age'] = dataset['minimum_typical_age']
-        if 'number_of_records' in dataset:
-            dataset_kwargs['number_of_records'] = dataset['number_of_records']
-        if 'number_of_unique_individuals' in dataset:
-            dataset_kwargs['number_of_unique_individuals'] = dataset['number_of_unique_individuals']
-        if 'population_coverage' in dataset:
-            dataset_kwargs['population_coverage'] = dataset['population_coverage']
-        if 'health_theme' in dataset:
-            dataset_kwargs['health_theme'] = [URIRef(theme) for theme in dataset['health_theme']]
-        if 'personal_data' in dataset:
-            dataset_kwargs['personal_data'] = [URIRef(pd) for pd in dataset['personal_data']]
-        if 'purpose' in dataset:
-            dataset_kwargs['purpose'] = [URIRef(purpose) for purpose in dataset['purpose']]
-        if 'legal_basis' in dataset:
-            dataset_kwargs['legal_basis'] = [URIRef(lb) for lb in dataset['legal_basis']]
-        if 'analytics' in dataset:
-            dataset_kwargs['analytics'] = [URIRef(analytics) for analytics in dataset['analytics']]
-        if 'code_values' in dataset:
-            dataset_kwargs['code_values'] = [URIRef(cv) for cv in dataset['code_values']]
-        if 'coding_system' in dataset:
-            dataset_kwargs['coding_system'] = [URIRef(cs) for cs in dataset['coding_system']]
-        if 'conforms_to' in dataset:
-            dataset_kwargs['conforms_to'] = [URIRef(ct) for ct in dataset['conforms_to']]
-        if 'documentation' in dataset:
-            dataset_kwargs['documentation'] = [URIRef(doc) for doc in dataset['documentation']]
-        if 'frequency' in dataset:
-            dataset_kwargs['frequency'] = URIRef(dataset['frequency'])
-        if 'in_series' in dataset:
-            dataset_kwargs['in_series'] = [URIRef(series) for series in dataset['in_series']]
-        if 'is_referenced_by' in dataset:
-            dataset_kwargs['is_referenced_by'] = [URIRef(ref) for ref in dataset['is_referenced_by']]
-        if 'qualified_attribution' in dataset:
-            dataset_kwargs['qualified_attribution'] = dataset['qualified_attribution']
-        if 'qualified_relation' in dataset:
-            dataset_kwargs['qualified_relation'] = dataset['qualified_relation']
-        if 'quality_annotation' in dataset:
-            dataset_kwargs['quality_annotation'] = dataset['quality_annotation']
+
+        # Optional fields - only include if present
+        simple_assignment = ['license', 'minimum_typical_age', 'maximum_typical_age', 'number_of_records',
+                             'number_of_unique_individuals', 'population_coverage']
+        uri_assignment = ['access_rights', 'frequency', 'status']
+        list_uri_assignment = ['applicable_legislation', 'health_theme', 'personal_data', 'purpose',
+                               'legal_basis', 'analytics', 'code_values', 'conforms_to', 'documentation',
+                               'in_series', 'is_referenced_by', 'sample', 'source', 'type', 'distribution',
+                               'coding_system']
+        for field in simple_assignment:
+            if field in dataset:
+                dataset_kwargs[field] = dataset[field]
+        for field in uri_assignment:
+            if field in dataset:
+                dataset_kwargs[field] = URIRef(dataset[field])
+        for field in list_uri_assignment:
+            if field in dataset:
+                dataset_kwargs[field] = [URIRef(item) for item in dataset[field]]
+
         if 'retention_period' in dataset:
-            dataset_kwargs['retention_period'] = dataset['retention_period']
-        if 'sample' in dataset:
-            dataset_kwargs['sample'] = [URIRef(sample) for sample in dataset['sample']]
-        if 'source' in dataset:
-            dataset_kwargs['source'] = [URIRef(source) for source in dataset['source']]
-        if 'status' in dataset:
-            dataset_kwargs['status'] = URIRef(dataset['status'])
-        if 'type' in dataset:
-            dataset_kwargs['type'] = [URIRef(dtype) for dtype in dataset['type']]
-        if 'distribution' in dataset:
-            dataset_kwargs['distribution'] = [URIRef(dist) for dist in dataset['distribution']]
+            dataset_kwargs['retention_period'] = PeriodOfTime(**dataset['retention_period'])
         if 'other_identifier' in dataset:
-            dataset_kwargs['other_identifier'] = dataset['other_identifier']
-        
+            other_identifier = dataset['other_identifier']
+            identifier_kwargs = {}
+            if 'notation' in other_identifier:
+                identifier_kwargs['notation'] = other_identifier['notation']
+            if 'schema_agency' in other_identifier:
+                identifier_kwargs['schema_agency'] = other_identifier['schema_agency']
+            dataset_kwargs['other_identifier'] = Identifier(**identifier_kwargs)
+
+        nested_structures = [('qualified_attribution', Attribution),
+                             ('qualified_relation', Relationship),
+                             ('quality_annotation', QualityCertificate)]
+        for struct in nested_structures:
+            if struct[0] in dataset:
+                orig_list = dataset[struct[0]]
+                result_list = []
+                for item in orig_list:
+                    if isinstance(item, dict):
+                        result_list.append(struct[1](**item))
+                    else:
+                        result_list.append(item)
+                dataset_kwargs[struct[0]] = result_list
+
         # Contact point is special - build VCard
         contact_point = HRIVCard(
             formatted_name=get_dict_double_depth(dataset, "contact_point", "formatted_name"),

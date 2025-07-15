@@ -11,6 +11,7 @@ from xnat import XNATSession
 from img2catalog.inputs import xnat as inputs_xnat
 from img2catalog.inputs.config import ConfigInput
 from img2catalog.inputs.xnat import XNATInput, filter_keyword, XNATParserError
+from requests.exceptions import ConnectionError
 
 
 @patch("xnat.core.XNATBaseObject")
@@ -587,3 +588,436 @@ def test_get_custom_form_metadata_form_not_found(project, xnatpy_mock: Mocker, x
     result = xnat_input.get_custom_form_metadata(project, 'dataset')
     
     assert result == {}
+
+
+@patch("xnat.core.XNATBaseObject")
+def test_get_custom_form_metadata_http_error(project, xnatpy_mock: Mocker, xnatpy_connection: XNATSession):
+    """Test custom form metadata retrieval with HTTP error responses"""
+    config = {
+        'xnat': {
+            'dataset_form_id': 'test-form-id'
+        }
+    }
+    
+    project.name = "test_project"
+    project.xnat_session = xnatpy_connection
+    xnatpy_mock.get("/xapi/custom-fields/projects/test_project/fields", status_code=404)
+    
+    xnat_input = XNATInput(config, xnatpy_connection)
+    result = xnat_input.get_custom_form_metadata(project, 'dataset')
+    
+    assert result == {}
+
+
+@patch("xnat.core.XNATBaseObject")
+def test_get_custom_form_metadata_exception(project, xnatpy_mock: Mocker, xnatpy_connection: XNATSession):
+    """Test custom form metadata retrieval with network exception"""
+    config = {
+        'xnat': {
+            'dataset_form_id': 'test-form-id'
+        }
+    }
+    
+    project.name = "test_project"
+    project.xnat_session = xnatpy_connection
+    # Mock a network exception
+    xnatpy_mock.get("/xapi/custom-fields/projects/test_project/fields", exc=ConnectionError("Network error"))
+    
+    xnat_input = XNATInput(config, xnatpy_connection)
+    result = xnat_input.get_custom_form_metadata(project, 'dataset')
+    
+    assert result == {}
+
+
+@patch("xnat.session.BaseXNATSession")
+def test_apply_custom_form_metadata_project_not_found(session):
+    """Test custom form application when project lookup fails"""
+    config = {
+        'xnat': {
+            'dataset_form_id': 'test-form-id'
+        }
+    }
+    
+    # Mock session with missing project
+    session.projects = {}
+    
+    metadata_objects = [{
+        'uri': 'http://localhost/data/archive/projects/nonexistent_project',
+        'title': ['Test Dataset']
+    }]
+    
+    xnat_input = XNATInput(config, session)
+    result = xnat_input.apply_custom_form_metadata(metadata_objects, 'dataset')
+    
+    # Should return original metadata unchanged
+    assert result == metadata_objects
+
+
+def test_apply_custom_form_metadata_non_dataset_concept():
+    """Test custom form application for non-dataset concept types"""
+    config = {
+        'xnat': {
+            'catalog_form_id': 'test-form-id'
+        }
+    }
+    
+    metadata_objects = [{
+        'uri': 'http://localhost/catalog',
+        'title': 'Test Catalog'
+    }]
+    
+    xnat_input = XNATInput(config, None)
+    result = xnat_input.apply_custom_form_metadata(metadata_objects, 'catalog')
+    
+    # Should return original metadata unchanged (catalog not supported)
+    assert result == metadata_objects
+
+
+def test_update_metadata_with_custom_form_empty_custom_data():
+    """Test _update_metadata_with_custom_form with empty custom form data"""
+    xnat_input = XNATInput({}, None)
+    
+    source_obj = {'title': ['Original Title'], 'description': ['Original Description']}
+    custom_form_data = {}
+    
+    result = xnat_input._update_metadata_with_custom_form(source_obj, custom_form_data)
+    
+    # Should return original object unchanged
+    assert result == source_obj
+
+
+def test_update_metadata_with_custom_form_override_existing():
+    """Test _update_metadata_with_custom_form overriding existing fields"""
+    xnat_input = XNATInput({}, None)
+    
+    source_obj = {
+        'title': ['Original Title'],
+        'description': ['Original Description'],
+        'keywords': ['original', 'keywords']
+    }
+    custom_form_data = {
+        'title': 'Updated Title',  # Single value to list field
+        'description': ['Updated Description'],  # List to list field
+        'keywords': 'updated'  # Single value to existing list field
+    }
+    
+    result = xnat_input._update_metadata_with_custom_form(source_obj, custom_form_data)
+    
+    expected = {
+        'title': ['Updated Title'],  # Converted to list
+        'description': ['Updated Description'],  # Kept as list
+        'keywords': ['updated']  # Converted to list
+    }
+    
+    assert result == expected
+
+
+def test_update_metadata_with_custom_form_add_new_fields():
+    """Test _update_metadata_with_custom_form adding new fields"""
+    xnat_input = XNATInput({}, None)
+    
+    source_obj = {'title': ['Original Title']}
+    custom_form_data = {
+        'new_field': 'New Value',
+        'another_field': ['List Value']
+    }
+    
+    result = xnat_input._update_metadata_with_custom_form(source_obj, custom_form_data)
+    
+    expected = {
+        'title': ['Original Title'],
+        'new_field': 'New Value',
+        'another_field': ['List Value']
+    }
+    
+    assert result == expected
+
+
+def test_update_metadata_with_custom_form_list_to_non_list():
+    """Test _update_metadata_with_custom_form with list to non-list conversion"""
+    xnat_input = XNATInput({}, None)
+    
+    source_obj = {'single_field': 'original_value'}
+    custom_form_data = {
+        'single_field': ['list', 'value']  # List to non-list field
+    }
+    
+    result = xnat_input._update_metadata_with_custom_form(source_obj, custom_form_data)
+    
+    expected = {
+        'single_field': ['list', 'value']  # Should replace with list
+    }
+    
+    assert result == expected
+
+
+@pytest.mark.parametrize("value, expected", [
+    (None, True),
+    ("", True),
+    ("   ", True),  # Whitespace only string
+    ("actual_value", False),
+    ([], True),  # Empty list
+    ([None], True),  # List with None
+    (["", "   "], True),  # List with empty strings
+    (["value"], False),  # List with actual value
+    ([None, "value"], False),  # Mixed list with some valid values
+    ({}, True),  # Empty dict
+    ({"key": None}, True),  # Dict with None value
+    ({"key": ""}, True),  # Dict with empty string
+    ({"key": "value"}, False),  # Dict with actual value
+    ({"key1": None, "key2": "value"}, False),  # Mixed dict
+    ({"nested": {"inner": None}}, True),  # Nested empty dict
+    ({"nested": {"inner": "value"}}, False),  # Nested dict with value
+    (0, False),  # Zero is not empty
+    (False, False),  # False is not empty
+])
+def test_is_empty_value(value, expected):
+    """Test _is_empty_value with various data types"""
+    xnat_input = XNATInput({}, None)
+    result = xnat_input._is_empty_value(value)
+    assert result == expected
+
+
+def test_filter_empty_values():
+    """Test _filter_empty_values with complex nested structures"""
+    xnat_input = XNATInput({}, None)
+    
+    data = {
+        'valid_string': 'keep_this',
+        'empty_string': '',
+        'whitespace_string': '   ',
+        'none_value': None,
+        'valid_list': ['item1', 'item2'],
+        'empty_list': [],
+        'list_with_empty': [None, '', 'valid'],
+        'list_all_empty': [None, '', '   '],
+        'valid_dict': {'nested': 'value'},
+        'empty_dict': {},
+        'dict_with_empty_values': {'key1': None, 'key2': ''},
+        'dict_mixed': {'empty': None, 'valid': 'value'},
+        'zero_value': 0,
+        'false_value': False
+    }
+    
+    result = xnat_input._filter_empty_values(data)
+    
+    expected = {
+        'valid_string': 'keep_this',
+        'valid_list': ['item1', 'item2'],
+        'list_with_empty': [None, '', 'valid'],  # Keep lists with some valid items
+        'valid_dict': {'nested': 'value'},
+        'dict_mixed': {'empty': None, 'valid': 'value'},  # Keep dicts with some valid values
+        'zero_value': 0,
+        'false_value': False
+    }
+    
+    assert result == expected
+
+
+def test_filter_empty_values_nested_structures():
+    """Test _filter_empty_values with deeply nested structures"""
+    xnat_input = XNATInput({}, None)
+    
+    data = {
+        'deeply_nested_empty': {
+            'level1': {
+                'level2': {
+                    'level3': None
+                }
+            }
+        },
+        'deeply_nested_valid': {
+            'level1': {
+                'level2': {
+                    'level3': 'value'
+                }
+            }
+        },
+        'mixed_nested': {
+            'empty_branch': {'all': None},
+            'valid_branch': {'some': 'value'}
+        }
+    }
+    
+    result = xnat_input._filter_empty_values(data)
+    
+    expected = {
+        'deeply_nested_valid': {
+            'level1': {
+                'level2': {
+                    'level3': 'value'
+                }
+            }
+        },
+        'mixed_nested': {
+            'empty_branch': {'all': None},
+            'valid_branch': {'some': 'value'}
+        }
+    }
+    
+    assert result == expected
+
+
+@pytest.mark.parametrize("uri, expected", [
+    ("http://localhost/data/archive/projects/test_project", "test_project"),
+    ("https://xnat.example.com/projects/PROJECT_NAME", "PROJECT_NAME"),
+    ("http://example.com/projects/my-project-123", "my-project-123"),
+    ("https://server.org/some/path/projects/nested_project/extra", "nested_project/extra"),
+    ("http://localhost/projects/", ""),  # Empty project name
+    ("http://localhost/data/archive/datasets/test", None),  # No /projects/ in URI
+    ("not_a_valid_uri", None),  # Invalid URI format
+    ("", None),  # Empty string
+    (None, None),  # None value
+])
+def test_extract_project_name_from_dataset_uri(uri, expected):
+    """Test _extract_project_name_from_dataset_uri with various URI formats"""
+    xnat_input = XNATInput({}, None)
+    result = xnat_input._extract_project_name_from_dataset_uri(uri)
+    assert result == expected
+
+
+def test_extract_project_name_from_dataset_uri_non_string():
+    """Test _extract_project_name_from_dataset_uri with non-string input"""
+    xnat_input = XNATInput({}, None)
+    
+    # Test with non-string that would cause isinstance check to fail
+    result = xnat_input._extract_project_name_from_dataset_uri(123)
+    assert result is None
+    
+    # Test with object that doesn't have split method
+    result = xnat_input._extract_project_name_from_dataset_uri(['not', 'a', 'string'])
+    assert result is None
+
+
+@freeze_time("2024-04-01")
+@patch("xnat.session.BaseXNATSession")
+@patch("xnat.core.XNATBaseObject")
+@patch.object(XNATInput, "_check_eligibility_project", return_value=True)
+def test_project_to_dataset_html_unescaping(mock_check_eligibility, session, project, config: Dict[str, Any]):
+    """Test HTML entity unescaping in project descriptions"""
+    
+    project.name = "Test project with HTML entities"
+    # HTML entities that should be unescaped
+    project.description = 'Project with &quot;quotes&quot; &amp; ampersands &lt;tags&gt;'
+    project.external_uri.return_value = "http://localhost/data/archive/projects/html_test"
+    project.keywords = "test html entities"
+    project.pi.firstname = "Test"
+    project.pi.lastname = "User"
+    project.pi.title = "Dr."
+    project.investigators = False
+
+    session.projects = {'html_test': project}
+    session.url_for.return_value = "https://example.com"
+
+    xnat_input = XNATInput(config, session)
+    result = xnat_input.project_to_dataset(project)
+    
+    # Should unescape HTML entities in description
+    expected_description = 'Project with "quotes" & ampersands <tags>'
+    assert result['description'] == [expected_description]
+
+
+@freeze_time("2024-04-01")
+@patch("xnat.session.BaseXNATSession")
+@patch("xnat.core.XNATBaseObject")
+@patch.object(XNATInput, "_check_eligibility_project", return_value=True)
+def test_project_to_dataset_string_project_name(mock_check_eligibility, session, project, config: Dict[str, Any]):
+    """Test project_to_dataset with string project name instead of project object"""
+    
+    project.name = "String conversion test"
+    project.description = "Testing string to project conversion"
+    project.external_uri.return_value = "http://localhost/data/archive/projects/string_test"
+    project.keywords = "test string conversion"
+    project.pi.firstname = "Test"
+    project.pi.lastname = "User"
+    project.pi.title = "Dr."
+    project.investigators = False
+
+    session.projects = {'string_test': project}
+    session.url_for.return_value = "https://example.com"
+
+    xnat_input = XNATInput(config, session)
+    
+    # Test with string project name instead of project object
+    result = xnat_input.project_to_dataset('string_test')
+    
+    assert result is not None
+    assert result['title'] == ["String conversion test"]
+    assert result['description'] == ["Testing string to project conversion"]
+
+
+@patch("xnat.session.BaseXNATSession")
+@patch("xnat.core.XNATBaseObject")
+def test_get_and_update_metadata_integration(session, project, config: Dict[str, Any]):
+    """Test complete get_and_update_metadata integration workflow"""
+    # Setup minimal session
+    session.projects = {}
+    session.url_for.return_value = "https://example.com"
+
+    xnat_input = XNATInput(config, session)
+    config_input = ConfigInput(config)
+    
+    result = xnat_input.get_and_update_metadata(config_input)
+    
+    # Verify structure and that custom form processing was applied
+    assert 'catalog' in result
+    assert 'dataset' in result
+    assert isinstance(result['catalog'], list)
+    assert isinstance(result['dataset'], list)
+
+
+def test_parse_custom_form_response_filtering():
+    """Test _parse_custom_form_response with mixed valid and empty data"""
+    xnat_input = XNATInput({}, None)
+    
+    custom_fields_data = {
+        'target_form_id': {
+            'valid_field': 'valid_value',
+            'empty_field': '',
+            'none_field': None,
+            'whitespace_field': '   ',
+            'valid_list': ['item1', 'item2'],
+            'empty_list': [],
+            'mixed_list': [None, 'valid_item'],
+            'zero_value': 0,
+            'false_value': False
+        },
+        'other_form_id': {
+            'should_not_appear': 'in_result'
+        }
+    }
+    
+    result = xnat_input._parse_custom_form_response(custom_fields_data, 'target_form_id')
+    
+    expected = {
+        'valid_field': 'valid_value',
+        'valid_list': ['item1', 'item2'],
+        'mixed_list': [None, 'valid_item'],
+        'zero_value': 0,
+        'false_value': False
+    }
+    
+    assert result == expected
+
+
+@patch("xnat.session.BaseXNATSession")
+def test_apply_custom_form_metadata_with_uri_none(session):
+    """Test apply_custom_form_metadata when URI is None"""
+    config = {
+        'xnat': {
+            'dataset_form_id': 'test-form-id'
+        }
+    }
+    
+    session.projects = {}
+    
+    metadata_objects = [{
+        'uri': None,  # None URI should be handled gracefully
+        'title': ['Test Dataset']
+    }]
+    
+    xnat_input = XNATInput(config, session)
+    result = xnat_input.apply_custom_form_metadata(metadata_objects, 'dataset')
+    
+    # Should return original metadata unchanged
+    assert result == metadata_objects
