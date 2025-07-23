@@ -30,7 +30,7 @@ dependencies = [
   "tomli >= 1.10; python_version < '3.11'",
   "click >= 8.0.0",
   "click-option-group~=0.5.6",
-  "sempyro >= 2.0.1",
+  "sempyro >= 2.0.3",
   "sparqlwrapper~=2.0",
   "fairclient >= 1.0.0",
 ]
