@@ -155,7 +155,7 @@ def test_invalid_project_no_keywords(empty_graph):
 
 
 def test_catalog_publisher_as_list():
-    """Test catalog with publisher as list (triggers line 40-41 conversion)"""
+    """Test catalog with publisher as list"""
     unmapped_objects = {
         'catalog': [{
             'uri': "https://example.com",
@@ -214,7 +214,7 @@ def test_catalog_publisher_as_list():
 
 
 def test_dataset_publisher_as_list():
-    """Test dataset with publisher as list (triggers line 59-60 conversion)"""
+    """Test dataset with publisher as list"""
     unmapped_objects = {
         'catalog': [{
             'uri': "https://example.com",
@@ -273,7 +273,7 @@ def test_dataset_publisher_as_list():
 
 
 def test_dataset_theme_as_single_string():
-    """Test dataset with theme as single string (triggers line 61-62 conversion to list)"""
+    """Test dataset with theme as single string"""
     unmapped_objects = {
         'catalog': [{
             'uri': "https://example.com",
@@ -468,7 +468,7 @@ BASE_CATALOG_TEMPLATE = {
     ("population_coverage", "Adults aged 18-65"),
 ])
 def test_optional_dataset_fields(field_name, field_value):
-    """Test optional dataset fields coverage (lines 75-138)"""
+    """Test optional dataset fields coverage"""
     # Create dataset with the specific optional field
     dataset = BASE_DATASET_TEMPLATE.copy()
     dataset[field_name] = field_value
@@ -532,8 +532,8 @@ def test_complex_optional_dataset_fields(field_name, field_value):
     if field_name == "other_identifier":
         # Should be an Identifier object
         assert len(mapped_value) == 1
-        assert mapped_value[0].notation == field_value["notation"]
-        assert mapped_value[0].schema_agency == field_value["schema_agency"]
+        assert mapped_value[0].notation == field_value[0]["notation"]
+        assert mapped_value[0].schema_agency == field_value[0]["schema_agency"]
     elif field_name == "qualified_attribution":
         # Should be a list of Attribution objects
         assert len(mapped_value) == 1
