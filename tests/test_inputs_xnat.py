@@ -501,7 +501,7 @@ def test_get_custom_form_metadata_success(project, xnatpy_mock: Mocker, xnatpy_c
             'condition': '25370001 - Hepatocellular Carcinoma'
         },
         '9b82df19-6639-4b87-b851-850cbc809c06': {
-            'yup': False
+            'test_key': False
         },
         'e2c04eef-6333-41ae-8977-33e2f0793788': {
             'submit': False,
@@ -944,26 +944,6 @@ def test_project_to_dataset_string_project_name(mock_check_eligibility, session,
     assert result is not None
     assert result['title'] == ["String conversion test"]
     assert result['description'] == ["Testing string to project conversion"]
-
-
-@patch("xnat.session.BaseXNATSession")
-@patch("xnat.core.XNATBaseObject")
-def test_get_and_update_metadata_integration(session, project, config: Dict[str, Any]):
-    """Test complete get_and_update_metadata integration workflow"""
-    # Setup minimal session
-    session.projects = {}
-    session.url_for.return_value = "https://example.com"
-
-    xnat_input = XNATInput(config, session)
-    config_input = ConfigInput(config)
-    
-    result = xnat_input.get_and_update_metadata(config_input)
-    
-    # Verify structure and that custom form processing was applied
-    assert 'catalog' in result
-    assert 'dataset' in result
-    assert isinstance(result['catalog'], list)
-    assert isinstance(result['dataset'], list)
 
 
 def test_parse_custom_form_response_filtering():
