@@ -387,14 +387,10 @@ class XNATInput:
             
         # Apply custom form data as overrides
         for key, value in custom_form_data.items():
-            if key in source_obj:
-                # Handle different data types appropriately
-                if isinstance(source_obj[key], list) and not isinstance(value, list):
-                    source_obj[key] = [value]
-                elif isinstance(source_obj[key], list) and isinstance(value, list):
-                    source_obj[key] = value
-                else:
-                    source_obj[key] = value
+            if (key in source_obj) and (
+                    isinstance(source_obj[key], list) and not isinstance(value, list)
+            ):
+                source_obj[key] = [value]
             else:
                 # Add new field from custom form
                 source_obj[key] = value

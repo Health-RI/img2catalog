@@ -62,8 +62,8 @@ will use the configuration file `~/.img2catalog/config.toml`, if it exists.
 If the file does not exist, a default configuration will be used.
 
 Currently, it is not possible to gather all the information for the Health-RI v2 model from a regular XNAT project.
-Additional properties can be stored in XNAT using XNAT Custom Forms. In `./ext/xnat_custom_forms/health-ri-v2-dataset.json`
-a JSON definition of a form for Health-RI v2.0.0. This form can be attached to a project and the information can be 
+Additional properties can be stored in XNAT using XNAT Custom Forms. A JSON definition for the form for the Health-RI v2.0.0 model
+can be found in `./ext/xnat_custom_forms/health-ri-v2-dataset.json`. This form can be attached to a project and the information can be 
 retrieved by supplying the form ID in the configuration, like so:
 ```toml
 [xnat]
