@@ -30,7 +30,7 @@ class XNATInput:
         self.session = session
 
     def get_and_update_metadata(self, config_input: ConfigInput) -> Dict[str, List[Dict]]:
-        """Gathers metadata from XNAT and updates them using ConfigInput
+        """Gathers metadata from XNAT and updates them using ConfigInput and custom forms
 
         Parameters
         ----------
@@ -39,16 +39,24 @@ class XNATInput:
 
         Returns
         -------
-        List[Dict]
-            A list with dictionaries containing metadata per dataset
+        Dict[str, List[Dict]]
+            A dictionary with lists of dictionaries containing metadata per concept type
         """
+        # 1. Get base XNAT metadata
         unmapped_objects = self.get_metadata()
         config_catalog = config_input.get_metadata_concept('catalog')
         config_dataset = config_input.get_metadata_concept('dataset')
 
+        # 2. Apply config overrides (existing functionality)
         unmapped_objects = {
             'catalog': config_input.update_metadata(unmapped_objects['catalog'], config_catalog),
             'dataset': config_input.update_metadata(unmapped_objects['dataset'], config_dataset)
+        }
+
+        # 3. Apply custom form overrides (new functionality)
+        unmapped_objects = {
+            'catalog': self.apply_custom_form_metadata(unmapped_objects['catalog'], 'catalog'),
+            'dataset': self.apply_custom_form_metadata(unmapped_objects['dataset'], 'dataset')
         }
 
         return unmapped_objects
@@ -245,6 +253,212 @@ class XNATInput:
 
         return True
 
+    def get_custom_form_metadata(self, project: XNATBaseObject, concept_type: str) -> Dict:
+        """Retrieve custom form metadata for a specific project and concept type
+        
+        Parameters
+        ----------
+        project : XNATBaseObject
+            XNAT project instance
+        concept_type : str
+            The concept type ('dataset', etc.)
+            
+        Returns
+        -------
+        Dict
+            Dictionary containing custom form metadata, empty dict if no custom form or error
+        """
+        # Check if custom form ID is configured for this concept type
+        custom_form_id = self.config.get('xnat', {}).get(f'{concept_type}_form_id')
+        if not custom_form_id:
+            logger.debug("No custom form ID configured for concept type %s", concept_type)
+            return {}
+            
+        try:
+            # Retrieve custom form data from XNAT API
+            custom_fields_url = f"/xapi/custom-fields/projects/{project.name}/fields"
+            response = project.xnat_session.get(custom_fields_url)
+            
+            if response.status_code != 200:
+                logger.warning("Failed to retrieve custom fields for project %s: HTTP %d", 
+                             project.name, response.status_code)
+                return {}
+                
+            custom_fields_data = response.json()
+
+            # Extract data for the specific custom form ID
+            return self._parse_custom_form_response(custom_fields_data, custom_form_id)
+            
+        except Exception as e:
+            logger.warning("Error retrieving custom form metadata for project %s: %s", project.name, e)
+            return {}
+
+    def _parse_custom_form_response(self, custom_fields_data: Dict, custom_form_id: str) -> Dict:
+        """Parse custom form response to extract metadata for specific form ID
+        
+        Parameters
+        ----------
+        custom_fields_data : Dict
+            Raw custom fields data from XNAT API - format: {form_id: {field_name: field_value, ...}, ...}
+        custom_form_id : str
+            ID of the custom form to extract data from
+            
+        Returns
+        -------
+        Dict
+            Dictionary containing parsed custom form metadata with correct property names as keys
+        """
+        # The custom fields API returns a dictionary with form IDs as keys
+        # and form field data as values
+        form_metadata = custom_fields_data.get(custom_form_id, {})
+        
+        # Filter out empty values from the form metadata
+        filtered_metadata = self._filter_empty_values(form_metadata)
+
+        logger.debug("Parsed custom form metadata: %s", filtered_metadata)
+        return filtered_metadata
+
+    def _filter_empty_values(self, data: Dict) -> Dict:
+        """Filter out empty values from custom form dictionary
+        
+        Parameters
+        ----------
+        data : Dict
+            Custom form data dictionary
+            
+        Returns
+        -------
+        Dict
+            Filtered dictionary with empty values removed
+        """
+        filtered_dict = {}
+        for key, value in data.items():
+            if self._is_empty_value(value):
+                continue
+            filtered_dict[key] = value
+        return filtered_dict
+    
+    def _is_empty_value(self, value) -> bool:
+        """Check if a value is considered empty
+        
+        Parameters
+        ----------
+        value : Any
+            Value to check
+            
+        Returns
+        -------
+        bool
+            True if the value is empty, False otherwise
+        """
+        if value is None:
+            return True
+        if isinstance(value, str) and not value.strip():
+            return True
+        if isinstance(value, list):
+            if not value:  # Empty list
+                return True
+            # Check if list contains only empty values
+            return all(self._is_empty_value(item) for item in value)
+        if isinstance(value, dict):
+            if not value:  # Empty dict
+                return True
+            # Check if dict contains only empty values
+            return all(self._is_empty_value(val) for val in value.values())
+        return False
+
+    def _update_metadata_with_custom_form(self, source_obj: Dict, custom_form_data: Dict) -> Dict:
+        """Update metadata object with custom form data
+        
+        Parameters
+        ----------
+        source_obj : Dict
+            Source metadata dictionary to update
+        custom_form_data : Dict
+            Custom form metadata to apply
+            
+        Returns
+        -------
+        Dict
+            Updated metadata dictionary
+        """
+        if not custom_form_data:
+            return source_obj
+            
+        # Apply custom form data as overrides
+        for key, value in custom_form_data.items():
+            if (key in source_obj) and (
+                    isinstance(source_obj[key], list) and not isinstance(value, list)
+            ):
+                source_obj[key] = [value]
+            else:
+                # Add new field from custom form
+                source_obj[key] = value
+                
+        return source_obj
+
+    def apply_custom_form_metadata(self, metadata_objects: List[Dict], concept_type: str) -> List[Dict]:
+        """Apply custom form metadata to a list of metadata objects
+        
+        Parameters
+        ----------
+        metadata_objects : List[Dict]
+            List of metadata dictionaries to update
+        concept_type : str
+            The concept type ('dataset', etc.)
+            
+        Returns
+        -------
+        List[Dict]
+            Updated list of metadata dictionaries with custom form data applied
+        """
+        # Only apply custom forms to dataset concept type for now
+        if concept_type != 'dataset':
+            return metadata_objects
+            
+        updated_objects = []
+
+        # For datasets, we need to get the project for each dataset
+        for metadata_obj in metadata_objects:
+            # Extract project name from the dataset URI/identifier to get the project
+            project_name = self._extract_project_name_from_dataset_uri(metadata_obj.get('uri'))
+
+            if project_name:
+                try:
+                    project = self.session.projects[project_name]
+                    custom_form_data = self.get_custom_form_metadata(project, concept_type)
+                    updated_obj = self._update_metadata_with_custom_form(metadata_obj, custom_form_data)
+                    updated_objects.append(updated_obj)
+                except Exception as e:
+                    logger.warning("Could not retrieve project %s for custom form data: %s", project_name, e)
+                    updated_objects.append(metadata_obj)
+            else:
+                updated_objects.append(metadata_obj)
+                
+        return updated_objects
+
+    def _extract_project_name_from_dataset_uri(self, uri: str) -> Union[str, None]:
+        """Extract project name from dataset URI
+        
+        Parameters
+        ----------
+        uri : str
+            Dataset URI that should contain project information
+            
+        Returns
+        -------
+        Union[str, None]
+            Project name if found, None otherwise
+        """
+        if not uri:
+            return None
+            
+        # Extract the project name after '/projects/' from https://xnat.example.com/projects/PROJECT_NAME
+        if isinstance(uri, str) and '/projects/' in uri:
+            return uri.split('/projects/')[-1]
+                
+        return None
+
 
 class XNATParserError(ValueError):
     """Exception that can contain a list of errors from the XNAT parser.
@@ -264,11 +478,12 @@ class XNATParserError(ValueError):
 
 
 def filter_keyword(keywords: Union[List[str], None], config: Dict) -> List[str]:
-    """Filters the opt-in keyword from the keywords list
+    """Filters the opt-in keyword from the keywords list and applies fallback keywords if needed
 
     If no opt-in keyword is set, all keywords will be returned.
     If remove_keywords is set to False, all keywords will be returned.
     If the opt-in keyword cannot be found, all keywords will be returned.
+    If keywords are empty after filtering, fallback keywords will be applied.
 
     Parameters
     ----------
@@ -280,12 +495,25 @@ def filter_keyword(keywords: Union[List[str], None], config: Dict) -> List[str]:
     Returns
     -------
     List[str]
-        List of keywords, with the opt-in keyword filtered out if necessary
+        List of keywords, with the opt-in keyword filtered out if necessary and fallback keywords applied if empty
     """
+    # Handle None keywords
+    if keywords is None:
+        keywords = []
+    
+    # Remove opt-in keyword if configured
     if config.get("img2catalog") and config["img2catalog"].get("remove_optin", REMOVE_OPTIN_KEYWORD):
         optin_kw = config["img2catalog"].get("optin")
-        if optin_kw in keywords:
+        if optin_kw and optin_kw in keywords:
             keywords.remove(optin_kw)
+
+    # Apply fallback keywords if the list is empty
+    if not keywords and config.get("img2catalog") and config["img2catalog"].get("fallback_keywords"):
+        fallback_kw = config["img2catalog"]["fallback_keywords"]
+        if isinstance(fallback_kw, list):
+            keywords = fallback_kw.copy()
+        elif isinstance(fallback_kw, str):
+            keywords = [fallback_kw]
 
     return keywords
 
