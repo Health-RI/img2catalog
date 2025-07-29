@@ -144,7 +144,7 @@
               "validate": {
                 "required": true
               },
-              "description": "To specify the electronic mail address for communication with the object. When naming a contact point this information needs to be further specified with additional information, i.e., an email address. This email address does not need to be a direct contact to the person responsible for the management of the data, it could be a generic information email.\nThe email address has to be provided starting with mailto: prefix.\nFor example: mailto:info@example.com / mailto: jane.doe@example.com",
+              "description": "To specify the electronic mail address for communication with the object. When naming a contact point this information needs to be further specified with additional information, i.e., an email address. This email address does not need to be a direct contact to the person responsible for the management of the data, it could be a generic information email.\nThe email address has to be provided starting with mailto: prefix.\nFor example: mailto:info@example.com / mailto:jane.doe@example.com",
               "input": true,
               "tableView": true
             },
@@ -296,7 +296,7 @@
               },
               "input": true,
               "tableView": true,
-              "description": "It is possible to provide the email address of the appropriate institution or department if no personal email address can be provided.\nThe email address has to be provided starting with mailto: prefix.\nFor example: mailto:info@example.com / mailto: jane.doe@example.com"
+              "description": "It is possible to provide the email address of the appropriate institution or department if no personal email address can be provided.\nThe email address has to be provided starting with mailto: prefix.\nFor example: mailto:info@example.com / mailto:jane.doe@example.com"
             },
             {
               "key": "publisher.homepage",
@@ -1072,7 +1072,7 @@
           "type": "url",
           "label": "In Series",
           "multiple": true,
-          "description": "Dataset series of which the dataset is part. This property points to which Dataset Series the Dataset is part of. ",
+          "description": "Dataset series of which the dataset is part. This property points to which Dataset Series the Dataset is part of.",
           "input": true,
           "tableView": true
         }
