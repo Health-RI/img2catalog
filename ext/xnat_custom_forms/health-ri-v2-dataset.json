@@ -1,5 +1,5 @@
 {
-  "title": "Health-RI v2 - form version 3",
+  "title": "Health-RI v2",
   "display": "form",
   "description": "",
   "settings": {},
@@ -18,9 +18,6 @@
           "key": "identifier",
           "type": "textfield",
           "label": "Identifier",
-          "validate": {
-            "required": true
-          },
           "description": "An unambiguous reference to the resource within a given context. Health-RI is currently working on a strategy for persistent identifiers for, among other things, datasets. Until a solid solution has been found, we propose the following temporary solution:\nIf your data is published in a repository, fill in with the provided DOI (Example: https://doi.org/10.34894/ZLOYOJ). If this 'Identifier' field is left blank, the URL to this XNAT dataset will be used as an identifier. Ensure that metadata is updated if your situation changes.",
           "input": true,
           "tableView": true
@@ -317,7 +314,6 @@
               "tableView": true,
               "placeholder": "Enter publisher type URI (e.g., http://purl.org/adms/publishertype/Company)",
               "validate": {
-                "required": true,
                 "pattern": "^http://purl\\.org/adms/publishertype/.+",
                 "patternMessage": "Value must be from the http://purl.org/adms/publishertype/ domain"
               },
