@@ -1,6 +1,6 @@
 import logging
 import sys
-from logging import FileHandler, StreamHandler
+from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
 from os import PathLike
 from typing import Union
@@ -21,7 +21,7 @@ class Logger:
 
     """
 
-    def __init__(self, logger_name: str, logger_path: Union[str, PathLike] = None):
+    def __init__(self, logger_name: str, logger_path: Union[str, PathLike] = None) -> None:
         logger = logging.getLogger(logger_name)
         logger.setLevel(logging.INFO)
 
@@ -29,18 +29,17 @@ class Logger:
         console_handler = StreamHandler(sys.stderr)
         console_handler.setLevel(logging.WARNING)
 
-        # file_handler = FileHandler(f'./{logger_name}.log')
-        # file_handler.setLevel(logging.INFO)
         self.formatter = logging.Formatter(LOGGING_FORMAT, datefmt=LOGGING_DATEFMT)
-        # file_handler.setFormatter(formatter)
         console_handler.setFormatter(self.formatter)
 
         logger.addHandler(console_handler)
-        # logger.addHandler(file_handler)
+        self.logger_name = logger_name
         self.logger = logger
         self.logger_path = logger_path
+        if self.logger_path is None:
+            self.logger_path = f"./{self.logger_name}.log"
 
-    def _add_file_handler(self, logger_path: Union[str, PathLike] = None):
+    def _add_file_handler(self, logger_path: Union[str, PathLike] = None) -> None:
         """Adds a file handler to logging
 
         Parameters
@@ -51,8 +50,6 @@ class Logger:
         """
         if logger_path is not None:
             self.logger_path = logger_path
-        if self.logger_path is None:
-            self.logger_path = f"./{self.logger_name}.log"
 
         file_handler = RotatingFileHandler(self.logger_path, maxBytes=1e6, backupCount=3)
         file_handler.setLevel(logging.INFO)
@@ -60,7 +57,7 @@ class Logger:
         file_handler.setFormatter(self.formatter)
         self.logger.addHandler(file_handler)
 
-    def setLevel(self, loglevel):
+    def setLevel(self, loglevel: str) -> None:
         """Sets loglevel for both the logfile as well as stderr output
 
         Parameters

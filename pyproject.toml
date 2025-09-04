@@ -30,7 +30,7 @@ dependencies = [
   "tomli >= 1.10; python_version < '3.11'",
   "click >= 8.0.0",
   "click-option-group~=0.5.6",
-  "sempyro == 1.5.0",
+  "sempyro >= 2.0.3",
   "sparqlwrapper~=2.0",
   "fairclient >= 1.0.0",
 ]
@@ -151,7 +151,7 @@ ban-relative-imports = "all"
 "tests/**/*" = ["PLR2004", "S101", "TID252", "N803"]
 
 [tool.coverage.run]
-source_pkgs = ["img2catalog", "tests"]
+source_pkgs = ["img2catalog"]
 branch = true
 parallel = true
 omit = ["src/img2catalog/__about__.py", "src/img2catalog/__main__.py", "tests/xnatpy_fixtures.py"]
@@ -162,3 +162,8 @@ tests = ["tests", "*/img2catalog/tests"]
 
 [tool.coverage.report]
 exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: Runs integration tests."
+]
