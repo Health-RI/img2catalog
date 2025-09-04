@@ -2,6 +2,41 @@
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [v2.0.0] - 2025-09-04
+
+### Added
+- feat: adds fallback keywords in case of none found by @Alexander Harms in 5d90466
+- feat: adds support for xnat custom forms by @Alexander Harms in 5ae7619
+- feat: makes cli modular by @Alexander Harms in 5dde34d
+- feat: update to health-ri v2 by @Alexander Harms in ed765eb
+- feat: support multiple publishers (#63) by @kburger in 4b43b99
+
+
+### Changed
+- docs: update readme by @Alexander Harms in 4b21b11
+- tests: increases test coverage by @Alexander Harms in 3c9392c
+- ci: adds sonar-project.properties by @Alexander Harms in 742299d
+- ci: adds updated test and release workflows by @Alexander Harms in 907b0c0
+- Refactor (#64) by @Alexander Harms in a24084f
+- Bump pypa/gh-action-pypi-publish from 1.12.3 to 1.12.4 by @dependabot[bot] in dab5ec1
+
+
+### Fixed
+- fix(ci): fix ci dependencies by @Alexander Harms in fe9ab64
+- fix(ci): publish pypi on workflow dispatch, test on PR ready to review (#67) by @Alexander Harms in 9c69b67
+- Revert "fix: filtering of empty form content turned out to be unnecessary" by @Alexander Harms in 32a0e9e
+- fix: removes old test for health-ri v1 by @Alexander Harms in 39dc698
+- fix: upgrades SeMPyRO to v2.0.1 by @Alexander Harms in eb6908f
+- fix: remove unused commented out code by @Alexander Harms in 3584ccb
+- fix: add mailto: prefix to example emails by @Alexander Harms in 17f9bee
+- fix(ci): publish pypi on workflow dispatch, test on PR ready to review (#67) by @Alexander Harms in a8167e5
+- fix(tests): removes linenumber refs from docstrings by @Alexander Harms in 76dcacd
+
+
+### Removed
+- tests: removes unnecessary test by @Alexander Harms in c61c9e7
+- tests: removed unused statements from test configuration by @Alexander Harms in 94fd8d2
+
 ## 1.0.0
 
 ### Updated
