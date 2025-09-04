@@ -524,7 +524,7 @@ def test_get_custom_form_metadata_success(project, xnatpy_mock: Mocker, xnatpy_c
         }
     }
     
-    project.name = "test_project"
+    project.id = "test_project"
     project.xnat_session = xnatpy_connection
     xnatpy_mock.get("/xapi/custom-fields/projects/test_project/fields", json=custom_form_response)
     
