@@ -276,7 +276,7 @@ class XNATInput:
             
         try:
             # Retrieve custom form data from XNAT API
-            custom_fields_url = f"/xapi/custom-fields/projects/{project.name}/fields"
+            custom_fields_url = f"/xapi/custom-fields/projects/{project.id}/fields"
             response = project.xnat_session.get(custom_fields_url)
             
             if response.status_code != 200:
