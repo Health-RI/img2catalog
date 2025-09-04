@@ -22,8 +22,8 @@ pip install img2catalog
 ## Usage
 
 `img2catalog` consists of:
-- an input
-- a mapping
+- an input,
+- a mapping,
 - and an output.
 
 A basic example:
