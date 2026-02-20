@@ -24,9 +24,10 @@ from img2catalog.const import (
 from img2catalog.inputs.config import ConfigInput
 from img2catalog.inputs.xnat import XNATInput
 from img2catalog.mappings.xnat import map_xnat_to_healthriv2
+from img2catalog.inputs.csv import read_csv
+from img2catalog.mappings.xds import map_xds_to_healthri_dcat_dataset
 from img2catalog.outputs.fdp import FDPOutput
 from img2catalog.outputs.rdf import RDFOutput
-
 
 logger = logging.getLogger(__name__)
 
@@ -308,5 +309,31 @@ cli_click.add_command(input_xnat_project)
 input_xnat_project.add_command(mapping_xnat_healthriv2)
 
 
+@click.command(name="xds_parser")
+@click.option(
+    "--path",
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
+    required=True,
+    help="Path to the XDS CSV data file."
+)
+@click.pass_context
+def input_xds(ctx: click.Context, path: Path):
+    """Extract metadata from an XDS CSV file."""
+
+    # Loads config file
+    configPath = Path("examples/xds_example_config.toml")
+    config = load_img2catalog_configuration(configPath)
+
+    # Initialize the XDS input handler
+    csv_rows = read_csv(path)
+
+    # Process the metadata similarly to how XNAT does it
+    for row in csv_rows:
+        map_xds_to_healthri_dcat_dataset(row, config)
+
+# Add xds_parser to the main CLI
+cli_click.add_command(input_xds)
+
+# Attach the output commands to xds_parser
 if __name__ == "__main__":
     cli_click()
