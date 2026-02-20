@@ -1,0 +1,19 @@
+[xds]
+
+[agent]
+identifier = "https://www.example.com"
+mbox = "test@health-ri.nl"
+homepage = "https://www.health-ri.nl"
+
+[v_card]
+has_email = "test@health-ri.nl"
+formatted_name = "formatted_name"
+
+[dataset]
+identifier = "https://www.example.com/identifier"
+title = "dataset title"
+description = "This is imagine data"
+theme = ["http://publications.europa.eu/resource/authority/data-theme/HEAL"]
+keyword = "keyword"
+access_rights = "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
+applicable_legislation = ["http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC"]
