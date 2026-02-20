@@ -319,21 +319,20 @@ input_xnat_project.add_command(mapping_xnat_healthriv2)
 @click.pass_context
 def input_xds(ctx: click.Context, path: Path):
     """Extract metadata from an XDS CSV file."""
-
     # Loads config file
     configPath = Path("examples/xds_example_config.toml")
     config = load_img2catalog_configuration(configPath)
 
-    # Initialize the XDS input handler
+    # Reads csv contents from path
     csv_rows = read_csv(path)
 
-    # Process the metadata similarly to how XNAT does it
-    for row in csv_rows:
-        map_xds_to_healthri_dcat_dataset(row, config)
+    datasets = []
+    for row in csv_rows.iterrows():
+        dataset = map_xds_to_healthri_dcat_dataset(row, config)
+        datasets.append(dataset)
+        print(dataset)
 
-# Add xds_parser to the main CLI
 cli_click.add_command(input_xds)
 
-# Attach the output commands to xds_parser
 if __name__ == "__main__":
     cli_click()

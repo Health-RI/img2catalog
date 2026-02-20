@@ -1,8 +1,6 @@
 from pathlib import Path
 from typing import Dict
 
-from pydantic import AnyUrl, AnyHttpUrl
-
 from img2catalog.configmanager import load_img2catalog_configuration
 from pandas import Series
 from rdflib import URIRef
@@ -11,8 +9,8 @@ from sempyro.hri_dcat import HRIAgent, HRIVCard, HRIDataset
 from img2catalog.inputs.csv import read_csv
 
 
-def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
-    _, data = row
+def map_xds_to_healthri_dcat_dataset(rows: Series, config: Dict) -> HRIDataset:
+    _, data = rows
     agentConfig = config.get("agent")
     vCardConfig = config.get("v_card")
     datasetConfig = config.get("dataset")
