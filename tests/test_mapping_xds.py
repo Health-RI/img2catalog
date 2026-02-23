@@ -1,7 +1,7 @@
 import pytest
 from sempyro.time import PeriodOfTime
 
-from img2catalog.mappings.xds import format_temporal_coverage
+from img2catalog.mappings.xds import format_temporal_coverage, format_title
 
 
 def test_format_temporal_coverage_raises_value_error():
@@ -25,10 +25,29 @@ def test_format_temporal_coverage_returns_valid_periodoftime():
     assert result.end_date == "31-12-2026"
 
 def test_format_title_returns_formatted_string():
-    return
+    # Arrange
+    data = {
+        "modality": "CT",
+        "instituteName": "Amsterdam Hospital",
+        "temporalCoverage": "01-01-2026 to 31-12-2026",
+    }
+    expected_result = "Amsterdam Hospital_CT_01-01-2026_31-12-2026"
+
+    # Act
+    result = format_title(data)
+
+    # Assert
+    assert result == expected_result
 
 def test_format_title_raises_error_on_missing_field():
-    return
+    # Arrange
+    data = {
+        "modality": "CT",
+    }
+
+    # Act & Assert
+    with pytest.raises(KeyError):
+        format_title(data)
 
 def test_map_xds_to_healthri_dcat_dataset_returns_model():
     return
