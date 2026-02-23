@@ -1,9 +1,9 @@
 import pandas as pd
-from img2catalog.inputs.csv import read_csv
+from img2catalog.inputs.csv_reader import read_csv
 
 def test_read_csv_returns_dataframe_on_success():
     # Arrange
-    filepath = "examples/xds_input.csv"
+    filepath = "../../examples/xds_input.csv"
     expected_results = 4
 
     # Act
