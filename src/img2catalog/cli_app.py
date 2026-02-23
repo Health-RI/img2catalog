@@ -328,6 +328,7 @@ def input_xds(ctx: click.Context, path: Path):
 
     datasets = []
     for row in csv_rows.iterrows():
+        _, row = row
         dataset = map_xds_to_healthri_dcat_dataset(row, config)
         datasets.append(dataset)
         print(dataset)

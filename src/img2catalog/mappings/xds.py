@@ -2,10 +2,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict
 
+from pandas import Series
 from sempyro.time import PeriodOfTime
 
 from img2catalog.configmanager import load_img2catalog_configuration
-from pandas import Series
 from rdflib import URIRef
 from sempyro.hri_dcat import HRIAgent, HRIVCard, HRIDataset
 
@@ -35,17 +35,16 @@ def format_title(data) -> str:
 
     return f"{institute}_{modality}_{period.start_date.value}_{period.end_date.value}"
 
-def map_xds_to_healthri_dcat_dataset(rows: Series, config: Dict) -> HRIDataset:
-    _, data = rows
+def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
     agentConfig = config.get("agent")
     vCardConfig = config.get("v_card")
     datasetConfig = config.get("dataset")
 
     # formatting
-    dataset_formatted_title = format_title(data)
+    dataset_formatted_title = format_title(row)
 
     agent = HRIAgent(
-        name=[{"value": data["instituteName"], "lang": "en"}],
+        name=[{"value": row["instituteName"], "lang": "en"}],
         identifier=[{"value": agentConfig["identifier"]}],
         mbox = agentConfig["mbox"],
         homepage = agentConfig["homepage"],
@@ -70,10 +69,10 @@ def map_xds_to_healthri_dcat_dataset(rows: Series, config: Dict) -> HRIDataset:
         applicable_legislation=[URIRef(url) for url in datasetConfig["applicable_legislation"]] if datasetConfig.get("applicable_legislation") else [],
 
         # CSV FIELDS
-        number_of_unique_individuals = int(data['numberOfUniqueIndividuals']),
-        number_of_records = int(data['numberOfRecords']),
-        minimum_typical_age = int(data['minTypicalAge']),
-        maximum_typical_age = int(data['maxTypicalAge']),
+        number_of_unique_individuals = int(row['numberOfUniqueIndividuals']),
+        number_of_records = int(row['numberOfRecords']),
+        minimum_typical_age = int(row['minTypicalAge']),
+        maximum_typical_age = int(row['maxTypicalAge']),
     )
 
     return dataset
@@ -85,6 +84,7 @@ if __name__ == '__main__':
 
     datasets = []
     for row in dataframe.iterrows():
+        _, row = row
         dataset = map_xds_to_healthri_dcat_dataset(row, config)
         datasets.append(dataset)
         print(dataset.title)
