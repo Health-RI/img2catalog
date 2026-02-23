@@ -79,7 +79,7 @@ def map_xds_to_healthri_dcat_dataset(rows: Series, config: Dict) -> HRIDataset:
     return dataset
 
 if __name__ == '__main__':
-    dataframe = read_csv("../inputs/xds_input.csv")
+    dataframe = read_csv("../../../examples/xds_input.csv")
     config_path = Path("../../../examples/xds_example_config.toml")
     config = load_img2catalog_configuration(config_path)
 

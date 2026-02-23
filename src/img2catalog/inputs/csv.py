@@ -9,7 +9,7 @@ def read_csv(csv_path: str) -> DataFrame:
         return pd.DataFrame()
 
 if __name__ == '__main__':
-    results = read_csv("xds_input.csv")
+    results = read_csv("../../../examples/xds_input.csv")
 
     if results:
         print(results[0].model_dump_json(indent=2, exclude_none=True))
