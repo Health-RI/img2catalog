@@ -11,5 +11,7 @@ def read_csv(csv_path: str) -> DataFrame:
 if __name__ == '__main__':
     results = read_csv("../../../examples/xds_input.csv")
 
-    if results:
-        print(results[0].model_dump_json(indent=2, exclude_none=True))
+    if not results.empty:
+        print(results.to_json(orient='records', indent=2))
+    else:
+        print("No data found or file is empty.")

@@ -9,7 +9,7 @@ from pandas import Series
 from rdflib import URIRef
 from sempyro.hri_dcat import HRIAgent, HRIVCard, HRIDataset
 
-from img2catalog.inputs.csv import read_csv
+from img2catalog.inputs.csv_reader import read_csv
 
 def format_temporal_coverage(temporal_coverage: str) -> PeriodOfTime:
     """Format 'DD-MM-YYYY to DD-MM-YYYY' into a PeriodOfTime object."""

@@ -24,7 +24,7 @@ from img2catalog.const import (
 from img2catalog.inputs.config import ConfigInput
 from img2catalog.inputs.xnat import XNATInput
 from img2catalog.mappings.xnat import map_xnat_to_healthriv2
-from img2catalog.inputs.csv import read_csv
+from img2catalog.inputs.csv_reader import read_csv
 from img2catalog.mappings.xds import map_xds_to_healthri_dcat_dataset
 from img2catalog.outputs.fdp import FDPOutput
 from img2catalog.outputs.rdf import RDFOutput
