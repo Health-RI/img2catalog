@@ -5,7 +5,6 @@ from sempyro.time import PeriodOfTime
 
 from img2catalog.mappings.xds import format_temporal_coverage, format_title, map_xds_to_healthri_dcat_dataset
 
-
 def get_default_csv_data():
     return Series({
         "modality": "CT",
@@ -99,10 +98,9 @@ def test_map_xds_to_healthri_dcat_dataset_returns_model():
 
 def test_map_xds_to_healthri_dcat_dataset_raises_on_missing_field():
     # Arrange
-    data = get_default_csv_data()
+    data = get_missing_csv_data()
     config = get_default_config()
-    row = data[0]
 
     # Act & Assert
     with pytest.raises(KeyError):
-        map_xds_to_healthri_dcat_dataset(row, config)
+        map_xds_to_healthri_dcat_dataset(data, config)
