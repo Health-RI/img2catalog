@@ -4,6 +4,7 @@ from typing import Dict
 
 from pandas import Series
 from pydantic import AnyHttpUrl
+from rdflib import URIRef
 from sempyro import LiteralField
 from sempyro.dcat import AccessRights
 from sempyro.time import PeriodOfTime
@@ -45,9 +46,9 @@ def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
     # Format dataset attributes
     dataset_formatted_title = format_title(row)
 
-    # themes expect DatasetTheme (which handles the URL)
+    # themes expect DatasetTheme
     dataset_themes = [
-        DatasetTheme(url) for url in dataset_config["theme"]
+        DatasetTheme(URIRef(theme)) for theme in dataset_config["theme"]
     ]
 
     #  Map each keyword string to a LiteralField object
@@ -81,7 +82,7 @@ def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
         contact_point = v_card,
         theme = dataset_themes,
         keyword= dataset_keywords,
-        access_rights = AccessRights(dataset_config["access_rights"]),
+        access_rights = AccessRights(URIRef(dataset_config["access_rights"])),
         creator = [agent],
         applicable_legislation= dataset_applicable_legislation,
 
