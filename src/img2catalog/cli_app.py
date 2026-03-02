@@ -309,7 +309,7 @@ cli_click.add_command(input_xnat_project)
 input_xnat_project.add_command(mapping_xnat_healthriv2)
 
 
-@click.group(name="xds_parser")
+@click.group(name="xds")
 @click.option(
     "--path",
     type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
