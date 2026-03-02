@@ -7,13 +7,13 @@ homepage = "https://www.health-ri.nl"
 
 [v_card]
 has_email = "test@health-ri.nl"
-formatted_name = "formatted_name"
+formatted_name = "v_card_name_example"
 
 [dataset]
-identifier = "https://www.example.com/identifier"
-title = "dataset title"
-description = "This is imagine data"
+identifier = "https://www.example.com/img-123"
+title = "Example Imaging Dataset Title"
+description = "This is imaging data description"
 theme = ["http://publications.europa.eu/resource/authority/data-theme/HEAL"]
-keyword = "keyword"
+keyword = ["list", "of", "key", "words"]
 access_rights = "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
 applicable_legislation = ["http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC"]
