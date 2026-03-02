@@ -309,7 +309,7 @@ cli_click.add_command(input_xnat_project)
 input_xnat_project.add_command(mapping_xnat_healthriv2)
 
 
-@click.command(name="xds_parser")
+@click.group(name="xds_parser")
 @click.option(
     "--path",
     type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
@@ -319,21 +319,29 @@ input_xnat_project.add_command(mapping_xnat_healthriv2)
 @click.pass_context
 def input_xds(ctx: click.Context, path: Path):
     """Extract metadata from an XDS CSV file."""
-    # Loads config file
+    #  Load configuration with XDS config
     configPath = Path("examples/xds_example_config.toml")
     config = load_img2catalog_configuration(configPath)
+    ctx.obj["config"] = config
 
-    # Reads csv contents from path
+    # Read and Map CSV contents
     csv_rows = read_csv(path)
-
     datasets = []
-    for row in csv_rows.iterrows():
-        _, row = row
+    for i, row in csv_rows.iterrows():
         dataset = map_xds_to_healthri_dcat_dataset(row, config)
-        datasets.append(dataset)
-        print(dataset)
+        datasets.append({
+            'uri': URIRef("http://example.com/dataset"),
+            'model_object': dataset
+        })
+
+    # Sets global object for FDP to access
+    ctx.obj['mapped_objects'] = {
+        'catalog': "http://localhost/catalog/1aaf003d-5423-46b6-9db9-44aad3772fcd",
+        'dataset': datasets
+    }
 
 cli_click.add_command(input_xds)
+input_xds.add_command(output_fdp)
 
 if __name__ == "__main__":
     cli_click()
