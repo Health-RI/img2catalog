@@ -153,7 +153,8 @@
               "validate": {
                 "required": true
               },
-              "tableView": true
+              "tableView": true,
+              "placeholder": "Enter a valid email"
             },
             {
               "key": "contact_point.contact_page",
@@ -161,7 +162,8 @@
               "input": true,
               "label": "Contact Page URL",
               "tooltip": "To specify a Uniform Resource Locator (URL) associated with the object. A webpage that either allows to make contact (i.e. a webform) or the information contains how to get into contact.",
-              "tableView": true
+              "tableView": true,
+              "placeholder": "Enter a valid URL"
             }
           ]
         }
@@ -238,7 +240,8 @@
                       },
                       "tableView": true,
                       "labelWidth": 15,
-                      "labelPosition": "left-left"
+                      "labelPosition": "left-left",
+                      "placeholder": "Enter a valid email"
                     },
                     {
                       "key": "homepage",
@@ -251,6 +254,7 @@
                       },
                       "tableView": true,
                       "labelWidth": 15,
+                      "placeholder": "Enter a valid URL",
                       "labelPosition": "left-left"
                     },
                     {
@@ -346,7 +350,8 @@
               "validate": {
                 "required": true
               },
-              "tableView": true
+              "tableView": true,
+              "placeholder": "Enter a valid email"
             },
             {
               "key": "publisher.homepage",
@@ -357,7 +362,8 @@
               "validate": {
                 "required": true
               },
-              "tableView": true
+              "tableView": true,
+              "placeholder": "Enter a valid URL"
             },
             {
               "key": "publisher.publisher_type",
@@ -414,7 +420,8 @@
             "patternMessage": "Value must be from the https://www.wikidata.org/wiki/ domain"
           },
           "tableView": false,
-          "tooltip": "Coding systems in use (ex: ICD-10-CM, DGRs, SNOMED=CT, ...) This property provides information on which coding systems are in use inside your dataset. For this, Wikidata URIs must be used (https://www.wikidata.org/)."
+          "tooltip": "Coding systems in use (ex: ICD-10-CM, DGRs, SNOMED=CT, ...) This property provides information on which coding systems are in use inside your dataset. For this, Wikidata URIs must be used (https://www.wikidata.org/).",
+          "placeholder": "Enter a valid URL (e.g., https://www.wikidata.org/wiki/domain)"
         },
         {
           "key": "code_values",
@@ -431,7 +438,8 @@
           "input": true,
           "label": "Minimum Typical Age",
           "tableView": false,
-          "tooltip": "Minimum typical age of the population within the dataset. The approximate minimum age of subjects in the dataset, if applicable. Approximate age is given to protect potentially sensitive information of subjects in the dataset."
+          "tooltip": "Minimum typical age of the population within the dataset. The approximate minimum age of subjects in the dataset, if applicable. Approximate age is given to protect potentially sensitive information of subjects in the dataset.",
+          "placeholder": "Enter a number"
         },
         {
           "key": "maximum_typical_age",
@@ -439,7 +447,8 @@
           "input": true,
           "label": "Maximum Typical Age",
           "tableView": false,
-          "tooltip": "Maximum typical age of the population within the dataset. The approximate maximum age of subjects in the dataset, if applicable. Approximate age is given to protect potentially sensitive information of subjects in the dataset."
+          "tooltip": "Maximum typical age of the population within the dataset. The approximate maximum age of subjects in the dataset, if applicable. Approximate age is given to protect potentially sensitive information of subjects in the dataset.",
+          "placeholder": "Enter a number"
         },
         {
           "key": "number_of_records",
@@ -447,7 +456,8 @@
           "input": true,
           "label": "Number of Records",
           "tableView": false,
-          "tooltip": "Size of the dataset in terms of the number of records. Number of records inside a Dataset."
+          "tooltip": "Size of the dataset in terms of the number of records. Number of records inside a Dataset.",
+          "placeholder": "Enter a number"
         },
         {
           "key": "number_of_unique_individuals",
@@ -455,7 +465,8 @@
           "input": true,
           "label": "Number of Unique Individuals",
           "tableView": false,
-          "tooltip": "Number of records for unique individuals."
+          "tooltip": "Number of records for unique individuals.",
+          "placeholder": "Enter a number"
         },
         {
           "key": "population_coverage",
@@ -499,6 +510,7 @@
             "maxDate": null
           },
           "tableView": false,
+          "placeholder": "e.g., 2026-01-15 09:00 AM",
           "tooltip": "Date of formal issuance of the resource. This property should point to the first known date of issuance, such as the publication date in a data repository."
         },
         {
@@ -523,6 +535,7 @@
             "maxDate": null
           },
           "tableView": false,
+          "placeholder": "e.g., 2026-03-05 02:30 PM",
           "tooltip": "Date on which the resource was changed. This property indicates changes to the dataset, not the metadata record. An absent value may mean the resource hasn't changed since publication, the modification date is unknown, or the resource is continuously updated."
         },
         {
@@ -554,6 +567,7 @@
                 "maxDate": null
               },
               "tableView": false,
+              "placeholder": "Start date (e.g., 2020-01-01 08:00 AM)",
               "tooltip": "The start date of the period that the dataset covers."
             },
             {
@@ -578,6 +592,7 @@
                 "maxDate": null
               },
               "tableView": false,
+              "placeholder": "End date (e.g., 2025-12-31 05:00 PM)",
               "tooltip": "The end date of the period that the dataset covers."
             }
           ]
@@ -632,6 +647,7 @@
                 "maxDate": null
               },
               "tableView": false,
+              "placeholder": "Available from (e.g., 2026-06-01)",
               "tooltip": "A temporal period which the dataset is available for secondary use."
             },
             {
@@ -655,6 +671,7 @@
                 "minDate": null,
                 "maxDate": null
               },
+              "placeholder": "Available until (e.g., 2036-06-01)",
               "tableView": false
             }
           ]
@@ -788,7 +805,8 @@
           "label": "Documentation",
           "multiple": true,
           "tableView": true,
-          "tooltip": "A page or document about this dataset. The value of this property is the IRI or URL directing to the web-page or document about the dataset."
+          "tooltip": "A page or document about this dataset. The value of this property is the IRI or URL directing to the web-page or document about the dataset.",
+          "placeholder": "e.g., https://github.com/project/readme"
         },
         {
           "key": "is_referenced_by",
@@ -797,7 +815,8 @@
           "label": "Is Referenced By",
           "multiple": true,
           "tableView": true,
-          "tooltip": "A related resource that references, cites, or otherwise points to the described resource. The value of this property is the IRI or URL of the DOI to the publication or other related resource.\nFor example: https://doi.org/10.1186/s13690-021-00709-x"
+          "tooltip": "A related resource that references, cites, or otherwise points to the described resource. The value of this property is the IRI or URL of the DOI to the publication or other related resource.\nFor example: https://doi.org/10.1186/s13690-021-00709-x",
+          "placeholder": "e.g., https://doi.org/10.1186/s13690-021-00709-x"
         }
       ],
       "collapsible": true
@@ -1068,7 +1087,8 @@
                   "input": true,
                   "label": "Agent: Email",
                   "prefix": "mailto:",
-                  "tableView": true
+                  "tableView": true,
+                  "placeholder": "Enter a valid email"
                 },
                 {
                   "key": "agent.homepage",
@@ -1096,7 +1116,7 @@
               "label": "Related Resource",
               "multiple": true,
               "tableView": true,
-              "description": "This property establishes the link between the described and the related resources, e.g., datasets. The value of this property is the IRI/URL of the related resource."
+              "tooltip": "This property establishes the link between the described and the related resources, e.g., datasets. The value of this property is the IRI/URL of the related resource."
             },
             {
               "key": "had_role",
@@ -1105,7 +1125,7 @@
               "label": "Relationship Type",
               "multiple": true,
               "tableView": true,
-              "description": "The function of an entity or agent with respect to another entity or resource. Specify, ideally with a value from these controlled vocabularies: IANA Link Relations: https://www.iana.org/assignments/link-relations/link-relations.xhtml\nor\nISO Codelist: https://standards.iso.org/iso/19115/resources/Codelists/gml/DS_AssociationTypeCode.xml. The nature of the relationship between the linked resources.\nExample: http://www.iana.org/assignments/relation/related"
+              "tooltip": "The function of an entity or agent with respect to another entity or resource. Specify, ideally with a value from these controlled vocabularies: IANA Link Relations: https://www.iana.org/assignments/link-relations/link-relations.xhtml\nor\nISO Codelist: https://standards.iso.org/iso/19115/resources/Codelists/gml/DS_AssociationTypeCode.xml. The nature of the relationship between the linked resources.\nExample: http://www.iana.org/assignments/relation/related"
             }
           ],
           "tooltip": "Link to a description of a relationship with another resource, e.g., a dataset. You can indicate the related resource (via its identifier) and the nature of the relation (based on a controlled vocabulary, described above). Note that it is possible to add multiple Attribution objects that in turn mention multiple resources with multiple relationship types."
@@ -1117,7 +1137,8 @@
           "label": "Source",
           "multiple": true,
           "tableView": true,
-          "tooltip": "If applicable, indicate the dataset on which this described dataset is based."
+          "tooltip": "If applicable, indicate the dataset on which this described dataset is based.",
+          "placeholder": "Enter a valid URL"
         },
         {
           "key": "in_series",
@@ -1126,7 +1147,8 @@
           "label": "In Series",
           "multiple": true,
           "tableView": true,
-          "tooltip": "Dataset series of which the dataset is part. This property points to which Dataset Series the Dataset is part of."
+          "tooltip": "Dataset series of which the dataset is part. This property points to which Dataset Series the Dataset is part of.",
+          "placeholder": "Enter a valid URL"
         }
       ],
       "collapsible": true
@@ -1147,7 +1169,8 @@
           "label": "Distribution",
           "multiple": true,
           "tableView": true,
-          "tooltip": "An available Distribution for the Dataset. Metadata element used as a key link to the class Distribution."
+          "tooltip": "An available Distribution for the Dataset. Metadata element used as a key link to the class Distribution.",
+          "placeholder": "Enter a valid URL"
         },
         {
           "key": "analytics",
@@ -1156,7 +1179,8 @@
           "label": "Analytics",
           "multiple": true,
           "tableView": true,
-          "tooltip": "An analytics distribution of the dataset. Publishers are encouraged to provide URLs pointing to document repositories where users can access or request associated resources such as technical reports of the dataset, quality measurements, usability indicators,... Note that HealthDCAT-AP mentions also API endpoints or analytics services, but these would not be Distriutions but rather DatasetServices."
+          "tooltip": "An analytics distribution of the dataset. Publishers are encouraged to provide URLs pointing to document repositories where users can access or request associated resources such as technical reports of the dataset, quality measurements, usability indicators,... Note that HealthDCAT-AP mentions also API endpoints or analytics services, but these would not be Distriutions but rather DatasetServices.",
+          "placeholder": "Enter a valid URL"
         },
         {
           "key": "sample",
@@ -1165,7 +1189,8 @@
           "label": "Sample",
           "multiple": true,
           "tableView": true,
-          "tooltip": "Links to a sample of the dataset (anonymized/synthetic data or data dictionary). This property makes use of the dcat:Distribution class to describe a sample distribution of the dataset, which can be anonymized or synthetic data, or the data dictionary provided in CSVW format. This is currently further developed by the TEHDAS2 program. More information can be found here: https://healthdcat-ap.github.io/#sample-distribution"
+          "tooltip": "Links to a sample of the dataset (anonymized/synthetic data or data dictionary). This property makes use of the dcat:Distribution class to describe a sample distribution of the dataset, which can be anonymized or synthetic data, or the data dictionary provided in CSVW format. This is currently further developed by the TEHDAS2 program. More information can be found here: https://healthdcat-ap.github.io/#sample-distribution",
+          "placeholder": "Enter a valid URL"
         },
         {
           "key": "quality_annotation",
@@ -1180,7 +1205,9 @@
               "input": true,
               "label": "Target",
               "tableView": true,
-              "tooltip": "This property has to be filled with the same value as the Identifier of the dataset described, in order to link the quality certificate to that dataset.\nSee also example in HealthDCAT-AP: https://healthdcat-ap.github.io/#dqvhasqualityannotation."
+              "tooltip": "This property has to be filled with the same value as the Identifier of the dataset described, in order to link the quality certificate to that dataset.\nSee also example in HealthDCAT-AP: https://healthdcat-ap.github.io/#dqvhasqualityannotation.",
+              "placeholder": "Enter a valid URL"
+
             },
             {
               "key": "body",
@@ -1188,7 +1215,8 @@
               "input": true,
               "label": "Body",
               "tableView": true,
-              "tooltip": "IRI pointing to the location where the quality certificate can be found."
+              "tooltip": "IRI pointing to the location where the quality certificate can be found.",
+              "placeholder": "Enter a valid URL"
             }
           ],
           "tooltip": "A statement related to quality of the Dataset, including rating, quality certificate, feedback that can be associated to the dataset."
