@@ -854,7 +854,8 @@
           "label": "Has Version",
           "multiple": true,
           "tableView": true,
-          "tooltip": "This resource has a more specific, versioned resource. Indicate the dataset which is the other version of the current dataset."
+          "tooltip": "This resource has a more specific, versioned resource. Indicate the dataset which is the other version of the current dataset.",
+          "placeholder": "Enter a valid URL"
         }
       ],
       "collapsible": true
@@ -1095,7 +1096,8 @@
                   "type": "url",
                   "input": true,
                   "label": "Agent: Homepage",
-                  "tableView": true
+                  "tableView": true,
+                  "placeholder": "Enter a valid URL"
                 }
               ]
             }
@@ -1116,7 +1118,9 @@
               "label": "Related Resource",
               "multiple": true,
               "tableView": true,
-              "tooltip": "This property establishes the link between the described and the related resources, e.g., datasets. The value of this property is the IRI/URL of the related resource."
+              "tooltip": "This property establishes the link between the described and the related resources, e.g., datasets. The value of this property is the IRI/URL of the related resource.",
+              "placeholder": "Enter a valid URL"
+
             },
             {
               "key": "had_role",
@@ -1125,7 +1129,8 @@
               "label": "Relationship Type",
               "multiple": true,
               "tableView": true,
-              "tooltip": "The function of an entity or agent with respect to another entity or resource. Specify, ideally with a value from these controlled vocabularies: IANA Link Relations: https://www.iana.org/assignments/link-relations/link-relations.xhtml\nor\nISO Codelist: https://standards.iso.org/iso/19115/resources/Codelists/gml/DS_AssociationTypeCode.xml. The nature of the relationship between the linked resources.\nExample: http://www.iana.org/assignments/relation/related"
+              "tooltip": "The function of an entity or agent with respect to another entity or resource. Specify, ideally with a value from these controlled vocabularies: IANA Link Relations: https://www.iana.org/assignments/link-relations/link-relations.xhtml\nor\nISO Codelist: https://standards.iso.org/iso/19115/resources/Codelists/gml/DS_AssociationTypeCode.xml. The nature of the relationship between the linked resources.\nExample: http://www.iana.org/assignments/relation/related",
+              "placeholder": "Enter a valid URL"
             }
           ],
           "tooltip": "Link to a description of a relationship with another resource, e.g., a dataset. You can indicate the related resource (via its identifier) and the nature of the relation (based on a controlled vocabulary, described above). Note that it is possible to add multiple Attribution objects that in turn mention multiple resources with multiple relationship types."
