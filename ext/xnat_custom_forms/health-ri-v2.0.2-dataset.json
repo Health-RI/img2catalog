@@ -177,74 +177,109 @@
       "tableView": false,
       "components": [
         {
-          "key": "content_creator",
-          "html": "<p>An entity responsible for making the resource. This property points to a person responsible for generating the dataset. In most cases, this should be the project’s Principal Investigator, provided they consent to being listed in the catalogue. If not, the associated department or institute may be specified instead.</p>",
-          "type": "content",
-          "input": false,
-          "label": "Information: Creator",
-          "tableView": false
-        },
-        {
-          "key": "creator",
+          "key": "creator_grid",
           "type": "datagrid",
           "input": true,
-          "label": "Creator",
-          "validate": {
-            "required": true,
-            "minLength": 1
-          },
+          "label": "Creators",
+          "reorder": false,
           "tableView": false,
+          "addAnother": "Add Creator",
           "components": [
             {
-              "key": "name",
-              "type": "tags",
-              "input": true,
-              "label": "Name(s)",
-              "storeas": "array",
-              "validate": {
-                "required": true,
-                "minLength": 1
-              },
-              "tableView": false,
-              "description": "This property refers to the given name of the entity. Example: Jane Doe (for a person) and Radboudumc (for an organization). This property can be repeated for different versions of the name (e.g. the name in different languages)."
-            },
-            {
-              "key": "identifier",
-              "type": "tags",
-              "input": true,
-              "label": "Identifier(s)",
-              "storeas": "array",
-              "validate": {
-                "required": true,
-                "minLength": 1
-              },
-              "tableView": false,
-              "description": "An unambiguous reference to the resource within a given context. Specify the entity (person or organization) by providing an identifier. We recommend using an ORCID identifier for a person or ROR identifier for organization. Dutch governmental organizations are listed in TOOI. If these are not available, you can use ISNI, or Wikidata or any other identifier you may have. If you have multiple identifiers, you should provide them all."
-            },
-            {
-              "key": "mbox",
-              "type": "email",
-              "input": true,
-              "label": "Email",
-              "prefix": "mailto:",
-              "validate": {
-                "required": true
-              },
-              "tableView": true,
-              "description": "It is possible to provide the email address of the appropriate institution or department if no personal email address can be provided.\nThe email address has to be provided starting with mailto: prefix.\nFor example: mailto:info@example.com / mailto: jane.doe@example.com"
-            },
-            {
-              "key": "homepage",
-              "type": "url",
-              "input": true,
-              "label": "Homepage",
-              "validate": {
-                "required": true
-              },
-              "tableView": true,
-              "description": "Provide the URL of the page containing contact information, such as a contact form or details for reaching out. If a specific contact page is unavailable, the main website is sufficient."
+              "key": "creatorBlock",
+              "type": "columns",
+              "input": false,
+              "label": "Columns",
+              "columns": [
+                {
+                  "pull": 0,
+                  "push": 0,
+                  "size": "md",
+                  "width": 12,
+                  "offset": 0,
+                  "components": [
+                    {
+                      "key": "name",
+                      "type": "tags",
+                      "input": true,
+                      "label": "Name(s)",
+                      "storeas": "array",
+                      "tooltip": "This property refers to the given name of the entity. Example: Jane Doe (for a person) and Radboudumc (for an organization). This property can be repeated for different versions of the name (e.g. the name in different languages).",
+                      "validate": {
+                        "required": true
+                      },
+                      "tableView": false,
+                      "labelWidth": 15,
+                      "labelPosition": "left-left"
+                    },
+                    {
+                      "key": "identifier",
+                      "type": "tags",
+                      "input": true,
+                      "label": "Identifier(s)",
+                      "storeas": "array",
+                      "tooltip": "An unambiguous reference to the resource within a given context. Specify the entity (person or organization) by providing an identifier. We recommend using an ORCID identifier for a person or ROR identifier for organization. Dutch governmental organizations are listed in TOOI. If these are not available, you can use ISNI, or Wikidata or any other identifier you may have. If you have multiple identifiers, you should provide them all.",
+                      "validate": {
+                        "required": true
+                      },
+                      "tableView": false,
+                      "labelWidth": 15,
+                      "labelPosition": "left-left"
+                    },
+                    {
+                      "key": "mbox",
+                      "type": "email",
+                      "input": true,
+                      "label": "Email",
+                      "prefix": "mailto:",
+                      "tooltip": "It is possible to provide the email address of the appropriate institution or department if no personal email address can be provided. The email address has to be provided starting with mailto: prefix. For example: mailto:info@example.com / mailto: jane.doe@example.com",
+                      "validate": {
+                        "required": true
+                      },
+                      "tableView": true,
+                      "labelWidth": 15,
+                      "labelPosition": "left-left"
+                    },
+                    {
+                      "key": "homepage",
+                      "type": "url",
+                      "input": true,
+                      "label": "Homepage",
+                      "tooltip": "Provide the URL of the page containing contact information, such as a contact form or details for reaching out. If a specific contact page is unavailable, the main website is sufficient.",
+                      "validate": {
+                        "required": true
+                      },
+                      "tableView": true,
+                      "labelWidth": 15,
+                      "labelPosition": "left-left"
+                    },
+                    {
+                      "key": "divider",
+                      "tag": "hr",
+                      "type": "htmlelement",
+                      "input": false,
+                      "label": "HTML",
+                      "className": "m-t-md m-b-md",
+                      "tableView": false
+                    }
+                  ],
+                  "currentWidth": 12
+                },
+                {
+                  "pull": 0,
+                  "push": 0,
+                  "size": "md",
+                  "width": 6,
+                  "offset": 0,
+                  "components": [],
+                  "currentWidth": 6
+                }
+              ],
+              "hideLabel": true,
+              "tableView": false
             }
-          ]
+          ],
+          "layoutFixed": true
         }
       ],
       "collapsible": true
