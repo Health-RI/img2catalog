@@ -36,7 +36,11 @@ def format_title(data) -> str:
     except KeyError as e:
         raise KeyError(f"Missing required field in data: {e}")
 
-    return f"{institute}_{modality}_{period.start_date.value}_{period.end_date.value}"
+    start, end = period.start_date.value, period.end_date.value
+    formatted_date = f"{start}/{end}" if start != end else start
+
+
+    return f"{institute} - {modality} - {formatted_date}"
 
 def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
     agent_config = config.get("agent")
