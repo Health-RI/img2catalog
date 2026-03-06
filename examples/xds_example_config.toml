@@ -1,14 +1,5 @@
 [xds]
 
-[agent]
-identifier = "https://www.example.com"
-mbox = "test@health-ri.nl"
-homepage = "https://www.health-ri.nl"
-
-[v_card]
-has_email = "test@health-ri.nl"
-formatted_name = "v_card_name_example"
-
 [dataset]
 identifier = "https://www.example.com/img-123"
 title = "Example Imaging Dataset Title"
@@ -17,3 +8,13 @@ theme = ["http://publications.europa.eu/resource/authority/data-theme/HEAL"]
 keyword = ["list", "of", "key", "words"]
 access_rights = "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
 applicable_legislation = ["http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC"]
+
+[dataset.publisher]
+name = ["Example publisher list"]
+identifier = ["http://example.com"]
+mbox = "mailto:publisher@example.com"
+homepage = "http://www.example.com"
+
+[dataset.contact_point]
+formatted_name = "Example Data Management office"
+email = "mailto:datamanager@example.com"

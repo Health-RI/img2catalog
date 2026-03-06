@@ -19,7 +19,7 @@ from img2catalog.const import (
 from img2catalog.inputs.xnat import XNATInput
 from img2catalog.outputs.rdf import RDFOutput
 
-TEST_CONFIG = pathlib.Path(__file__).parent / "example-config.toml"
+TEST_CONFIG = pathlib.Path(__file__).parent / "xnat-example-config.toml"
 
 
 @patch("xnat.connect")

@@ -43,9 +43,9 @@ def format_title(data) -> str:
     return f"{institute} - {modality} - {formatted_date}"
 
 def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
-    agent_config = config.get("agent")
-    v_card_config = config.get("v_card")
     dataset_config = config.get("dataset")
+    publisher_config = config.get("dataset")["publisher"]
+    contact_point_config = config.get("dataset")["contact_point"]
 
     # Format dataset attributes
     dataset_formatted_title = format_title(row)
@@ -65,16 +65,21 @@ def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
         AnyHttpUrl(url) for url in dataset_config["applicable_legislation"]
     ]
 
-    agent = HRIAgent(
+    # Publisher identifiers
+    publisher_identifiers = [
+        LiteralField(value=identifier) for identifier in publisher_config["identifier"]
+    ]
+
+    publisher = HRIAgent(
         name=[LiteralField(value=row["instituteName"])],
-        identifier=[LiteralField(value=agent_config["identifier"])],
-        mbox = agent_config["mbox"],
-        homepage = agent_config["homepage"],
+        identifier=publisher_identifiers,
+        mbox = publisher_config["mbox"],
+        homepage = publisher_config["homepage"],
     )
 
-    v_card = HRIVCard(
-        hasEmail = v_card_config["has_email"],
-        formatted_name = v_card_config["formatted_name"],
+    contact_point = HRIVCard(
+        hasEmail = contact_point_config["email"],
+        formatted_name = contact_point_config["formatted_name"],
     )
 
     dataset = HRIDataset(
@@ -82,12 +87,12 @@ def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
         identifier = LiteralField(value=dataset_config["identifier"]),
         title=[LiteralField(value=dataset_formatted_title)],
         description=[LiteralField(value=dataset_config["description"])],
-        publisher = agent,
-        contact_point = v_card,
+        publisher = publisher,
+        contact_point = contact_point,
         theme = dataset_themes,
         keyword= dataset_keywords,
         access_rights = AccessRights(URIRef(dataset_config["access_rights"])),
-        creator = [agent],
+        creator = [publisher],
         applicable_legislation= dataset_applicable_legislation,
 
         # CSV FIELDS
@@ -98,15 +103,3 @@ def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
     )
 
     return dataset
-
-if __name__ == '__main__':
-    dataframe = read_csv("../../../examples/xds_input.csv")
-    config_path = Path("../../../examples/xds_example_config.toml")
-    config = load_img2catalog_configuration(config_path)
-
-    datasets = []
-    for row in dataframe.iterrows():
-        _, row = row
-        dataset = map_xds_to_healthri_dcat_dataset(row, config)
-        datasets.append(dataset)
-        print(dataset.title)

@@ -13,7 +13,7 @@ except ModuleNotFoundError:
     import tomli as tomllib
 
 
-TEST_CONFIG = pathlib.Path(__file__).parent / "example-config.toml"
+TEST_CONFIG = pathlib.Path(__file__).parent / "xnat-example-config.toml"
 pytest_plugins = "tests.xnatpy_fixtures"
 
 
