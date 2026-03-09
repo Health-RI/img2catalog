@@ -4,7 +4,7 @@ from unittest.mock import ANY, Mock, patch, MagicMock
 import pytest
 from rdflib import URIRef
 
-from conftest import TEST_CONFIG
+from ..conftest import TEST_CONFIG
 from img2catalog.cli_app import cli_click, load_img2catalog_configuration
 from img2catalog.const import (
     XNAT_HOST_ENV,
