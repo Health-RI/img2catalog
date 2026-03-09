@@ -23,22 +23,24 @@ def get_missing_csv_data():
 
 def get_default_config():
     return {
-        "agent": {
-            "identifier": "http://www.example.com/institution#example",
-            "mbox": "mailto:publisher@example.com",
-            "homepage": "http://www.example.com",
-        },
-        "v_card": {
-            "has_email": "mailto:datamanager@example.com",
-            "formatted_name": "Example Data Management office",
-        },
         "dataset": {
-            "identifier": "591c8e28-a621-4d4c-aadb-2f6671ecbaa2",
-            "description": "This is an example XNAT catalog description",
+            "identifier": "https://www.example.com/img-123",
+            "title": "Example Imaging Dataset Title",
+            "description": "This is imaging data description",
             "theme": ["http://publications.europa.eu/resource/authority/data-theme/HEAL"],
-            "keyword": ["dataset", "research"],
-            "access_rights": "http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC",
-            "applicable_legislation": ["http://data.europa.eu/eli/reg/2025/327/oj"],
+            "keyword": ["list", "of", "key", "words"],
+            "access_rights": "http://publications.europa.eu/resource/authority/access-right/PUBLIC",
+            "applicable_legislation": ["http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC"],
+            "publisher": {
+                "name": ["Example publisher list"],
+                "identifier": ["http://example.com"],
+                "mbox": "mailto:publisher@example.com",
+                "homepage": "http://www.example.com",
+            },
+            "contact_point": {
+                "formatted_name": "Example Data Management office",
+                "email": "mailto:datamanager@example.com",
+            },
         },
     }
 
@@ -65,7 +67,7 @@ def test_format_temporal_coverage_returns_valid_periodoftime():
 def test_format_title_returns_formatted_string():
     # Arrange
     data = get_default_csv_data()
-    expected_result = "Amsterdam Hospital_CT_01-01-2026_31-12-2026"
+    expected_result = "Amsterdam Hospital - CT - 01-01-2026/31-12-2026"
 
     # Act
     result = format_title(data)

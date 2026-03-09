@@ -1,5 +1,3 @@
-[xds]
-
 [dataset]
 identifier = "https://www.example.com/img-123"
 title = "Example Imaging Dataset Title"
