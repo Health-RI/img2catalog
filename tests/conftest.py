@@ -14,7 +14,7 @@ except ModuleNotFoundError:
 
 
 TEST_CONFIG = pathlib.Path(__file__).parent / "xnat-example-config.toml"
-pytest_plugins = "tests.xnatpy_fixtures"
+pytest_plugins = "tests.img2catalog.xnatpy_fixtures"
 
 
 @pytest.fixture()
