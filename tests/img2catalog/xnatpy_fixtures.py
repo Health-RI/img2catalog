@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 import requests
 import pytest
 import xnat
+from click.testing import CliRunner
 
 from pytest_mock import MockerFixture
 from requests import Response
@@ -198,3 +199,10 @@ def xnat4tests_connection(xnat4tests_uri) -> XNATSession:
     # with xnat.connect(xnat4tests_uri) as connection:
     with xnat.connect(xnat4tests_uri, user='admin', password='admin') as connection:
         yield connection
+
+@pytest.fixture
+def isolated_cli_runner(tmp_path):
+    """A Click CLI runner that runs in an isolated temporary directory."""
+    runner = CliRunner()
+    with runner.isolated_filesystem(temp_dir=tmp_path):
+        yield runner
