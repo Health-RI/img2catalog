@@ -3,7 +3,7 @@ from img2catalog.inputs.csv_reader import read_csv
 
 def test_read_csv_returns_dataframe_on_success():
     # Arrange
-    filepath = "../examples/xds_input.csv"
+    filepath = "../examples/xds/input_example.csv"
     expected_columns = 8
     expected_rows = 4
 

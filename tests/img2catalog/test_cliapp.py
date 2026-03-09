@@ -3,7 +3,6 @@ from unittest.mock import ANY, Mock, patch, MagicMock
 
 import pytest
 from rdflib import URIRef
-from rdflib.compare import to_isomorphic
 
 from conftest import TEST_CONFIG
 from img2catalog.cli_app import cli_click, load_img2catalog_configuration

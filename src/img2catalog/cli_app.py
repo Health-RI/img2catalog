@@ -320,7 +320,7 @@ input_xnat_project.add_command(mapping_xnat_healthriv2)
 def input_xds(ctx: click.Context, path: Path):
     """Extract metadata from an XDS CSV file."""
     #  Load configuration with XDS config
-    configPath = Path("examples/xds_example_config.toml")
+    configPath = Path("examples/example_config.toml")
     config = load_img2catalog_configuration(configPath)
     ctx.obj["config"] = config
 

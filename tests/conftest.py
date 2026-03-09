@@ -13,7 +13,7 @@ except ModuleNotFoundError:
     import tomli as tomllib
 
 
-TEST_CONFIG = pathlib.Path(__file__).parent / "img2catalog" / "examples" / "xnat-example-config.toml"
+TEST_CONFIG = pathlib.Path(__file__).parent / "img2catalog" / "examples" / "xnat" / "example-config.toml"
 pytest_plugins = "tests.img2catalog.xnatpy_fixtures"
 
 
