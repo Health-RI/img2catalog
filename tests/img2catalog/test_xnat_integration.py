@@ -7,7 +7,7 @@ from img2catalog.cli_app import cli_click
 from freezegun import freeze_time
 
 
-TEST_CONFIG = pathlib.Path(__file__).parent / "xnat_integration_test_config.toml"
+TEST_CONFIG = pathlib.Path(__file__).parent / "integration_test_config.toml"
 
 @freeze_time("2024-04-01")
 @pytest.mark.integration
