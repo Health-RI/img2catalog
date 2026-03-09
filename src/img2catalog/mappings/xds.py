@@ -44,8 +44,8 @@ def format_title(data) -> str:
 
 def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
     dataset_config = config.get("dataset")
-    publisher_config = config.get("dataset")["publisher"]
-    contact_point_config = config.get("dataset")["contact_point"]
+    publisher_config = dataset_config["publisher"]
+    contact_point_config = dataset_config["contact_point"]
 
     # Format dataset attributes
     dataset_formatted_title = format_title(row)
