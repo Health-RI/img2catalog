@@ -33,6 +33,7 @@ dependencies = [
   "sempyro >= 2.0.3",
   "sparqlwrapper~=2.0",
   "fairclient >= 1.0.0",
+  "pandas >= 2.0.0",
 ]
 
 [project.entry-points]
