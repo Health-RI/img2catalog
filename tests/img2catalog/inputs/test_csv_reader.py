@@ -3,14 +3,17 @@ from img2catalog.inputs.csv_reader import read_csv
 
 def test_read_csv_returns_dataframe_on_success():
     # Arrange
-    filepath = "../../examples/xds_input.csv"
-    expected_results = 4
+    filepath = "../examples/xds_input.csv"
+    expected_columns = 8
+    expected_rows = 4
 
     # Act
     result = read_csv(filepath)
 
     # Assert
     assert not result.empty
+    assert len(result) == expected_rows
+    assert len(result.columns) == expected_columns
 
 def test_read_csv_returns_empty_dataframe_on_error():
     # Arrange
