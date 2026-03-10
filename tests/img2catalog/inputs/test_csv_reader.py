@@ -1,14 +1,13 @@
 import pandas as pd
 from img2catalog.inputs.csv_reader import read_csv
 
-def test_read_csv_returns_dataframe_on_success():
+def test_read_csv_returns_dataframe_on_success(xds_csv_example):
     # Arrange
-    filepath = "../examples/xds/input_example.csv"
     expected_columns = 8
     expected_rows = 4
 
     # Act
-    result = read_csv(filepath)
+    result = read_csv(xds_csv_example)
 
     # Assert
     assert not result.empty

@@ -8,6 +8,7 @@ import os
 from typing import Any, Pattern, Union
 from urllib.parse import urlparse
 
+import pandas as pd
 import requests
 import pytest
 import xnat
@@ -206,3 +207,21 @@ def isolated_cli_runner(tmp_path):
     runner = CliRunner()
     with runner.isolated_filesystem(temp_dir=tmp_path):
         yield runner
+
+@pytest.fixture
+def xds_csv_example_path(tmp_path):
+    """An example xds CSV file."""
+    data = pd.DataFrame({
+        "instituteName":             ["Hospital A", "Hospital A", "Hospital B", "Hospital B"],
+        "numberOfUniqueIndividuals": [5041, 4367, 6543, 5790],
+        "numberOfRecords":           [11052, 9943, 8436, 7002],
+        "minTypicalAge":             [16, 12, 21, 8],
+        "maxTypicalAge":             [89, 67, 92, 91],
+        "temporalCoverage":          ["01-01-2024 to 31-12-2024","01-01-2024 to 31-12-2024","01-01-2024 to 31-12-2024","01-01-2023 to 31-12-2023"],
+        "modality":                  ["CT", "MR", "CT", "CT"],
+        "exportDate":                ["2025-11-14", "2025-11-14", "2025-11-14", "2025-11-14"],
+    })
+
+    csv_path = tmp_path / "input_example.csv"
+    data.to_csv(csv_path, index=False)
+    return str(csv_path)
