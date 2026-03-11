@@ -209,7 +209,7 @@ def isolated_cli_runner(tmp_path):
         yield runner
 
 @pytest.fixture
-def xds_csv_example_path(tmp_path):
+def xds_csv_example(tmp_path):
     """An example xds CSV file."""
     data = pd.DataFrame({
         "instituteName":             ["Hospital A", "Hospital A", "Hospital B", "Hospital B"],
