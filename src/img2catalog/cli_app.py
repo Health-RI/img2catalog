@@ -330,7 +330,6 @@ def input_xds(ctx: click.Context, input: Path, config: Path):
 
     csv_rows = read_csv(input)
     ctx.obj['unmapped_objects'] = {
-        'catalog': None,
         'dataset': csv_rows
     }
 
@@ -353,7 +352,6 @@ def mapping_xds(ctx: click.Context):
         })
 
     ctx.obj['mapped_objects'] = {
-        'catalog': "http://localhost/catalog/f5f77d4c-cb67-43f9-a26f-233aba62658f",
         'dataset': datasets
     }
 
