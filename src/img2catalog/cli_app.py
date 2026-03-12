@@ -308,40 +308,58 @@ def input_xnat_project(ctx: click.Context, project_id: str, server: str, usernam
 cli_click.add_command(input_xnat_project)
 input_xnat_project.add_command(mapping_xnat_healthriv2)
 
-
 @click.group(name="xds")
 @click.option(
-    "--path",
-    type=click.Path(exists=True, file_okay=True, dir_okay=False, path_type=Path),
+    "--i",
+    "--input",
+    type=click.Path(exists=True, path_type=Path),
     required=True,
     help="Path to the XDS CSV data file."
 )
+@click.option(
+    "-c",
+    "--config",
+    default=None,
+    type=click.Path(exists=True, path_type=Path),
+    help="Configuration file to use. If not set, will use ~/.img2catalog/config.toml if it exists.",
+)
 @click.pass_context
-def input_xds(ctx: click.Context, path: Path):
+def input_xds(ctx: click.Context, csv: Path, config: Path):
     """Extract metadata from an XDS CSV file."""
-    #  Load configuration with XDS config
-    configPath = Path("examples/example_config.toml")
-    config = load_img2catalog_configuration(configPath)
+    config = load_img2catalog_configuration(config)
     ctx.obj["config"] = config
 
-    # Read and Map CSV contents
-    csv_rows = read_csv(path)
+    csv_rows = read_csv(csv)
+    ctx.obj['unmapped_objects'] = {
+        'catalog': None,
+        'dataset': csv_rows
+    }
+
+cli_click.add_command(input_xds)
+
+
+@click.group(name="map-xds")
+@click.pass_context
+def mapping_xds(ctx: click.Context):
+    """Map metadata from XDS to the Health-RI model."""
+    config = ctx.obj["config"]
+    unmapped_objects = ctx.obj['unmapped_objects']
+
     datasets = []
-    for i, row in csv_rows.iterrows():
+    for i, row in unmapped_objects['dataset'].iterrows():
         dataset = map_xds_to_healthri_dcat_dataset(row, config)
         datasets.append({
             'uri': URIRef("http://example.com/dataset"),
             'model_object': dataset
         })
 
-    # Sets global object for FDP to access
     ctx.obj['mapped_objects'] = {
-        'catalog': "http://localhost/catalog/1aaf003d-5423-46b6-9db9-44aad3772fcd",
+        'catalog': "http://localhost/catalog/f5f77d4c-cb67-43f9-a26f-233aba62658f",
         'dataset': datasets
     }
 
-cli_click.add_command(input_xds)
-input_xds.add_command(output_fdp)
+input_xds.add_command(mapping_xds)
+mapping_xds.add_command(output_fdp)
 
 if __name__ == "__main__":
     cli_click()
