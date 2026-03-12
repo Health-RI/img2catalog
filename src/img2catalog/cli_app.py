@@ -310,7 +310,6 @@ input_xnat_project.add_command(mapping_xnat_healthriv2)
 
 @click.group(name="xds")
 @click.option(
-    "--i",
     "--input",
     type=click.Path(exists=True, path_type=Path),
     required=True,
@@ -324,12 +323,12 @@ input_xnat_project.add_command(mapping_xnat_healthriv2)
     help="Configuration file to use. If not set, will use ~/.img2catalog/config.toml if it exists.",
 )
 @click.pass_context
-def input_xds(ctx: click.Context, csv: Path, config: Path):
+def input_xds(ctx: click.Context, input: Path, config: Path):
     """Extract metadata from an XDS CSV file."""
     config = load_img2catalog_configuration(config)
     ctx.obj["config"] = config
 
-    csv_rows = read_csv(csv)
+    csv_rows = read_csv(input)
     ctx.obj['unmapped_objects'] = {
         'catalog': None,
         'dataset': csv_rows
