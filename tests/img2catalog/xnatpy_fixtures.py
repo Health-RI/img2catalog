@@ -13,6 +13,7 @@ import requests
 import pytest
 import xnat
 from click.testing import CliRunner
+from pandas import Series
 
 from pytest_mock import MockerFixture
 from requests import Response
@@ -225,3 +226,47 @@ def xds_csv_example(tmp_path):
     csv_path = tmp_path / "input_example.csv"
     data.to_csv(csv_path, index=False)
     return str(csv_path)
+
+@pytest.fixture
+def default_csv_data():
+    return Series({
+        "modality": "CT",
+        "instituteName": "Amsterdam Hospital",
+        "temporalCoverage": "01-01-2026 to 31-12-2026",
+        "numberOfUniqueIndividuals": "200",
+        "numberOfRecords": "100",
+        "minTypicalAge": "18",
+        "maxTypicalAge": "65",
+    })
+
+
+@pytest.fixture
+def missing_csv_data():
+    return Series({
+        "instituteName": "Amsterdam Hospital",
+    })
+
+
+@pytest.fixture
+def default_config():
+    return {
+        "dataset": {
+            "identifier": "https://www.example.com/img-123",
+            "title": "Example Imaging Dataset Title",
+            "description": "This is imaging data description",
+            "theme": ["http://publications.europa.eu/resource/authority/data-theme/HEAL"],
+            "keyword": ["list", "of", "key", "words"],
+            "access_rights": "http://publications.europa.eu/resource/authority/access-right/PUBLIC",
+            "applicable_legislation": ["http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC"],
+            "publisher": {
+                "name": ["Example publisher list"],
+                "identifier": ["http://example.com"],
+                "mbox": "mailto:publisher@example.com",
+                "homepage": "http://www.example.com",
+            },
+            "contact_point": {
+                "formatted_name": "Example Data Management office",
+                "email": "mailto:datamanager@example.com",
+            },
+        },
+    }
