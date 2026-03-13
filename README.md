@@ -37,7 +37,7 @@ and serializes that to RDF and outputs it to the terminal using the output `rdf`
 In this mapping the XNAT itself will be converted to a Catalog object, and the projects to Datasets.
 
 ### Pushing to a FAIR Data Point (FDP)
-Pushing datasets to an existing Catalog on FDP can be done from both XNAT and XDS. 
+Pushing datasets to an existing Catalog on FDP can be done from both XNAT and an XDS export. 
 
 
 Using `img2catalog` one can directly push the Datasets created from XNAT projects to an existing Catalog on an FDP. 
@@ -56,7 +56,7 @@ img2catalog xnat --server https://xnat.bmia.nl map-xnat-hriv2 fdp --fdp "https:/
 
 ### Configuration XNAT
 
-A number of configuration option are available through the command line interface (CLI). To get an overview of these
+A number of configuration options are available through the command line interface (CLI). To get an overview of these
 options, run `img2catalog xnat --help` and on any subsequent submodules, e.g., `img2catalog xnat`.
 
 An example configuration file `config.toml` is supplied with this project. By default, `img2catalog`
@@ -76,8 +76,8 @@ The metadata can be supplemented by defining fallback values in the configuratio
 ### Configuration XDS
 
 The XDS (External Data Source) module allows you to ingest metadata directly from structured CSV files. This requires two primary configuration components:
-- CSV Data File (.csv): This file contains the actual dataset metadata. The tool supports reading this from a local file path or a remote URL path.
-- Preset Configuration (.toml): This file is used to define preset attributes that apply to the datasets being ingested. By default, the tool is configured to look for this at `./examples/xds_example_config.toml`.
+- CSV file: contains the dataset metadata rows. See `/examples/xds/input_example.csv` for the expected format.
+- Config file (.toml):  defines metadata fields that apply to all datasets (e.g. publisher, contact point, access rights). Base yours on `/examples/xds/example-config.toml`.
 
 
 
