@@ -6,7 +6,7 @@
   "components": [
     {
       "key": "content",
-      "html": "<p>This form is based on the Dataset class of the Health-RI v2 metadata model. For more information, see <a href=\"https://github.com/Health-RI/health-ri-metadata/tree/v2.0.0\" target=\"_blank\">https://github.com/Health-RI/health-ri-metadata/tree/v2.0.0</a>.</p>",
+      "html": "<p>This form is based on the Dataset class of the Health-RI v2 metadata model. For more information, see <a href=\"https://github.com/Health-RI/health-ri-metadata/tree/v2.0.2\" target=\"_blank\">https://github.com/Health-RI/health-ri-metadata/tree/v2.0.2</a>.</p>",
       "type": "content",
       "input": false,
       "label": "General information",
@@ -25,8 +25,9 @@
           "type": "textfield",
           "input": true,
           "label": "Identifier",
+          "tooltip": "An unambiguous reference to the resource within a given context. Health-RI is currently working on a strategy for persistent identifiers for, among other things, datasets. Until a solid solution has been found, we propose the following temporary solution: If your data is published in a repository, fill in with the provided DOI (Example: https://doi.org/10.34894/ZLOYOJ). If this 'Identifier' field is left blank, the URL to this XNAT dataset will be used as an identifier. Ensure that metadata is updated if your situation changes.",
           "tableView": true,
-          "description": "An unambiguous reference to the resource within a given context. Health-RI is currently working on a strategy for persistent identifiers for, among other things, datasets. Until a solid solution has been found, we propose the following temporary solution:\nIf your data is published in a repository, fill in with the provided DOI (Example: https://doi.org/10.34894/ZLOYOJ). If this 'Identifier' field is left blank, the URL to this XNAT dataset will be used as an identifier. Ensure that metadata is updated if your situation changes."
+          "placeholder": "e.g., https://doi.org/10.34894/ZLOYOJ"
         },
         {
           "key": "access_rights",
@@ -49,23 +50,26 @@
           "type": "select",
           "input": true,
           "label": "Access Rights",
+          "tooltip": "Information that indicates whether the Dataset is publicly accessible, has access restrictions or is not public. (http://publications.europa.eu/resource/authority/access-right) It is foreseen that one of the three options have to be used: public, restricted, non-public. Open Data (Public): The dataset is available under general open data rules, such as those covered by the High Value Datasets Implementing Regulation. Protected Data (Restricted): The dataset contains protected data and is accessible only under specific conditions, as outlined in regulations like the Data Governance Act. Sensitive Data (Non public): The dataset includes resources that may contain sensitive or personal information, falling under regulations such as the EHDS Regulation. Since most data contain personal information, these datasets will need to take the value 'non-public' for the access rights property.",
           "validate": {
             "required": true
           },
           "tableView": true,
-          "description": "Information that indicates whether the Dataset is publicly accessible, has access restrictions or is not public. (http://publications.europa.eu/resource/authority/access-right) It is foreseen that one of the three options have to be used: public, restricted, non-public.\n    Open Data (Public): The dataset is available under general open data rules, such as those covered by the High Value Datasets Implementing Regulation.\n    Protected Data (Restricted): The dataset contains protected data and is accessible only under specific conditions, as outlined in regulations like the Data Governance Act.\n    Sensitive Data (Non public): The dataset includes resources that may contain sensitive or personal information, falling under regulations such as the EHDS Regulation.\n\nSince most data contain personal information, these datasets will need to take the value 'non-public' for the access rights property."
+          "placeholder": "Select access level"
         },
         {
           "key": "applicable_legislation",
           "type": "textfield",
           "input": true,
           "label": "Applicable Legislation",
+          "tooltip": "The legislation that is applicable to this resource. The ELI of the EHDS was published in March 2025 and can now be included as the applicable legislation mandating that the dataset has to be made public. For health datasets, the value must include the ELI of the EHDS Regulation (http://data.europa.eu/eli/reg/2025/327/oj). As multiple legislations may apply to the resource the maximum cardinality is not limited. While the applicable legislation indicates which legislation mandates the publication of the dataset, the legal basis property (also in Datasets) described the legal basis for initial collection and processing of (personal) data.",
           "multiple": true,
           "validate": {
             "required": true
           },
           "tableView": true,
-          "description": "The legislation that is applicable to this resource. The ELI of the EHDS was published in March 2025 and can now be included as the applicable legislation mandating that the dataset has to be made public.\nFor health datasets, the value must include the ELI of the EHDS Regulation (http://data.europa.eu/eli/reg/2025/327/oj).\nAs multiple legislations may apply to the resource the maximum cardinality is not limited.\n\nWhile the applicable legislation indicates which legislation mandates the publication of the dataset, the legal basis property (also in Datasets) described the legal basis for initial collection and processing of (personal) data.",
+          "addAnother": "Add Another Applicable Legislation",
+          "placeholder": "e.g., http://data.europa.eu/eli/reg/2025/327/oj",
           "defaultValue": [
             "http://data.europa.eu/eli/reg/2025/327/oj"
           ]
@@ -93,12 +97,13 @@
           "type": "select",
           "input": true,
           "label": "Theme",
+          "tooltip": "A main category of the resource. A resource can have multiple themes. In the Health Data Catalogue, all datasets will use the theme 'HEAL' (http://publications.europa.eu/resource/authority/data-theme/HEAL), but additional values from the same vocabulary are allowed.",
           "multiple": true,
           "validate": {
             "required": true
           },
           "tableView": true,
-          "description": "A main category of the resource. A resource can have multiple themes. In the Health Data Catalogue, all datasets will use the theme 'HEAL' (http://publications.europa.eu/resource/authority/data-theme/HEAL), but additional values from the same vocabulary are allowed.",
+          "placeholder": "Select one or more themes (HEAL required)",
           "defaultValue": [
             "http://publications.europa.eu/resource/authority/data-theme/HEAL"
           ]
@@ -137,11 +142,12 @@
               "type": "textfield",
               "input": true,
               "label": "Formatted Name",
+              "tooltip": "The formatted text corresponding to the name of the object. Provide the full name of the contact point, such as the name of a person or department responsible for communication.",
               "validate": {
                 "required": true
               },
               "tableView": true,
-              "description": "The formatted text corresponding to the name of the object. Provide the full name of the contact point, such as the name of a person or department responsible for communication."
+              "placeholder": "e.g., Data Management Department — HealthOrg"
             },
             {
               "key": "contact_point.email",
@@ -149,19 +155,21 @@
               "input": true,
               "label": "Email",
               "prefix": "mailto:",
+              "tooltip": "To specify the electronic mail address for communication with the object. When naming a contact point this information needs to be further specified with additional information, i.e., an email address. This email address does not need to be a direct contact to the person responsible for the management of the data, it could be a generic information email.\nThe email address has to be provided starting with mailto: prefix.\nFor example: mailto:info@example.com / mailto:jane.doe@example.com",
               "validate": {
                 "required": true
               },
               "tableView": true,
-              "description": "To specify the electronic mail address for communication with the object. When naming a contact point this information needs to be further specified with additional information, i.e., an email address. This email address does not need to be a direct contact to the person responsible for the management of the data, it could be a generic information email.\nThe email address has to be provided starting with mailto: prefix.\nFor example: mailto:info@example.com / mailto:jane.doe@example.com"
+              "placeholder": "e.g., datamanagement@example.org"
             },
             {
               "key": "contact_point.contact_page",
               "type": "url",
               "input": true,
               "label": "Contact Page URL",
+              "tooltip": "To specify a Uniform Resource Locator (URL) associated with the object. A webpage that either allows to make contact (i.e. a webform) or the information contains how to get into contact.",
               "tableView": true,
-              "description": "To specify a Uniform Resource Locator (URL) associated with the object. A webpage that either allows to make contact (i.e. a webform) or the information contains how to get into contact."
+              "placeholder": "e.g., https://www.example.org/contact"
             }
           ]
         }
@@ -183,7 +191,7 @@
           "label": "Creators",
           "reorder": false,
           "tableView": false,
-          "addAnother": "Add Creator",
+          "addAnother": "Add Another Creator",
           "components": [
             {
               "key": "creatorBlock",
@@ -204,12 +212,13 @@
                       "input": true,
                       "label": "Name(s)",
                       "storeas": "array",
-                      "tooltip": "This property refers to the given name of the entity. Example: Jane Doe (for a person) and Radboudumc (for an organization). This property can be repeated for different versions of the name (e.g. the name in different languages).",
+                      "tooltip": "This property refers to the given name of the entity. Example: Jane Doe (for a person) and HealthOrg (for an organization). This property can be repeated for different versions of the name (e.g. the name in different languages).",
                       "validate": {
                         "required": true
                       },
                       "tableView": false,
                       "labelWidth": 15,
+                      "placeholder": "e.g., Jane Doe  or  HealthOrg",
                       "labelPosition": "left-left"
                     },
                     {
@@ -224,6 +233,7 @@
                       },
                       "tableView": false,
                       "labelWidth": 15,
+                      "placeholder": "e.g., https://orcid.org/0000-0000-0000-0000  or  https://ror.org/05wg1m734",
                       "labelPosition": "left-left"
                     },
                     {
@@ -238,6 +248,7 @@
                       },
                       "tableView": true,
                       "labelWidth": 15,
+                      "placeholder": "e.g., j.doe@example.org",
                       "labelPosition": "left-left"
                     },
                     {
@@ -251,6 +262,7 @@
                       },
                       "tableView": true,
                       "labelWidth": 15,
+                      "placeholder": "e.g., https://www.example.org/research/j-doe",
                       "labelPosition": "left-left"
                     },
                     {
@@ -316,12 +328,13 @@
               "input": true,
               "label": "Publisher: Name(s)",
               "storeas": "array",
+              "tooltip": "This property refers to the given name of the entity. Example: Jane Doe (for a person) and HealthOrg (for an organization). This property can be repeated for different versions of the name (e.g. the name in different languages).",
               "validate": {
                 "required": true,
                 "minLength": 1
               },
               "tableView": true,
-              "description": "This property refers to the given name of the entity. Example: Jane Doe (for a person) and Radboudumc (for an organization). This property can be repeated for different versions of the name (e.g. the name in different languages)."
+              "placeholder": "e.g., General University Medical Center"
             },
             {
               "key": "publisher.identifier",
@@ -329,12 +342,13 @@
               "input": true,
               "label": "Publisher: Identifier",
               "storeas": "array",
+              "tooltip": "An unambiguous reference to the resource within a given context. Specify the entity (person or organization) by providing an identifier. We recommend using an ORCID identifier for a person or ROR identifier for organization. Dutch governmental organizations are listed in TOOI. If these are not available, you can use ISNI, or Wikidata or any other identifier you may have. If you have multiple identifiers, you should provide them all.",
               "validate": {
                 "required": true,
                 "minLength": 1
               },
               "tableView": true,
-              "description": "An unambiguous reference to the resource within a given context. Specify the entity (person or organization) by providing an identifier. We recommend using an ORCID identifier for a person or ROR identifier for organization. Dutch governmental organizations are listed in TOOI. If these are not available, you can use ISNI, or Wikidata or any other identifier you may have. If you have multiple identifiers, you should provide them all."
+              "placeholder": "e.g., https://ror.org/05wg1m734"
             },
             {
               "key": "publisher.mbox",
@@ -342,44 +356,46 @@
               "input": true,
               "label": "Publisher: Email",
               "prefix": "mailto:",
+              "tooltip": "It is possible to provide the email address of the appropriate institution or department if no personal email address can be provided.\nThe email address has to be provided starting with mailto: prefix.\nFor example: mailto:info@example.com / mailto:jane.doe@example.com",
               "validate": {
                 "required": true
               },
               "tableView": true,
-              "description": "It is possible to provide the email address of the appropriate institution or department if no personal email address can be provided.\nThe email address has to be provided starting with mailto: prefix.\nFor example: mailto:info@example.com / mailto:jane.doe@example.com"
+              "placeholder": "e.g., info@example.org"
             },
             {
               "key": "publisher.homepage",
               "type": "url",
               "input": true,
               "label": "Publisher: Homepage",
+              "tooltip": "Provide the URL of the page containing contact information, such as a contact form or details for reaching out. If a specific contact page is unavailable, the main website is sufficient.",
               "validate": {
                 "required": true
               },
               "tableView": true,
-              "description": "Provide the URL of the page containing contact information, such as a contact form or details for reaching out. If a specific contact page is unavailable, the main website is sufficient."
+              "placeholder": "e.g., https://www.medexample.org"
             },
             {
               "key": "publisher.publisher_type",
               "type": "textfield",
               "input": true,
               "label": "Publisher: Publisher Type",
-              "tooltip": "Enter a valid URI from the http://purl.org/adms/publishertype/ domain",
+              "tooltip": "A type of organisation that makes the Dataset available. Specifically for the health domain, a controlled vocabulary is being developed to include commonly recognised health publishers. This vocabulary is currently under development. These should use the following URL: http://purl.org/adms/publishertype/[type] Version 1.0 includes the following types: Academia-ScientificOrganisation, Company, IndustryConsortium, LocalAuthority, NationalAuthority, NonGovernmentalOrganisation, NonProfitOrganisation, PrivateIndividual, RegionalAuthority, StandardisationBody and SupraNationalAuthority. \n Enter a valid URI from the http://purl.org/adms/publishertype/ domain",
               "validate": {
                 "pattern": "^http://purl\\.org/adms/publishertype/.+",
                 "patternMessage": "Value must be from the http://purl.org/adms/publishertype/ domain"
               },
               "tableView": true,
-              "description": "A type of organisation that makes the Dataset available. Specifically for the health domain, a controlled vocabulary is being developed to include commonly recognised health publishers. This vocabulary is currently under development. These should use the following URL: http://purl.org/adms/publishertype/[type] Version 1.0 includes the following types: Academia-ScientificOrganisation, Company, IndustryConsortium, LocalAuthority, NationalAuthority, NonGovernmentalOrganisation, NonProfitOrganisation, PrivateIndividual, RegionalAuthority, StandardisationBody and SupraNationalAuthority.",
-              "placeholder": "Enter publisher type URI (e.g., http://purl.org/adms/publishertype/Company)"
+              "placeholder": "e.g., http://purl.org/adms/publishertype/Academia-ScientificOrganisation"
             },
             {
               "key": "publisher.publisher_note",
               "type": "textarea",
               "input": true,
               "label": "Publisher Note",
+              "tooltip": "A description of the publisher activities. Example: \"Sciensano is a research institute and the national public health institute of Belgium. It is a so-called federal scientific institution that operates under the authority of the federal minister of Public Health and the federal minister of Agriculture of Belgium.\"",
               "tableView": true,
-              "description": "A description of the publisher activities. Example: \"Sciensano is a research institute and the national public health institute of Belgium. It is a so-called federal scientific institution that operates under the authority of the federal minister of Public Health and the federal minister of Agriculture of Belgium.\""
+              "placeholder": "e.g., HealthOrg is a university medical center committed to advancing healthcare through research and education."
             }
           ]
         }
@@ -401,8 +417,9 @@
           "input": true,
           "label": "Health Theme",
           "storeas": "array",
+          "tooltip": "A category of the Dataset or tag describing the Dataset. This property is a structured way to tag the dataset with different health themes. This could include, for example, the specific disease the dataset is about. More details can be provided, if desirable, in the keywords property. The HealthDCAT-AP working group is currently exploring is other sources (ontologies, thesauri) that can be used for this, besides Wikidata (https://www.wikidata.org/).",
           "tableView": false,
-          "description": "A category of the Dataset or tag describing the Dataset. This property is a structured way to tag the dataset with different health themes. This could include, for example, the specific disease the dataset is about. More details can be provided, if desirable, in the keywords property. The HealthDCAT-AP working group is currently exploring is other sources (ontologies, thesauri) that can be used for this, besides Wikidata (https://www.wikidata.org/)."
+          "placeholder": "e.g., https://www.wikidata.org/wiki/Q12078 (cancer)"
         },
         {
           "key": "coding_system",
@@ -410,12 +427,13 @@
           "input": true,
           "label": "Coding System",
           "storeas": "array",
+          "tooltip": "Coding systems in use (ex: ICD-10-CM, DGRs, SNOMED=CT, ...) This property provides information on which coding systems are in use inside your dataset. For this, Wikidata URIs must be used (https://www.wikidata.org/).",
           "validate": {
             "pattern": "^https://www.wikidata\\.org/wiki/.+",
             "patternMessage": "Value must be from the https://www.wikidata.org/wiki/ domain"
           },
           "tableView": false,
-          "description": "Coding systems in use (ex: ICD-10-CM, DGRs, SNOMED=CT, ...) This property provides information on which coding systems are in use inside your dataset. For this, Wikidata URIs must be used (https://www.wikidata.org/)."
+          "placeholder": "e.g., https://www.wikidata.org/wiki/Q1499348 (ICD-10)"
         },
         {
           "key": "code_values",
@@ -423,48 +441,54 @@
           "input": true,
           "label": "Code Values",
           "storeas": "array",
+          "tooltip": "Health classifications and their codes associated with the dataset. Inside this property, you can provide the coding system of the dataset in the form of wikidata URI (example: https://www.wikidata.org/entity/P494 for ICD-10 ID) and the URI of the value that describes the dataset (example: https://icd.who.int/browse10/2019/en#/Y59.0 for viral vaccines)",
           "tableView": false,
-          "description": "Health classifications and their codes associated with the dataset. Inside this property, you can provide the coding system of the dataset in the form of wikidata URI (example: https://www.wikidata.org/entity/P494 for ICD-10 ID) and the URI of the value that describes the dataset (example: https://icd.who.int/browse10/2019/en#/Y59.0 for viral vaccines)"
+          "placeholder": "e.g., https://icd.who.int/browse10/2019/en#/Y59.0"
         },
         {
           "key": "minimum_typical_age",
           "type": "number",
           "input": true,
           "label": "Minimum Typical Age",
+          "tooltip": "Minimum typical age of the population within the dataset. The approximate minimum age of subjects in the dataset, if applicable. Approximate age is given to protect potentially sensitive information of subjects in the dataset.",
           "tableView": false,
-          "description": "Minimum typical age of the population within the dataset. The approximate minimum age of subjects in the dataset, if applicable. Approximate age is given to protect potentially sensitive information of subjects in the dataset."
+          "placeholder": "e.g., 18"
         },
         {
           "key": "maximum_typical_age",
           "type": "number",
           "input": true,
           "label": "Maximum Typical Age",
+          "tooltip": "Maximum typical age of the population within the dataset. The approximate maximum age of subjects in the dataset, if applicable. Approximate age is given to protect potentially sensitive information of subjects in the dataset.",
           "tableView": false,
-          "description": "Maximum typical age of the population within the dataset. The approximate maximum age of subjects in the dataset, if applicable. Approximate age is given to protect potentially sensitive information of subjects in the dataset."
+          "placeholder": "e.g., 65"
         },
         {
           "key": "number_of_records",
           "type": "number",
           "input": true,
           "label": "Number of Records",
+          "tooltip": "Size of the dataset in terms of the number of records. Number of records inside a Dataset.",
           "tableView": false,
-          "description": "Size of the dataset in terms of the number of records. Number of records inside a Dataset."
+          "placeholder": "e.g., 10000"
         },
         {
           "key": "number_of_unique_individuals",
           "type": "number",
           "input": true,
           "label": "Number of Unique Individuals",
+          "tooltip": "Number of records for unique individuals.",
           "tableView": false,
-          "description": "Number of records for unique individuals."
+          "placeholder": "e.g., 8500"
         },
         {
           "key": "population_coverage",
           "type": "textarea",
           "input": true,
           "label": "Population Coverage",
+          "tooltip": "A definition of the population within the dataset. This field is a free text description of the population covered in the dataset. For example, \"Adults aged 18–65 diagnosed with type 2 diabetes in the Netherlands between 2015 and 2020\".",
           "tableView": true,
-          "description": "A definition of the population within the dataset. This field is a free text description of the population covered in the dataset. For example, \"Adults aged 18–65 diagnosed with type 2 diabetes in the Netherlands between 2015 and 2020\"."
+          "placeholder": "e.g., Adults aged 18–65 diagnosed with type 2 diabetes in the Netherlands between 2015 and 2020."
         }
       ],
       "collapsible": true
@@ -499,8 +523,9 @@
             "minDate": null,
             "maxDate": null
           },
+          "tooltip": "Date of formal issuance of the resource. This property should point to the first known date of issuance, such as the publication date in a data repository.",
           "tableView": false,
-          "description": "Date of formal issuance of the resource. This property should point to the first known date of issuance, such as the publication date in a data repository."
+          "placeholder": "e.g., 2024-01-15 09:00 AM"
         },
         {
           "key": "modification_date",
@@ -523,8 +548,9 @@
             "minDate": null,
             "maxDate": null
           },
+          "tooltip": "Date on which the resource was changed. This property indicates changes to the dataset, not the metadata record. An absent value may mean the resource hasn't changed since publication, the modification date is unknown, or the resource is continuously updated.",
           "tableView": false,
-          "description": "Date on which the resource was changed. This property indicates changes to the dataset, not the metadata record. An absent value may mean the resource hasn't changed since publication, the modification date is unknown, or the resource is continuously updated."
+          "placeholder": "e.g., 2025-06-01 02:30 PM"
         },
         {
           "key": "temporal_coverage",
@@ -554,8 +580,9 @@
                 "minDate": null,
                 "maxDate": null
               },
+              "tooltip": "The start date of the period that the dataset covers.",
               "tableView": false,
-              "description": "The start date of the period that the dataset covers."
+              "placeholder": "e.g., 2015-01-01 08:00 AM"
             },
             {
               "key": "temporal.end_date",
@@ -578,8 +605,9 @@
                 "minDate": null,
                 "maxDate": null
               },
+              "tooltip": "The end date of the period that the dataset covers.",
               "tableView": false,
-              "description": "The end date of the period that the dataset covers."
+              "placeholder": "e.g., 2020-12-31 05:00 PM"
             }
           ]
         },
@@ -588,22 +616,22 @@
           "type": "textfield",
           "input": true,
           "label": "Temporal Resolution",
+          "tooltip": "Minimum time period resolvable in the dataset. If the dataset is a time-series, this should correspond to the spacing of items in the series. For other kinds of dataset, this property will usually indicate the smallest time difference between items in the dataset. Format: xsd:duration (e.g., P1D for daily, P1W for weekly)",
           "tableView": true,
-          "description": "Minimum time period resolvable in the dataset. If the dataset is a time-series, this should correspond to the spacing of items in the series. For other kinds of dataset, this property will usually indicate the smallest time difference between items in the dataset. Format: xsd:duration (e.g., P1D for daily, P1W for weekly)"
+          "placeholder": "e.g., P1D (daily), P1W (weekly), P1M (monthly), P1Y (yearly)"
         },
         {
           "key": "frequency",
           "type": "url",
           "input": true,
           "label": "Update Frequency",
-          "tooltip": "Enter a valid URI from the http://publications.europa.eu/resource/authority/frequency/ domain",
+          "tooltip": "The frequency with which items are added to a collection. The value of this property should be the IRI from the listed controlled vocabulary indicating the frequency at which the dataset is updated.\nFor example: http://publications.europa.eu/resource/authority/frequency/WEEKLY \n Enter a valid URI from the http://publications.europa.eu/resource/authority/frequency/ domain",
           "validate": {
             "pattern": "^http://publications\\.europa\\.eu/resource/authority/frequency/.+",
             "patternMessage": "Value must be from the http://publications.europa.eu/resource/authority/frequency/ domain"
           },
           "tableView": true,
-          "description": "The frequency with which items are added to a collection. The value of this property should be the IRI from the listed controlled vocabulary indicating the frequency at which the dataset is updated.\nFor example: http://publications.europa.eu/resource/authority/frequency/WEEKLY",
-          "placeholder": "Enter frequency URI (e.g., http://publications.europa.eu/resource/authority/frequency/WEEKLY)"
+          "placeholder": "e.g., http://publications.europa.eu/resource/authority/frequency/ANNUAL"
         },
         {
           "key": "retention_period",
@@ -633,8 +661,9 @@
                 "minDate": null,
                 "maxDate": null
               },
+              "tooltip": "A temporal period which the dataset is available for secondary use.",
               "tableView": false,
-              "description": "A temporal period which the dataset is available for secondary use."
+              "placeholder": "e.g., 2026-01-01 08:00 AM"
             },
             {
               "key": "retentionPeriod.end_date",
@@ -657,7 +686,8 @@
                 "minDate": null,
                 "maxDate": null
               },
-              "tableView": false
+              "tableView": false,
+              "placeholder": "e.g., 2036-01-01 05:00 PM"
             }
           ]
         }
@@ -679,8 +709,9 @@
           "input": true,
           "label": "Geographical Coverage",
           "storeas": "array",
+          "tooltip": "Spatial characteristics of the resource. The EU Vocabularies Name Authority Lists must be used for continents (http://publications.europa.eu/resource/authority/continent/), countries (https://publications.europa.eu/resource/authority/country) and places (https://publications.europa.eu/resource/authority/place) that are in those lists; if a particular location is not in one of the mentioned Named Authority Lists, Geonames URIs (https://sws.geonames.org/) must be used. For districts or neighbourhoods in NL, the Dutch vocab (https://vocabs.cbs.nl/nl/) can be used. However, it might in many cases be desirable to keep the geographical coverage broader (eg. indicating that NL is covered), to not expose detailed information of subject's locations.",
           "tableView": false,
-          "description": "Spatial characteristics of the resource. The EU Vocabularies Name Authority Lists must be used for continents (http://publications.europa.eu/resource/authority/continent/), countries (https://publications.europa.eu/resource/authority/country) and places (https://publications.europa.eu/resource/authority/place) that are in those lists; if a particular location is not in one of the mentioned Named Authority Lists, Geonames URIs (https://sws.geonames.org/) must be used. For districts or neighbourhoods in NL, the Dutch vocab (https://vocabs.cbs.nl/nl/) can be used. However, it might in many cases be desirable to keep the geographical coverage broader (eg. indicating that NL is covered), to not expose detailed information of subject's locations."
+          "placeholder": "e.g., https://publications.europa.eu/resource/authority/country/NLD"
         }
       ],
       "collapsible": true
@@ -700,14 +731,13 @@
           "input": true,
           "label": "Language",
           "storeas": "array",
-          "tooltip": "Enter a valid URI from the http://publications.europa.eu/resource/authority/language/ domain",
+          "tooltip": "The language of the Dataset. For this property, the values from the EU Vocabularies Languages Named Authority List (http://publications.europa.eu/resource/authority/language) must be used. If your Dataset contains multiple languages, this property can be repeated. \n Enter a valid URI from the http://publications.europa.eu/resource/authority/language/ domain",
           "validate": {
             "pattern": "^http://publications\\.europa\\.eu/resource/authority/language/.+",
             "patternMessage": "Value must be from the http://publications.europa.eu/resource/authority/language/ domain"
           },
           "tableView": true,
-          "description": "The language of the Dataset. For this property, the values from the EU Vocabularies Languages Named Authority List (http://publications.europa.eu/resource/authority/language) must be used. If your Dataset contains multiple languages, this property can be repeated. ",
-          "placeholder": "Enter language URI (e.g., http://publications.europa.eu/resource/authority/language/NLD"
+          "placeholder": "e.g., http://publications.europa.eu/resource/authority/language/NLD"
         },
         {
           "key": "conforms_to",
@@ -715,8 +745,9 @@
           "input": true,
           "label": "Conforms To",
           "storeas": "array",
+          "tooltip": "An established standard to which the described resource conforms. If your data conforms to an established standard or specification, use this property to indicate which one. The Wikidata URI of the specification must be used. Example: https://www.wikidata.org/wiki/Q19597236 for FHIR.",
           "tableView": false,
-          "description": "An established standard to which the described resource conforms. If your data conforms to an established standard or specification, use this property to indicate which one. The Wikidata URI of the specification must be used. Example: https://www.wikidata.org/wiki/Q19597236 for FHIR."
+          "placeholder": "e.g., https://www.wikidata.org/wiki/Q19597236 (FHIR)"
         }
       ],
       "collapsible": true
@@ -736,14 +767,13 @@
           "input": true,
           "label": "Legal Basis",
           "storeas": "array",
-          "tooltip": "Enter a valid URI from the https://w3id.org/dpv# domain",
+          "tooltip": "Indicates use or applicability of a Legal Basis. The legal basis can be provided as a value from the DPV taxonomy (https://w3c.github.io/dpv/2.0/dpv/modules/legal_basis.html#vocab-legal-basis).\n\nWhile the applicable legislation indicates which legislation mandates the publication of the dataset, the legal basis property described the legal basis for initial collection and processing of (personal) data.\n\nExample value for this property could be: dpv:Consent \n Enter a valid URI from the https://w3id.org/dpv# domain",
           "validate": {
             "pattern": "^https://w3id\\.org/dpv#.+",
             "patternMessage": "Value must be from the https://w3id.org/dpv# domain"
           },
           "tableView": true,
-          "description": "Indicates use or applicability of a Legal Basis. The legal basis can be provided as a value from the DPV taxonomy (https://w3c.github.io/dpv/2.0/dpv/modules/legal_basis.html#vocab-legal-basis).\n\nWhile the applicable legislation indicates which legislation mandates the publication of the dataset, the legal basis property described the legal basis for initial collection and processing of (personal) data.\n\nExample value for this property could be: dpv:Consent",
-          "placeholder": "Enter DPV URI (e.g., https://w3id.org/dpv#Consent)"
+          "placeholder": "e.g., https://w3id.org/dpv#Consent"
         },
         {
           "key": "personal_data",
@@ -751,14 +781,13 @@
           "input": true,
           "label": "Personal Data",
           "storeas": "array",
-          "tooltip": "Enter a valid URI from the https://w3c.github.io/dpv/2.0/pd# domain",
+          "tooltip": "Indicates association with Personal Data. \"The different types of personal information that are collected in the dataset can be indicated with this property. Values can be picked from the dpv taxonomy (https://w3c.github.io/dpv/2.0/pd#).\nFor example: dpv-pd:Gender. \n Enter a valid URI from the https://w3c.github.io/dpv/2.0/pd# domain",
           "validate": {
             "pattern": "^https://w3c\\.github\\.io/dpv/2.0/pd#.+",
             "patternMessage": "Value must be from the https://w3c.github.io/dpv/2.0/pd# domain"
           },
           "tableView": true,
-          "description": "Indicates association with Personal Data. \"The different types of personal information that are collected in the dataset can be indicated with this property. Values can be picked from the dpv taxonomy (https://w3c.github.io/dpv/2.0/pd#).\nFor example: dpv-pd:Gender.",
-          "placeholder": "Enter DPV-PD URI (e.g., https://w3c.github.io/dpv/2.0/pd#Gender)"
+          "placeholder": "e.g., https://w3c.github.io/dpv/2.0/pd#MedicalHealth"
         },
         {
           "key": "purpose",
@@ -766,14 +795,13 @@
           "input": true,
           "label": "Purpose",
           "storeas": "array",
-          "tooltip": "Enter a valid URI from the https://w3c.github.io/dpv/2.1/dpv# domain",
+          "tooltip": "One (or many) category or sub-category of the purposes can be chosen from the taxonomy provided by dpv (https://w3c.github.io/dpv/2.1/dpv#vocab-purposes).\nExample value could be: dpv:ResearchAndDevelopment. \n Enter a valid URI from the https://w3c.github.io/dpv/2.1/dpv# domain",
           "validate": {
             "pattern": "^https://w3c\\.github\\.io/dpv/2.1/dpv#.+",
             "patternMessage": "Value must be from the https://w3c.github.io/dpv/2.1/dpv# domain"
           },
           "tableView": true,
-          "description": "One (or many) category or sub-category of the purposes can be chosen from the taxonomy provided by dpv (https://w3c.github.io/dpv/2.1/dpv#vocab-purposes).\nExample value could be: dpv:ResearchAndDevelopment.",
-          "placeholder": "Enter DPV Purposes URI (e.g., https://w3c.github.io/dpv/2.1/dpv#ResearchAndDevelopment)"
+          "placeholder": "e.g., https://w3c.github.io/dpv/2.1/dpv#ResearchAndDevelopment"
         }
       ],
       "collapsible": true
@@ -792,18 +820,22 @@
           "type": "url",
           "input": true,
           "label": "Documentation",
+          "tooltip": "A page or document about this dataset. The value of this property is the IRI or URL directing to the web-page or document about the dataset.",
           "multiple": true,
           "tableView": true,
-          "description": "A page or document about this dataset. The value of this property is the IRI or URL directing to the web-page or document about the dataset."
+          "addAnother": "Add Another Documentation",
+          "placeholder": "e.g., https://github.com/organisation/dataset/blob/main/README.md"
         },
         {
           "key": "is_referenced_by",
           "type": "url",
           "input": true,
           "label": "Is Referenced By",
+          "tooltip": "A related resource that references, cites, or otherwise points to the described resource. The value of this property is the IRI or URL of the DOI to the publication or other related resource.\nFor example: https://doi.org/10.1186/s13690-021-00709-x",
           "multiple": true,
           "tableView": true,
-          "description": "A related resource that references, cites, or otherwise points to the described resource. The value of this property is the IRI or URL of the DOI to the publication or other related resource.\nFor example: https://doi.org/10.1186/s13690-021-00709-x"
+          "addAnother": "Add Another Reference",
+          "placeholder": "e.g., https://doi.org/10.1186/s13690-021-00709-x"
         }
       ],
       "collapsible": true
@@ -822,26 +854,31 @@
           "type": "textfield",
           "input": true,
           "label": "Version",
+          "tooltip": "The version indicator of the resource. Suggested practice: track major_version.minor_version. Register a new identifier for major changes (e.g., 1.0.0 for an unchanged dataset).",
           "tableView": true,
-          "description": "The version indicator of the resource. Suggested practice: track major_version.minor_version. Register a new identifier for major changes (e.g., 1.0.0 for an unchanged dataset)."
+          "placeholder": "e.g., 1.0.0"
         },
         {
           "key": "version_notes",
           "type": "textfield",
           "input": true,
           "label": "Version Notes",
+          "tooltip": "A description of changes between this version and the previous version. Provide a short description of changes made to the dataset from the previous version.",
           "multiple": true,
           "tableView": true,
-          "description": "A description of changes between this version and the previous version. Provide a short description of changes made to the dataset from the previous version."
+          "addAnother": "Add Another Version Note",
+          "placeholder": "e.g., Added 500 new patient records; corrected coding errors in diagnosis field."
         },
         {
           "key": "has_version",
           "type": "url",
           "input": true,
           "label": "Has Version",
+          "tooltip": "This resource has a more specific, versioned resource. Indicate the dataset which is the other version of the current dataset.",
           "multiple": true,
           "tableView": true,
-          "description": "This resource has a more specific, versioned resource. Indicate the dataset which is the other version of the current dataset."
+          "addAnother": "Add Another Version Reference",
+          "placeholder": "e.g., https://doi.org/10.34894/ZLOYOJ"
         }
       ],
       "collapsible": true
@@ -861,14 +898,13 @@
           "input": true,
           "label": "Dataset Type",
           "storeas": "array",
-          "tooltip": "Enter a valid URI from the http://publications.europa.eu/resource/authority/dataset-type/ domain",
+          "tooltip": "The nature or genre of the resource. Health datasets with personal information must use 'personal data'. Uses the European Dataset-type vocabulary (http://publications.europa.eu/resource/authority/dataset-type). \n Enter a valid URI from the http://publications.europa.eu/resource/authority/dataset-type/ domain",
           "validate": {
             "pattern": "^http://publications\\.europa\\.eu/resource/authority/dataset-type/.+",
             "patternMessage": "Value must be from the http://publications.europa.eu/resource/authority/dataset-type/ domain"
           },
           "tableView": true,
-          "description": "The nature or genre of the resource. Health datasets with personal information must use 'personal data'. Uses the European Dataset-type vocabulary (http://publications.europa.eu/resource/authority/dataset-type).",
-          "placeholder": "Enter Dataset-type URI (e.g., http://publications.europa.eu/resource/authority/dataset-type/PERSONAL_DATA)",
+          "placeholder": "e.g., http://publications.europa.eu/resource/authority/dataset-type/PERSONAL_DATA",
           "defaultValue": [
             "http://publications.europa.eu/resource/authority/dataset-type/PERSONAL_DATA"
           ]
@@ -906,8 +942,9 @@
           "type": "select",
           "input": true,
           "label": "Status",
+          "tooltip": "The status of the dataset in the context of a workflow process. This property makes use of a controlled vocabulary to indicate the status of the described dataset.\nFor example: http://publications.europa.eu/resource/authority/dataset-status/COMPLETED",
           "tableView": true,
-          "description": "The status of the dataset in the context of a workflow process. This property makes use of a controlled vocabulary to indicate the status of the described dataset.\nFor example: http://publications.europa.eu/resource/authority/dataset-status/COMPLETED"
+          "placeholder": "Select dataset status"
         }
       ],
       "collapsible": true
@@ -926,32 +963,37 @@
           "type": "datagrid",
           "input": true,
           "label": "Other Identifier",
+          "tooltip": "Examples for secondary identifiers are MAST/ADS, DataCite, DOI, EZID or W3ID (if not used for the original identifier). This property makes use of another, small class: adms:Identifier, where you provide the identifier and the name of the identifier schema (eg. DOI).",
           "tableView": false,
+          "addAnother": "Add Another Identifier",
           "components": [
             {
               "key": "notation",
               "type": "textfield",
               "input": true,
               "label": "Identifier Value",
+              "tooltip": "A string that is an identifier in the context of the identifier scheme referenced by its datatype. The value of this property is the alternative identifier of the dataset, next to the one indicated in the Identifier property.",
               "tableView": true,
-              "description": "A string that is an identifier in the context of the identifier scheme referenced by its datatype. The value of this property is the alternative identifier of the dataset, next to the one indicated in the Identifier property."
+              "placeholder": "e.g., 10.34894/ZLOYOJ"
             },
             {
               "key": "schema_agency",
               "type": "textfield",
               "input": true,
               "label": "Schema Agency",
-              "tableView": true
+              "tableView": true,
+              "placeholder": "e.g., DOI, DataCite, EZID, W3ID"
             }
-          ],
-          "description": "Examples for secondary identifiers are MAST/ADS, DataCite, DOI, EZID or W3ID (if not used for the original identifier). This property makes use of another, small class: adms:Identifier, where you provide the identifier and the name of the identifier schema (eg. DOI)."
+          ]
         },
         {
           "key": "qualified_attribution",
           "type": "datagrid",
           "input": true,
           "label": "Qualified Attribution",
+          "tooltip": "Attribution is the ascribing of an entity, e.g., a dataset, to an 'agent', i.e., a person or an organization.",
           "tableView": false,
+          "addAnother": "Add Another Qualified Attribution",
           "components": [
             {
               "key": "role",
@@ -1042,8 +1084,9 @@
               "type": "select",
               "input": true,
               "label": "Role",
+              "tooltip": "The function of an entity or agent with respect to another entity or resource. Choose one of the roles as listed in the controlled vocabulary (https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#). Note that for HealthDCAT-AP, the list of roles might be extended in the future.\nExample: https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#processor",
               "tableView": true,
-              "description": "The function of an entity or agent with respect to another entity or resource. Choose one of the roles as listed in the controlled vocabulary (https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#). Note that for HealthDCAT-AP, the list of roles might be extended in the future.\nExample: https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#processor"
+              "placeholder": "Select a role"
             },
             {
               "key": "agent",
@@ -1058,16 +1101,18 @@
                   "input": true,
                   "label": "Agent: Name(s)",
                   "storeas": "array",
+                  "tooltip": "Name of the agent",
                   "tableView": true,
-                  "description": "Name"
+                  "placeholder": "e.g., Jane Doe  or  HealthOrg"
                 },
                 {
                   "key": "agent.identifier",
                   "type": "textfield",
                   "input": true,
                   "label": "Agent: Identifier",
+                  "tooltip": "Specify the entity (person or organization) by providing an identifier. We recommend using an ORCID identifier for a person or ROR identifier for organization. Dutch governmental organizations are listed in TOOI. If these are not available, you can use ISNI, or Wikidata or any other identifier you may have. If you have multiple identifiers, you should provide them all.",
                   "tableView": true,
-                  "description": "Specify the entity (person or organization) by providing an identifier. We recommend using an ORCID identifier for a person or ROR identifier for organization. Dutch governmental organizations are listed in TOOI. If these are not available, you can use ISNI, or Wikidata or any other identifier you may have. If you have multiple identifiers, you should provide them all."
+                  "placeholder": "e.g., https://orcid.org/0000-0000-0000-0000  or  https://ror.org/05wg1m734"
                 },
                 {
                   "key": "agent.mbox",
@@ -1075,65 +1120,75 @@
                   "input": true,
                   "label": "Agent: Email",
                   "prefix": "mailto:",
-                  "tableView": true
+                  "tableView": true,
+                  "placeholder": "e.g., j.doe@example.org"
                 },
                 {
                   "key": "agent.homepage",
                   "type": "url",
                   "input": true,
                   "label": "Agent: Homepage",
-                  "tableView": true
+                  "tableView": true,
+                  "placeholder": "e.g., https://www.example.org/research/j-doe"
                 }
               ]
             }
-          ],
-          "description": "Attribution is the ascribing of an entity, e.g., a dataset, to an 'agent', i.e., a person or an organization."
+          ]
         },
         {
           "key": "qualified_relation",
           "type": "datagrid",
           "input": true,
           "label": "Qualified Relation",
+          "tooltip": "Link to a description of a relationship with another resource, e.g., a dataset. You can indicate the related resource (via its identifier) and the nature of the relation (based on a controlled vocabulary, described above). Note that it is possible to add multiple Attribution objects that in turn mention multiple resources with multiple relationship types.",
           "tableView": false,
+          "addAnother": "Add Another Qualified Relation",
           "components": [
             {
               "key": "relation",
               "type": "url",
               "input": true,
               "label": "Related Resource",
+              "tooltip": "This property establishes the link between the described and the related resources, e.g., datasets. The value of this property is the IRI/URL of the related resource.",
               "multiple": true,
               "tableView": true,
-              "description": "This property establishes the link between the described and the related resources, e.g., datasets. The value of this property is the IRI/URL of the related resource."
+              "addAnother": "Add Another Related Resource",
+              "placeholder": "e.g., https://doi.org/10.34894/ZLOYOJ"
             },
             {
               "key": "had_role",
               "type": "url",
               "input": true,
               "label": "Relationship Type",
+              "tooltip": "The function of an entity or agent with respect to another entity or resource. Specify, ideally with a value from these controlled vocabularies: IANA Link Relations: https://www.iana.org/assignments/link-relations/link-relations.xhtml\nor\nISO Codelist: https://standards.iso.org/iso/19115/resources/Codelists/gml/DS_AssociationTypeCode.xml. The nature of the relationship between the linked resources.\nExample: http://www.iana.org/assignments/relation/related",
               "multiple": true,
               "tableView": true,
-              "description": "The function of an entity or agent with respect to another entity or resource. Specify, ideally with a value from these controlled vocabularies: IANA Link Relations: https://www.iana.org/assignments/link-relations/link-relations.xhtml\nor\nISO Codelist: https://standards.iso.org/iso/19115/resources/Codelists/gml/DS_AssociationTypeCode.xml. The nature of the relationship between the linked resources.\nExample: http://www.iana.org/assignments/relation/related"
+              "addAnother": "Add Another Relationship Type",
+              "placeholder": "e.g., http://www.iana.org/assignments/relation/related"
             }
-          ],
-          "description": "Link to a description of a relationship with another resource, e.g., a dataset. You can indicate the related resource (via its identifier) and the nature of the relation (based on a controlled vocabulary, described above). Note that it is possible to add multiple Attribution objects that in turn mention multiple resources with multiple relationship types."
+          ]
         },
         {
           "key": "source",
           "type": "url",
           "input": true,
           "label": "Source",
+          "tooltip": "If applicable, indicate the dataset on which this described dataset is based.",
           "multiple": true,
           "tableView": true,
-          "description": "If applicable, indicate the dataset on which this described dataset is based."
+          "addAnother": "Add Another Source",
+          "placeholder": "e.g., https://doi.org/10.34894/SOURCEDATASET"
         },
         {
           "key": "in_series",
           "type": "url",
           "input": true,
           "label": "In Series",
+          "tooltip": "Dataset series of which the dataset is part. This property points to which Dataset Series the Dataset is part of.",
           "multiple": true,
           "tableView": true,
-          "description": "Dataset series of which the dataset is part. This property points to which Dataset Series the Dataset is part of."
+          "addAnother": "Add Another In Series",
+          "placeholder": "e.g., https://datacatalogue.example.org/series/my-longitudinal-series"
         }
       ],
       "collapsible": true
@@ -1152,53 +1207,62 @@
           "type": "url",
           "input": true,
           "label": "Distribution",
+          "tooltip": "An available Distribution for the Dataset. Metadata element used as a key link to the class Distribution.",
           "multiple": true,
           "tableView": true,
-          "description": "An available Distribution for the Dataset. Metadata element used as a key link to the class Distribution."
+          "addAnother": "Add Another Distribution",
+          "placeholder": "e.g., https://datacatalogue.example.org/dataset/abc123/distribution/csv"
         },
         {
           "key": "analytics",
           "type": "url",
           "input": true,
           "label": "Analytics",
+          "tooltip": "An analytics distribution of the dataset. Publishers are encouraged to provide URLs pointing to document repositories where users can access or request associated resources such as technical reports of the dataset, quality measurements, usability indicators,... Note that HealthDCAT-AP mentions also API endpoints or analytics services, but these would not be Distriutions but rather DatasetServices.",
           "multiple": true,
           "tableView": true,
-          "description": "An analytics distribution of the dataset. Publishers are encouraged to provide URLs pointing to document repositories where users can access or request associated resources such as technical reports of the dataset, quality measurements, usability indicators,... Note that HealthDCAT-AP mentions also API endpoints or analytics services, but these would not be Distriutions but rather DatasetServices."
+          "addAnother": "Add Another Analytics",
+          "placeholder": "e.g., https://repository.example.org/dataset/abc123/quality-report.pdf"
         },
         {
           "key": "sample",
           "type": "url",
           "input": true,
           "label": "Sample",
+          "tooltip": "Links to a sample of the dataset (anonymized/synthetic data or data dictionary). This property makes use of the dcat:Distribution class to describe a sample distribution of the dataset, which can be anonymized or synthetic data, or the data dictionary provided in CSVW format. This is currently further developed by the TEHDAS2 program. More information can be found here: https://healthdcat-ap.github.io/#sample-distribution",
           "multiple": true,
           "tableView": true,
-          "description": "Links to a sample of the dataset (anonymized/synthetic data or data dictionary). This property makes use of the dcat:Distribution class to describe a sample distribution of the dataset, which can be anonymized or synthetic data, or the data dictionary provided in CSVW format. This is currently further developed by the TEHDAS2 program. More information can be found here: https://healthdcat-ap.github.io/#sample-distribution"
+          "addAnother": "Add Another Sample",
+          "placeholder": "e.g., https://repository.example.org/dataset/abc123/synthetic-sample.csv"
         },
         {
           "key": "quality_annotation",
           "type": "datagrid",
           "input": true,
           "label": "Quality Annotation",
+          "tooltip": "A statement related to quality of the Dataset, including rating, quality certificate, feedback that can be associated to the dataset.",
           "tableView": false,
+          "addAnother": "Add Another Quality Annotation",
           "components": [
             {
               "key": "target",
               "type": "url",
               "input": true,
               "label": "Target",
+              "tooltip": "This property has to be filled with the same value as the Identifier of the dataset described, in order to link the quality certificate to that dataset.\nSee also example in HealthDCAT-AP: https://healthdcat-ap.github.io/#dqvhasqualityannotation.",
               "tableView": true,
-              "description": "This property has to be filled with the same value as the Identifier of the dataset described, in order to link the quality certificate to that dataset.\nSee also example in HealthDCAT-AP: https://healthdcat-ap.github.io/#dqvhasqualityannotation."
+              "placeholder": "e.g., https://doi.org/10.34894/ZLOYOJ  (same as the dataset Identifier)"
             },
             {
               "key": "body",
               "type": "url",
               "input": true,
               "label": "Body",
+              "tooltip": "IRI pointing to the location where the quality certificate can be found.",
               "tableView": true,
-              "description": "IRI pointing to the location where the quality certificate can be found."
+              "placeholder": "e.g., https://repository.example.org/dataset/abc123/quality-certificate.pdf"
             }
-          ],
-          "description": "A statement related to quality of the Dataset, including rating, quality certificate, feedback that can be associated to the dataset."
+          ]
         }
       ],
       "collapsible": true
