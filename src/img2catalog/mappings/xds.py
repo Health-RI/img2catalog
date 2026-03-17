@@ -23,31 +23,32 @@ def format_temporal_coverage(temporal_coverage: str) -> PeriodOfTime:
         end_date=LiteralField(value=end_date.strftime(date_fmt))
     )
 
+def format_date(start_date: str, end_date: str):
+    # Get year from full start and end date
+    year_start = start_date.split("-")[-1]
+    year_end = end_date.split("-")[-1]
+
+    # Date formatting logic
+    if year_start == year_end:
+        return year_start
+    elif start_date != end_date:
+        return f"{start_date}/{end_date}"
+    else:
+        return start_date
+
+
 def format_title(data) -> str:
     """Format dataset title with instituteName, modality, start- and end date."""
     try:
         modality = data["modality"]
         institute = data["instituteName"]
         period = format_temporal_coverage(data["temporalCoverage"])
+        start, end = period.start_date.value, period.end_date.value
+        formatted_date = format_date(start, end)
+
     except KeyError as e:
         raise KeyError(f"Missing required field in data: {e}")
 
-    # Extract strings
-    start, end = period.start_date.value, period.end_date.value
-
-    # Get year from full start and end date
-    year_start = start.split("-")[-1]
-    year_end = end.split("-")[-1]
-
-    # Determine date display logic
-    if year_start == year_end:
-        formatted_date = year_start
-    elif start != end:
-        formatted_date = f"{start}/{end}"
-    else:
-        formatted_date = start
-
-    # Return the fully formatted title
     return f"{institute} - {modality} - {formatted_date}"
 
 
