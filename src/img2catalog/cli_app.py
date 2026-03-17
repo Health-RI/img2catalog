@@ -339,9 +339,8 @@ cli_click.add_command(input_xds)
 
 
 @click.group(name="map-xds")
-@click.option("-f", "--fdp", envvar=FDP_SERVER_ENV, type=str, required=True, help="URL of FDP")
 @click.pass_context
-def mapping_xds(ctx: click.Context, fdp: str):
+def mapping_xds(ctx: click.Context):
     """Map metadata from XDS to the Health-RI model."""
     config = ctx.obj["config"]
     unmapped_objects = ctx.obj['unmapped_objects']
@@ -350,7 +349,7 @@ def mapping_xds(ctx: click.Context, fdp: str):
     for i, row in unmapped_objects['dataset'].iterrows():
         dataset = map_xds_to_healthri_dcat_dataset(row, config)
         datasets.append({
-            'uri': URIRef(f"{fdp}/dataset/{uuid.uuid4()}"),
+            'uri': URIRef(f"http://img2catalog.internal/dataset/{uuid.uuid4()}"),
             'model_object': dataset
         })
 
