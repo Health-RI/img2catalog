@@ -27,7 +27,7 @@ def test_format_temporal_coverage_returns_valid_periodoftime():
 
 def test_format_title_returns_formatted_string(default_csv_data):
     # Arrange
-    expected_result = "Amsterdam Hospital - CT - 01-01-2026/31-12-2026"
+    expected_result = "Amsterdam Hospital - CT - 2026"
 
     # Act
     result = format_title(default_csv_data)

@@ -44,12 +44,12 @@ def format_title(data) -> str:
         institute = data["instituteName"]
         period = format_temporal_coverage(data["temporalCoverage"])
         start, end = period.start_date.value, period.end_date.value
-        formatted_date = format_date(start, end)
+        formatted_date_range = format_date(start, end)
 
     except KeyError as e:
         raise KeyError(f"Missing required field in data: {e}")
 
-    return f"{institute} - {modality} - {formatted_date}"
+    return f"{institute} - {modality} - {formatted_date_range}"
 
 
 def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
