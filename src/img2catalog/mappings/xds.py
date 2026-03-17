@@ -1,5 +1,4 @@
 from datetime import datetime
-from pathlib import Path
 from typing import Dict
 
 from pandas import Series
@@ -9,10 +8,7 @@ from sempyro import LiteralField
 from sempyro.dcat import AccessRights
 from sempyro.time import PeriodOfTime
 
-from img2catalog.configmanager import load_img2catalog_configuration
 from sempyro.hri_dcat import HRIAgent, HRIVCard, HRIDataset, DatasetTheme
-
-from img2catalog.inputs.csv_reader import read_csv
 
 def format_temporal_coverage(temporal_coverage: str) -> PeriodOfTime:
     """Format 'DD-MM-YYYY to DD-MM-YYYY' into a PeriodOfTime object."""
@@ -28,7 +24,7 @@ def format_temporal_coverage(temporal_coverage: str) -> PeriodOfTime:
     )
 
 def format_title(data) -> str:
-    """ Format dataset title with instituteName, modality, start- and end date requirements."""
+    """Format dataset title with instituteName, modality, start- and end date."""
     try:
         modality = data["modality"]
         institute = data["instituteName"]
@@ -36,40 +32,48 @@ def format_title(data) -> str:
     except KeyError as e:
         raise KeyError(f"Missing required field in data: {e}")
 
+    # Extract strings
     start, end = period.start_date.value, period.end_date.value
-    formatted_date = f"{start}/{end}" if start != end else start
 
+    # Get year from full start and end date
+    year_start = start.split("-")[-1]
+    year_end = end.split("-")[-1]
 
+    # Determine date display logic
+    if year_start == year_end:
+        formatted_date = year_start
+    elif start != end:
+        formatted_date = f"{start}/{end}"
+    else:
+        formatted_date = start
+
+    # Return the fully formatted title
     return f"{institute} - {modality} - {formatted_date}"
+
 
 def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
     dataset_config = config.get("dataset")
     publisher_config = dataset_config["publisher"]
     contact_point_config = dataset_config["contact_point"]
-
-    # Format dataset attributes
     dataset_formatted_title = format_title(row)
 
-    # themes expect DatasetTheme
     dataset_themes = [
         DatasetTheme(URIRef(theme)) for theme in dataset_config["theme"]
     ]
 
-    #  Map each keyword string to a LiteralField object
     dataset_keywords = [
         LiteralField(value=keyword) for keyword in dataset_config["keyword"]
     ]
 
-    # applicable_legislation expects a list of AnyHttpUrl
     dataset_applicable_legislation = [
         AnyHttpUrl(url) for url in dataset_config["applicable_legislation"]
     ]
 
-    # Publisher identifiers
     publisher_identifiers = [
         LiteralField(value=identifier) for identifier in publisher_config["identifier"]
     ]
 
+    # Initialize Health-RI Models
     publisher = HRIAgent(
         name=[LiteralField(value=row["instituteName"])],
         identifier=publisher_identifiers,
