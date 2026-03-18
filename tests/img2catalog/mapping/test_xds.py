@@ -3,7 +3,9 @@ from pandas import Series
 from sempyro.hri_dcat import HRIDataset
 from sempyro.time import PeriodOfTime
 
-from img2catalog.mappings.xds import format_temporal_coverage, format_title, map_xds_to_healthri_dcat_dataset
+from img2catalog.mappings.xds import format_temporal_coverage, format_title, map_xds_to_healthri_dcat_dataset, \
+    format_date
+
 
 def test_format_temporal_coverage_raises_value_error():
     # Arrange
@@ -25,6 +27,28 @@ def test_format_temporal_coverage_returns_valid_periodoftime():
     assert result.start_date.value == "01-01-2026"
     assert result.end_date.value == "31-12-2026"
 
+def test_same_year_returns_single_year():
+    # Arrange
+    start = "01-01-2026"
+    end = "31-12-2026"
+
+    # Act
+    result = format_date(start, end)
+
+    # Assert
+    assert result == "2026"
+
+def test_different_years_returns_range():
+    # Arrange
+    start = "01-01-2024"
+    end = "31-12-2026"
+
+    # Act
+    result = format_date(start, end)
+
+    # Assert
+    assert result == "01-01-2024/31-12-2026"
+
 def test_format_title_returns_formatted_string(default_csv_data):
     # Arrange
     expected_result = "Amsterdam Hospital - CT - 2026"
@@ -34,6 +58,7 @@ def test_format_title_returns_formatted_string(default_csv_data):
 
     # Assert
     assert result == expected_result
+
 
 def test_format_title_raises_error_on_missing_field(missing_csv_data):
     # Act & Assert
