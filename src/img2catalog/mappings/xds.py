@@ -29,12 +29,10 @@ def format_date(start_date: str, end_date: str):
     year_end = end_date.split("-")[-1]
 
     # Date formatting logic
-    if year_start == year_end:
+    if year_start == year_end: # e.g: 01-01-2025 == 31-12-2025 -> return 2025
         return year_start
-    elif start_date != end_date:
-        return f"{start_date}/{end_date}"
     else:
-        return start_date
+        return f"{start_date}/{end_date}"  # e.g: 01-01-2024 and 31-12-2025 -> return 01-01-2024/01-12-2025
 
 
 def format_title(data) -> str:
