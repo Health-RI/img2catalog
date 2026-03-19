@@ -192,6 +192,7 @@
           "reorder": false,
           "initEmpty": false,
           "tableView": false,
+          "addAnother": "Add Another Creator",
           "components": [
             {
               "key": "columns",
