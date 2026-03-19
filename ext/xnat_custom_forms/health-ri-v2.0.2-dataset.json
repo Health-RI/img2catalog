@@ -177,7 +177,7 @@
       "collapsible": true
     },
     {
-      "key": "panel",
+      "key": "panel_creator",
       "type": "panel",
       "input": false,
       "label": "Panel",
@@ -185,19 +185,19 @@
       "tableView": false,
       "components": [
         {
-          "key": "creator_grid",
+          "key": "dataGrid",
           "type": "datagrid",
           "input": true,
           "label": "Creators",
           "reorder": false,
+          "initEmpty": false,
           "tableView": false,
-          "addAnother": "Add Another Creator",
           "components": [
             {
-              "key": "creatorBlock",
+              "key": "columns",
               "type": "columns",
               "input": false,
-              "label": "Columns",
+              "label": "Values",
               "columns": [
                 {
                   "pull": 0,
@@ -216,10 +216,8 @@
                       "validate": {
                         "required": true
                       },
-                      "tableView": false,
-                      "labelWidth": 15,
-                      "placeholder": "e.g., Jane Doe  or  HealthOrg",
-                      "labelPosition": "left-left"
+                      "tableView": true,
+                      "placeholder": "e.g., Jane Doe  or  HealthOrg"
                     },
                     {
                       "key": "identifier",
@@ -231,10 +229,8 @@
                       "validate": {
                         "required": true
                       },
-                      "tableView": false,
-                      "labelWidth": 15,
-                      "placeholder": "e.g., https://orcid.org/0000-0000-0000-0000  or  https://ror.org/05wg1m734",
-                      "labelPosition": "left-left"
+                      "tableView": true,
+                      "placeholder": "e.g., https://orcid.org/0000-0000-0000-0000  or  https://ror.org/05wg1m734"
                     },
                     {
                       "key": "mbox",
@@ -247,9 +243,7 @@
                         "required": true
                       },
                       "tableView": true,
-                      "labelWidth": 15,
-                      "placeholder": "e.g., j.doe@example.org",
-                      "labelPosition": "left-left"
+                      "placeholder": "e.g., j.doe@example.org"
                     },
                     {
                       "key": "homepage",
@@ -261,18 +255,7 @@
                         "required": true
                       },
                       "tableView": true,
-                      "labelWidth": 15,
-                      "placeholder": "e.g., https://www.example.org/research/j-doe",
-                      "labelPosition": "left-left"
-                    },
-                    {
-                      "key": "divider",
-                      "tag": "hr",
-                      "type": "htmlelement",
-                      "input": false,
-                      "label": "HTML",
-                      "className": "m-t-md m-b-md",
-                      "tableView": false
+                      "placeholder": "e.g., https://www.example.org/research/j-doe"
                     }
                   ],
                   "currentWidth": 12
@@ -287,14 +270,19 @@
                   "currentWidth": 6
                 }
               ],
-              "hideLabel": true,
               "tableView": false
             }
           ],
-          "layoutFixed": true
+          "layoutFixed": false,
+          "defaultValue": [
+            {}
+          ],
+          "enableRowGroups": false,
+          "addAnotherPosition": "bottom",
+          "validateWhenHidden": false
         }
       ],
-      "collapsible": true
+      "collapsible": false
     },
     {
       "key": "panel",
