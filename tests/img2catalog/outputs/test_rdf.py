@@ -21,6 +21,6 @@ def test_xnat_to_rdf(mock_dataset, mock_catalog, config, empty_graph):
     }
     rdf_output = RDFOutput(config)
     rdf_output.create_graph(mapped_objects)
-    reference_graph = empty_graph.parse(source="../tests/references/minimal_dcat_catalog_dataset.ttl")
+    reference_graph = empty_graph.parse(source="./tests/references/minimal_dcat_catalog_dataset.ttl")
 
     assert to_isomorphic(rdf_output.graph) == to_isomorphic(reference_graph)
