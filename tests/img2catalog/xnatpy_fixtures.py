@@ -58,7 +58,6 @@ def xnatpy_mock() -> XnatpyRequestsMocker:
 def xnatpy_connection(mocker: MockerFixture, xnatpy_mock: XnatpyRequestsMocker) -> XNATSession:
     # Create a working mocked XNATpy connection object
     threading_patch = mocker.patch("xnat.session.threading")  # Avoid background threads getting started
-    # logger = logging.getLogger('xnatpy_test')
 
     xnatpy_mock.get("/data/JSESSION")
     xnatpy_mock.delete("/data/JSESSION")
@@ -161,17 +160,16 @@ def xnat4tests_uri(xnat4tests_config) -> str:
 
 # Create a context to ensure closure
 @contextlib.contextmanager
-def xnat4tests_fixture(config) -> str:
+def xnat4tests_fixture(config):
     start_xnat(config_name=config)
+    optin_keywords = "include_catalogue xnat"
     try:
-        # add_data("dummydicom", config_name=config)
-        # add_data("user-training", config_name=config)
         project_dicts = [
             {'project_id': 'public_optout', 'accessibility': 'public', 'keywords': 'exclude_catalogue xnat'},
-            {'project_id': 'public_optin', 'accessibility': 'public', 'keywords': 'include_catalogue xnat'},
+            {'project_id': 'public_optin', 'accessibility': 'public', 'keywords': optin_keywords},
             {'project_id': 'public_nokeyword', 'accessibility': 'public', 'keywords': ''},
-            {'project_id': 'protected_optin', 'accessibility': 'protected', 'keywords': 'include_catalogue xnat'},
-            {'project_id': 'private_optin', 'accessibility': 'private', 'keywords': 'include_catalogue xnat'}
+            {'project_id': 'protected_optin', 'accessibility': 'protected', 'keywords': optin_keywords},
+            {'project_id': 'private_optin', 'accessibility': 'private', 'keywords': optin_keywords}
         ]
         with xnat4tests.connect(config) as login:
             for project_dict in project_dicts:

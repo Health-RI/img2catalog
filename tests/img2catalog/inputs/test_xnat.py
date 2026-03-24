@@ -355,7 +355,7 @@ def test_no_pi(mock_check_eligibility, session, project, empty_graph: Graph, con
     session.url_for.return_value = "https://example.com"
 
     xnat_input = XNATInput(config, session)
-    with pytest.raises(XNATParserError) as exc:
+    with pytest.raises(XNATParserError):
         _ = xnat_input.project_to_dataset(project)
 
 
@@ -379,7 +379,7 @@ def test_no_description(mock_check_eligibility, session, project, empty_graph: G
     session.url_for.return_value = "https://example.com"
 
     xnat_input = XNATInput(config, session)
-    with pytest.raises(XNATParserError) as exc:
+    with pytest.raises(XNATParserError):
         _ = xnat_input.project_to_dataset(project)
 
 @pytest.mark.parametrize(
