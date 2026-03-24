@@ -24,13 +24,13 @@ jobs:
       - name: Generate changelog entry
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LATEST_TAG: ${{ inputs.tag }}
         run: |
           git config --local user.email "Health-RI-admin@users.noreply.github.com"
-          git config --local user.name "Health-RI Admin" 
+          git config --local user.name "Health-RI Admin"
           git pull
-          
+
           CHANGELOG_FILE="CHANGELOG.md"
-          LATEST_TAG="${{ inputs.tag }}"
           PREVIOUS_TAG=$(git tag --sort=-creatordate | sed -n '2p')
           
           CHANGELOG_BRANCH="chore/$LATEST_TAG"
