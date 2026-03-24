@@ -73,7 +73,7 @@ def test_valid_project(empty_graph):
     dataset_uri = mapped_objects['dataset'][0]['uri']
     dataset_object =  mapped_objects['dataset'][0]['model_object']
 
-    expected_dataset_graph = empty_graph.parse(source="tests/references/valid_project.ttl")
+    expected_dataset_graph = empty_graph.parse(source="./tests/references/valid_project.ttl")
     assert to_isomorphic(dataset_object.to_graph(dataset_uri)) == to_isomorphic(expected_dataset_graph)
 
 def test_invalid_project():

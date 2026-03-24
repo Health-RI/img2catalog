@@ -1,5 +1,7 @@
 import logging
+import uuid
 from pathlib import Path
+from uuid import UUID
 
 import click
 import xnat
@@ -24,9 +26,10 @@ from img2catalog.const import (
 from img2catalog.inputs.config import ConfigInput
 from img2catalog.inputs.xnat import XNATInput
 from img2catalog.mappings.xnat import map_xnat_to_healthriv2
+from img2catalog.inputs.csv_reader import read_csv
+from img2catalog.mappings.xds import map_xds_to_healthri_dcat_dataset
 from img2catalog.outputs.fdp import FDPOutput
 from img2catalog.outputs.rdf import RDFOutput
-
 
 logger = logging.getLogger(__name__)
 
@@ -307,6 +310,45 @@ def input_xnat_project(ctx: click.Context, project_id: str, server: str, usernam
 cli_click.add_command(input_xnat_project)
 input_xnat_project.add_command(mapping_xnat_healthriv2)
 
+@click.group(name="xds")
+@click.option(
+    "--input",
+    type=click.Path(exists=True, path_type=Path),
+    required=True,
+    help="Path to the XDS CSV data file."
+)
+@click.pass_context
+def input_xds(ctx: click.Context, input: Path):
+    """Extract metadata from an XDS CSV file."""
+    csv_rows = read_csv(input)
+    ctx.obj['unmapped_objects'] = {
+        'dataset': csv_rows
+    }
+
+cli_click.add_command(input_xds)
+
+
+@click.group(name="map-xds")
+@click.pass_context
+def mapping_xds(ctx: click.Context):
+    """Map metadata from XDS to the Health-RI model."""
+    config = ctx.obj["config"]
+    unmapped_objects = ctx.obj['unmapped_objects']
+
+    datasets = []
+    for i, row in unmapped_objects['dataset'].iterrows():
+        dataset = map_xds_to_healthri_dcat_dataset(row, config)
+        datasets.append({
+            'uri': URIRef(f"http://img2catalog.internal/dataset/{uuid.uuid4()}"),
+            'model_object': dataset
+        })
+
+    ctx.obj['mapped_objects'] = {
+        'dataset': datasets
+    }
+
+input_xds.add_command(mapping_xds)
+mapping_xds.add_command(output_fdp)
 
 if __name__ == "__main__":
     cli_click()

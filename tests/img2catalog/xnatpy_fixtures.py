@@ -8,9 +8,12 @@ import os
 from typing import Any, Pattern, Union
 from urllib.parse import urlparse
 
+import pandas as pd
 import requests
 import pytest
 import xnat
+from click.testing import CliRunner
+from pandas import Series
 
 from pytest_mock import MockerFixture
 from requests import Response
@@ -198,3 +201,72 @@ def xnat4tests_connection(xnat4tests_uri) -> XNATSession:
     # with xnat.connect(xnat4tests_uri) as connection:
     with xnat.connect(xnat4tests_uri, user='admin', password='admin') as connection:
         yield connection
+
+@pytest.fixture
+def isolated_cli_runner(tmp_path):
+    """A Click CLI runner that runs in an isolated temporary directory."""
+    runner = CliRunner()
+    with runner.isolated_filesystem(temp_dir=tmp_path):
+        yield runner
+
+@pytest.fixture
+def xds_csv_example(tmp_path):
+    """An example xds CSV file."""
+    data = pd.DataFrame({
+        "instituteName":             ["Hospital A", "Hospital A", "Hospital B", "Hospital B"],
+        "numberOfUniqueIndividuals": [5041, 4367, 6543, 5790],
+        "numberOfRecords":           [11052, 9943, 8436, 7002],
+        "minTypicalAge":             [16, 12, 21, 8],
+        "maxTypicalAge":             [89, 67, 92, 91],
+        "temporalCoverage":          ["01-01-2024 to 31-12-2024","01-01-2024 to 31-12-2024","01-01-2024 to 31-12-2024","01-01-2023 to 31-12-2023"],
+        "modality":                  ["CT", "MR", "CT", "CT"],
+        "exportDate":                ["2025-11-14", "2025-11-14", "2025-11-14", "2025-11-14"],
+    })
+
+    csv_path = tmp_path / "input_example.csv"
+    data.to_csv(csv_path, index=False)
+    return str(csv_path)
+
+@pytest.fixture
+def default_csv_data():
+    return Series({
+        "modality": "CT",
+        "instituteName": "Amsterdam Hospital",
+        "temporalCoverage": "01-01-2026 to 31-12-2026",
+        "numberOfUniqueIndividuals": "200",
+        "numberOfRecords": "100",
+        "minTypicalAge": "18",
+        "maxTypicalAge": "65",
+    })
+
+
+@pytest.fixture
+def missing_csv_data():
+    return Series({
+        "instituteName": "Amsterdam Hospital",
+    })
+
+
+@pytest.fixture
+def default_config():
+    return {
+        "dataset": {
+            "identifier": "https://www.example.com/img-123",
+            "title": "Example Imaging Dataset Title",
+            "description": "This is imaging data description",
+            "theme": ["http://publications.europa.eu/resource/authority/data-theme/HEAL"],
+            "keyword": ["list", "of", "key", "words"],
+            "access_rights": "http://publications.europa.eu/resource/authority/access-right/PUBLIC",
+            "applicable_legislation": ["http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC"],
+            "publisher": {
+                "name": ["Example publisher list"],
+                "identifier": ["http://example.com"],
+                "mbox": "mailto:publisher@example.com",
+                "homepage": "http://www.example.com",
+            },
+            "contact_point": {
+                "formatted_name": "Example Data Management office",
+                "email": "mailto:datamanager@example.com",
+            },
+        },
+    }

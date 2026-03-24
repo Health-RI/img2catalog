@@ -37,11 +37,13 @@ and serializes that to RDF and outputs it to the terminal using the output `rdf`
 In this mapping the XNAT itself will be converted to a Catalog object, and the projects to Datasets.
 
 ### Pushing to a FAIR Data Point (FDP)
+Pushing datasets to an existing Catalog on FDP can be done from both XNAT and an XDS export. 
+
 
 Using `img2catalog` one can directly push the Datasets created from XNAT projects to an existing Catalog on an FDP. 
 To do so, run the following command with the output `fdp`:
 
-```shell 
+```sh 
 img2catalog xnat --server https://xnat.bmia.nl map-xnat-hriv2 fdp --fdp "https://fdp.healthdata.nl" -u "albert.einstein@example.com" -p "password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d"
 ```
 This will add the new Datasets to the Catalog. In order to update the Datasets on the FAIR Data Point when rerunning 
@@ -50,12 +52,12 @@ the metadata stored in your FDP. To do so, supply the SPARQL endpoint as an argu
 
 ```sh
 img2catalog xnat --server https://xnat.bmia.nl map-xnat-hriv2 fdp --fdp "https://fdp.healthdata.nl" -u "albert.einstein@example.com" -p "password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d" -s "https://sparql-acc.healthdata.nl/repositories/fdp"
-```   
+```
 
-### Configuration
+### Configuration XNAT
 
-A number of configuration option are available through the command line interface (CLI). To get an overview of these
-options, run `img2catalog --help` and on any subsequent submodules, e.g., `img2catalog xnat`.
+A number of configuration options are available through the command line interface (CLI). To get an overview of these
+options, run `img2catalog xnat --help` and on any subsequent submodules, e.g., `img2catalog xnat`.
 
 An example configuration file `config.toml` is supplied with this project. By default, `img2catalog`
 will use the configuration file `~/.img2catalog/config.toml`, if it exists.
@@ -70,6 +72,14 @@ retrieved by supplying the form ID in the configuration, like so:
 dataset_form_id = "48660455-b964-4aef-b293-fbc1fab96bc0"
 ```
 The metadata can be supplemented by defining fallback values in the configuration file. 
+
+### Configuration XDS
+
+The XDS (External Data Source) module allows you to ingest metadata directly from structured CSV files. This requires two primary configuration components:
+- CSV file: contains the dataset metadata rows. See `/examples/xds/input_example.csv` for the expected format.
+- Config file (.toml):  defines metadata fields that apply to all datasets (e.g. publisher, contact point, access rights). Base yours on `/examples/xds/example-config.toml`.
+
+
 
 ### Environment Variables
 

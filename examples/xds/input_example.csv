@@ -1,0 +1,5 @@
+instituteName,numberOfUniqueIndividuals,numberOfRecords,minTypicalAge,maxTypicalAge,temporalCoverage,modality,exportDate
+Hospital A,5041,11052,16,89,01-01-2024 to 31-12-2024,CT,2025-11-14
+Hospital A,4367,9943,12,67,01-01-2024 to 31-12-2024,MR,2025-11-14
+Hospital B,6543,8436,21,92,01-01-2024 to 31-12-2024,CT,2025-11-14
+Hospital B,5790,7002,8,91,01-01-2023 to 31-12-2023,CT,2025-11-14

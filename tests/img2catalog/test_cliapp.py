@@ -3,8 +3,8 @@ from unittest.mock import ANY, Mock, patch, MagicMock
 
 import pytest
 from rdflib import URIRef
-from rdflib.compare import to_isomorphic
 
+from ..conftest import TEST_CONFIG
 from img2catalog.cli_app import cli_click, load_img2catalog_configuration
 from img2catalog.const import (
     XNAT_HOST_ENV,
@@ -18,8 +18,6 @@ from img2catalog.const import (
 )
 from img2catalog.inputs.xnat import XNATInput
 from img2catalog.outputs.rdf import RDFOutput
-
-TEST_CONFIG = pathlib.Path(__file__).parent / "example-config.toml"
 
 
 @patch("xnat.connect")

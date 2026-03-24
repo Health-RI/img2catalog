@@ -6,8 +6,7 @@ from rdflib.compare import to_isomorphic
 from img2catalog.cli_app import cli_click
 from freezegun import freeze_time
 
-
-TEST_CONFIG = pathlib.Path(__file__).parent / "xnat_integration_test_config.toml"
+TEST_CONFIG = pathlib.Path(__file__).parent / "examples/xnat/integration-test-config.toml"
 
 @freeze_time("2024-04-01")
 @pytest.mark.integration
@@ -33,7 +32,7 @@ def test_xnat_integration(tmp_path, xnat4tests_connection, xnat4tests_uri, isola
     print(result.stdout)
     result_graph = empty_graph.parse(source=f"{tmp_path}/output.ttl")
     reference_graph = second_empty_graph.parse(
-        source=pathlib.Path(__file__).parent / "references" / "xnat_integration_test.ttl")
+        source=pathlib.Path(__file__).parent.parent  / "references" / "xnat_integration_test.ttl")
 
     # Verify known output
     assert result.exit_code == 0
@@ -63,7 +62,7 @@ def test_xnat_integration_single_dataset(tmp_path, xnat4tests_connection, xnat4t
                                                     "map-xnat-hriv2",
                                                     "rdf", "-o", f"{tmp_path}/output.ttl"])
     result_graph = empty_graph.parse(source=f"{tmp_path}/output.ttl")
-    reference_graph = second_empty_graph.parse(source=pathlib.Path(__file__).parent / "references" / "xnat_integration_test-single_dataset.ttl")
+    reference_graph = second_empty_graph.parse(source=pathlib.Path(__file__).parent.parent / "references" / "xnat_integration_test-single_dataset.ttl")
 
     # Verify known output
     assert result.exit_code == 0
