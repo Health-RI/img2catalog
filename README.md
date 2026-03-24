@@ -126,7 +126,7 @@ You can run unit tests by running `hatch run test:test`, or get in a shell in th
 running `hatch shell`. Hatch uses whatever Python version is currently loaded.
 This project is compatible with Python 3.8 and up.
 
-Integration tests with XNAT can be run with `xnat4docker` by executing `hatch run test:cov-integration`. They also will
+Integration tests with XNAT can be run with `xnat4tests` by executing `hatch run test:cov-integration`. They also will
 be triggered on a pull request.
 
 Pull requests are very much welcomed! As long the output remains at least DCAT-AP v3 compliant,
