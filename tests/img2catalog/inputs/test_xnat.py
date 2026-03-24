@@ -187,14 +187,12 @@ def test_valid_project(mock_check_eligibility, session, project, config: Dict[st
             self.title = title
 
     project.name = "Basic test project to test the img2catalog"
-    # project.description = "In this project, we test &quot;xnat&quot; &amp; dcat and make sure a description appears."
     project.description = 'In this project, we test "xnat" & dcat and make sure a description appears.'
     project.external_uri.return_value = "http://localhost/data/archive/projects/test_img2catalog"
     project.keywords = "test demo dcat"
     project.pi.firstname = "Albus"
     project.pi.lastname = "Dumbledore"
     project.pi.title = "prof."
-    # project
     project.investigators = [InvestigatorDataclass(firstname="Minerva", lastname="McGonagall", title="Prof.")]
 
     session.projects = {'example_project': project}
