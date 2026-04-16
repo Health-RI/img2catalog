@@ -19,6 +19,47 @@ to an RDF file, or pushing it to a [FAIR Data Point (FDP)](https://www.fairdatap
 pip install img2catalog
 ```
 
+## Docker
+
+A pre-built Docker image is available on GitHub Container Registry:
+
+```sh
+docker pull ghcr.io/health-ri/img2catalog:latest
+```
+
+### Run once
+
+Pass `img2catalog` arguments directly after the image name. Authentication can be supplied via environment variables (see [Environment Variables](#environment-variables)):
+
+```sh
+docker run --rm \
+  -e XNAT_HOST=https://xnat.example.com \
+  -e XNAT_USER=user \
+  -e XNAT_PASS=secret \
+  -v /path/to/config.toml:/root/.img2catalog/config.toml:ro \
+  ghcr.io/health-ri/img2catalog \
+  xnat map-xnat-hriv2 rdf
+```
+
+### Run on a schedule
+
+Set the `CRON_SCHEDULE` environment variable to a standard [cron expression](https://en.wikipedia.org/wiki/Cron). The container will stay running and execute `img2catalog` on that schedule:
+
+```sh
+docker run \
+  -e CRON_SCHEDULE="0 2 * * *" \
+  -e XNAT_HOST=https://xnat.example.com \
+  -e XNAT_USER=user \
+  -e XNAT_PASS=secret \
+  -v /path/to/config.toml:/root/.img2catalog/config.toml:ro \
+  ghcr.io/health-ri/img2catalog \
+  xnat map-xnat-hriv2 fdp --fdp https://fdp.example.com \
+    -u fdp-user -p fdp-secret \
+    -c https://fdp.example.com/catalog/my-catalog
+```
+
+The configuration file can be mounted at `/root/.img2catalog/config.toml`.
+
 ## Usage
 
 `img2catalog` consists of:
