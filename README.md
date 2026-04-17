@@ -24,15 +24,7 @@ pip install img2catalog
 A pre-built Docker image is available on GitHub Container Registry:
 
 ```sh
-docker pull ghcr.io/health-ri/img2catalog:latest
-```
-
-### Build locally
-
-To build the image from source:
-
-```sh
-docker build -t img2catalog:latest .
+docker pull ghcr.io/health-ri/img2catalog:{VERSION}
 ```
 
 ### Run
