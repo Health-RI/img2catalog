@@ -27,12 +27,20 @@ A pre-built Docker image is available on GitHub Container Registry:
 docker pull ghcr.io/health-ri/img2catalog:latest
 ```
 
+### Build locally
+
+To build the image from source:
+
+```sh
+docker build -t img2catalog:latest .
+```
+
 ### Run
 
 Pass `img2catalog` arguments directly after the image name. Authentication can be supplied via environment variables (see [Environment Variables](#environment-variables)):
 
 ```sh
-docker run ghcr.io/health-ri/img2catalog:feature-dockerfile --config {CONFIG_FILE_PATH} xds --input {INPUT_FILE_PATH} map-xds fdp --fdp "{FDP_URL}" -u "albert.einstein@example.com" -p "password" -c "{CATALOG_URL}"
+docker run ghcr.io/health-ri/img2catalog:{VERSION} --config {CONFIG_FILE_PATH} xds --input {INPUT_FILE_PATH} map-xds fdp --fdp "{FDP_URL}" -u "albert.einstein@example.com" -p "password" -c "{CATALOG_URL}"
 ```
 
 ## Usage
