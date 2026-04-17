@@ -18,7 +18,7 @@ env:
 # Configures workflow to run every time a change is pushed to the branches mentioned.
 on:
   push:
-    branches: [feature/dockerfile]
+    branches: [main]
 
 jobs:
   build-and-push-image:
