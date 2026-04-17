@@ -35,6 +35,18 @@ Pass `img2catalog` arguments directly after the image name. Authentication can b
 docker run ghcr.io/health-ri/img2catalog:feature-dockerfile --config {CONFIG_FILE_PATH} xds --input {INPUT_FILE_PATH} map-xds fdp --fdp "{FDP_URL}" -u "albert.einstein@example.com" -p "password" -c "{CATALOG_URL}"
 ```
 
+### Run on a schedule
+
+Set `CRON_SCHEDULE` to a standard [cron expression](https://en.wikipedia.org/wiki/Cron). The container will stay running and execute `img2catalog` on that schedule:
+
+```sh
+docker run \
+  -e CRON_SCHEDULE="0 2 * * *" \
+  -v "/path/to/examples:/examples:ro" \
+  ghcr.io/health-ri/img2catalog:latest \
+  --config /examples/xds/example_config.toml xds --input /examples/xds/input_example.csv map-xds fdp --fdp "https://fdp.example.com" -u "user" -p "password" -c "https://fdp.example.com/catalog/my-catalog"
+```
+
 ## Usage
 
 `img2catalog` consists of:
