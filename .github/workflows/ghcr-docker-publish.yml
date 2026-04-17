@@ -13,7 +13,7 @@ name: Publish Docker image
 # Envionment variables are available to all jobs and steps in the workflow.
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: Health-RI/img2catalog
+  IMAGE_NAME: health-ri/img2catalog
 
 # Configures workflow to run every time a change is pushed to the branches mentioned.
 on:

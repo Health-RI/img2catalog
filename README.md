@@ -24,7 +24,7 @@ pip install img2catalog
 A pre-built Docker image is available on GitHub Container Registry:
 
 ```sh
-docker pull ghcr.io/health-ri/img2catalog:latest
+docker pull ghcr.io/health-ri/img2catalog:{VERSION}
 ```
 
 ### Run
@@ -32,7 +32,7 @@ docker pull ghcr.io/health-ri/img2catalog:latest
 Pass `img2catalog` arguments directly after the image name. Authentication can be supplied via environment variables (see [Environment Variables](#environment-variables)):
 
 ```sh
-docker run ghcr.io/health-ri/img2catalog:feature-dockerfile --config {CONFIG_FILE_PATH} xds --input {INPUT_FILE_PATH} map-xds fdp --fdp "{FDP_URL}" -u "albert.einstein@example.com" -p "password" -c "{CATALOG_URL}"
+docker run ghcr.io/health-ri/img2catalog:{VERSION} --config {CONFIG_FILE_PATH} xds --input {INPUT_FILE_PATH} map-xds fdp --fdp "{FDP_URL}" -u "albert.einstein@example.com" -p "password" -c "{CATALOG_URL}"
 ```
 
 ### Run on a schedule

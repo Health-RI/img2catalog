@@ -1,8 +1,13 @@
 FROM python:3.12-slim AS img2catalog
 
-COPY pyproject.toml README.md /build/
-COPY src/ /build/src/
-RUN pip install --no-cache-dir /build && rm -rf /build
+COPY pyproject.toml README.md ./
+COPY src/ ./src/
+
+RUN pip install --no-cache-dir .
+
+RUN useradd -m app
+USER app
+WORKDIR /home/app
 
 # Latest releases available at https://github.com/aptible/supercronic/releases
 ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.2.44/supercronic-linux-amd64 \
