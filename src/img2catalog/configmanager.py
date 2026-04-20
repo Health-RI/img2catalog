@@ -96,12 +96,12 @@ def load_img2catalog_configuration(config_path: Path = None) -> Dict:
     if config_path:
         if not config_path.exists():
             raise FileNotFoundError(f"Configuration file does not exist at {config_path}")
-    elif (config_path := CONFIG_HOME_PATH).exists():
-        pass
-    else:
+    elif not CONFIG_HOME_PATH.exists():
         logger.warning("No configuration file found or specified! Using example configuration")
         config = tomllib.loads(example_standard_config())
         return config
+    else:
+        config_path = CONFIG_HOME_PATH
 
     logger.info("Using configuration file %s", config_path)
 
