@@ -44,7 +44,7 @@ docker run \
   -e CRON_SCHEDULE="0 2 * * *" \
   -v "/path/to/examples:/examples:ro" \
   ghcr.io/health-ri/img2catalog:latest \
-  --config /examples/xds/example_config.toml xds --input /examples/xds/input_example.csv map-xds fdp --fdp "https://fdp.example.com" -u "user" -p "password" -c "https://fdp.example.com/catalog/my-catalog"
+  --config /examples/xds/example_config.toml xnat --server https://xnat.health-ri.nl map-xnat-hriv2 fdp --fdp "https://fdp.example.com" -u "user" -p "password" -c "https://fdp.example.com/catalog/my-catalog"
 ```
 
 ## Usage
