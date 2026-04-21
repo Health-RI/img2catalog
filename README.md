@@ -19,6 +19,22 @@ to an RDF file, or pushing it to a [FAIR Data Point (FDP)](https://www.fairdatap
 pip install img2catalog
 ```
 
+## Docker
+
+A pre-built Docker image is available on GitHub Container Registry:
+
+```sh
+docker pull ghcr.io/health-ri/img2catalog:{VERSION}
+```
+
+### Run
+
+Pass `img2catalog` arguments directly after the image name. Authentication can be supplied via environment variables (see [Environment Variables](#environment-variables)):
+
+```sh
+docker run ghcr.io/health-ri/img2catalog:{VERSION} --config {CONFIG_FILE_PATH} xnat --server {XNAT_URL} map-xnat-hriv2 fdp --fdp "{FDP_URL}" -u "albert.einstein@example.com" -p "password" -c "{CATALOG_URL}"
+```
+
 ## Usage
 
 `img2catalog` consists of:
@@ -28,7 +44,7 @@ pip install img2catalog
 
 A basic example:
 ```shell 
-img2catalog xnat --server https://xnat.bmia.nl map-xnat-hriv2 rdf
+img2catalog xnat --server https://xnat.health-ri.nl map-xnat-hriv2 rdf
 ```
 In this example we use the input `xnat`, that connects to the server `https://xnat.health-ri.nl`,
 uses the mapping `map-xnat-hriv2` that maps the extracted metadata to the Health-RI Core v2 metadata model, 
@@ -44,14 +60,14 @@ Using `img2catalog` one can directly push the Datasets created from XNAT project
 To do so, run the following command with the output `fdp`:
 
 ```sh 
-img2catalog xnat --server https://xnat.bmia.nl map-xnat-hriv2 fdp --fdp "https://fdp.healthdata.nl" -u "albert.einstein@example.com" -p "password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d"
+img2catalog xnat --server https://xnat.health-ri.nl map-xnat-hriv2 fdp --fdp "https://fdp.healthdata.nl" -u "albert.einstein@example.com" -p "password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d"
 ```
 This will add the new Datasets to the Catalog. In order to update the Datasets on the FAIR Data Point when rerunning 
 `img2catalog`, it is necessary to first perform a SPARQL query on the GraphDB, or another triple store, that contains
 the metadata stored in your FDP. To do so, supply the SPARQL endpoint as an argument to the `fdp` output.
 
 ```sh
-img2catalog xnat --server https://xnat.bmia.nl map-xnat-hriv2 fdp --fdp "https://fdp.healthdata.nl" -u "albert.einstein@example.com" -p "password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d" -s "https://sparql-acc.healthdata.nl/repositories/fdp"
+img2catalog xnat --server https://xnat.health-ri.nl map-xnat-hriv2 fdp --fdp "https://fdp.healthdata.nl" -u "albert.einstein@example.com" -p "password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d" -s "https://sparql-acc.healthdata.nl/repositories/fdp"
 ```
 
 ### Configuration XNAT
