@@ -567,13 +567,11 @@ def check_optin_optout(project, config: Dict) -> bool:
         # If key not found, means config is not set, so no opt-in/opt-out set so always eligible.
         return True
 
-    if optin_kw:
-        if optin_kw not in split_keywords(project.keywords):
-            logger.debug("Project %s does not contain keyword on opt-in list, skipping", project)
-            return False
-    elif optout_kw:
-        if optout_kw in split_keywords(project.keywords):
-            logger.debug("Project %s contains keyword on opt-out list, skipping", project)
-            return False
+    if optin_kw and optin_kw not in split_keywords(project.keywords):
+        logger.debug("Project %s does not contain keyword on opt-in list, skipping", project)
+        return False
+    elif optout_kw and optout_kw in split_keywords(project.keywords):
+        logger.debug("Project %s contains keyword on opt-out list, skipping", project)
+        return False
 
     return True
