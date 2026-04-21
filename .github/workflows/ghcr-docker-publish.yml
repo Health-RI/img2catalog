@@ -15,10 +15,11 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: health-ri/img2catalog
 
-# Configures workflow to run every time a change is pushed to the branches mentioned.
+# Configures workflow to run every time a tag is pushed.
 on:
   push:
-    branches: [main]
+    tags:
+      - 'v*'
 
 jobs:
   build-and-push-image:
@@ -51,6 +52,8 @@ jobs:
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
 
       # This step uses the docker/build-push-action action to build the image, based on your repository's Dockerfile.
       # If the build succeeds, it pushes the image to GitHub Packages.

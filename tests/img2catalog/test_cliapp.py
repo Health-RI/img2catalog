@@ -323,7 +323,7 @@ def test_output_project(
     """
     connect.return_value.__enter__.return_value.projects.__getitem__.side_effect = lambda x: x
 
-    result = isolated_cli_runner.invoke(
+    _ = isolated_cli_runner.invoke(
         cli_click,
         ["--verbose", "xnat-project", "-s", "http://example.com", "test_project",
          "map-xnat-hriv2", "rdf"],
