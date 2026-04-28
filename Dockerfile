@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS img2catalog
+FROM python:3.15-rc-alpine3.23 AS img2catalog
 
 COPY pyproject.toml README.md ./
 COPY src/ ./src/
