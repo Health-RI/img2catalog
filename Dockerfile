@@ -21,9 +21,9 @@ RUN apk update \
     && mv "$SUPERCRONIC" "/usr/local/bin/${SUPERCRONIC}" \
     && ln -sf "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic \
     && apk del curl\
-    && chmod +x /usr/local/bin/entrypoint.sh
+    && chmod +x /usr/local/bin/entrypoint.sh \
+    && adduser -D app
 
-RUN adduser -D app
 USER app
 WORKDIR /home/app
 
