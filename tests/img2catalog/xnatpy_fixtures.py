@@ -34,6 +34,11 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# XNATPy can call logger.verbose() on custom loggers.
+# Standard Python loggers do not provide this method, so add a safe alias for tests.
+if not hasattr(logger, "verbose"):
+    logger.verbose = logger.debug
+
 class CreatedObject:
     def __init__(self, uri, type_, fieldname, **kwargs):
         self.uri = uri
