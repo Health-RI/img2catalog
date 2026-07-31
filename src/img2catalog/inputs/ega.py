@@ -1,10 +1,9 @@
 import logging
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import requests
 
 logger = logging.getLogger(__name__)
-
 
 def fetch_ega_dataset(dataset_id: str, api_url: str) -> Dict:
     response = requests.get(f"{api_url}/datasets/{dataset_id}", timeout=30)
@@ -24,4 +23,5 @@ def fetch_ega_datasets(dataset_ids: List[str], api_url: str) -> List[Dict]:
     return datasets
 
 if __name__ == "__main__":
-    print(fetch_ega_datasets("EGAD00000000001"))
+    print(fetch_ega_dataset("EGAD00000000001", "https://metadata.ega-archive.org"))
+    print(fetch_ega_datasets(["EGAD00000000001", "EGAD00000000002", "EGAD00000000003"], "https://metadata.ega-archive.org"))
