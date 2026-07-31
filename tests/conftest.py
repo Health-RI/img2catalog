@@ -14,7 +14,10 @@ except ModuleNotFoundError:
 
 
 TEST_CONFIG = pathlib.Path(__file__).parent / "img2catalog" / "examples" / "xnat" / "example-config.toml"
-pytest_plugins = "tests.img2catalog.xnatpy_fixtures"
+pytest_plugins = [
+    "tests.img2catalog.xnatpy_fixtures",
+    "tests.img2catalog.ega_fixtures",
+]
 
 
 @pytest.fixture()

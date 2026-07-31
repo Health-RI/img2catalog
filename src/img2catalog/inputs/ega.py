@@ -22,3 +22,6 @@ def fetch_ega_datasets(dataset_ids: List[str], api_url: str) -> List[Dict]:
             logger.warning("Error fetching EGA dataset %s: %s", dataset_id, e)
 
     return datasets
+
+if __name__ == "__main__":
+    print(fetch_ega_datasets("EGAD00000000001"))
