@@ -373,9 +373,9 @@ mapping_xds.add_command(output_fdp)
     help=f"Base URL of the EGA metadata API. Defaults to {EGA_DEFAULT_API_URL}.",
 )
 @click.pass_context
-def input_ega(ctx: click.Context, accession_ids: tuple, api_url: str):
+def input_ega(ctx: click.Context, dataset_ids: tuple, api_url: str):
     """Extract dataset metadata from the EGA (European Genome-phenome Archive) metadata API."""
-    ega_datasets = fetch_ega_datasets(list(accession_ids), api_url)
+    ega_datasets = fetch_ega_datasets(list(dataset_ids), api_url)
     ctx.obj['unmapped_objects'] = {
         'dataset': ega_datasets
     }
@@ -394,7 +394,7 @@ def mapping_ega_healthriv2(ctx: click.Context):
     for ega_dataset in unmapped_objects['dataset']:
         dataset = map_ega_to_healthri_dcat_dataset(ega_dataset, config)
         datasets.append({
-            'uri': URIRef(f"http://img2catalog.internal/dataset/{ega_dataset['dataset_id']}"),
+            'uri': URIRef(f"http://img2catalog.internal/dataset/{ega_dataset['accession_id']}"),
             'model_object': dataset
         })
 

@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import Dict, List, Optional
 
 from pydantic import AnyHttpUrl
@@ -25,8 +26,16 @@ def get_description(ega_dataset: Dict) -> str:
 def get_number_of_records(ega_dataset: Dict) -> Optional[int]:
     return ega_dataset.get("num_samples")
 
-def get_release_date(ega_dataset: Dict) -> Optional[str]:
-    return ega_dataset.get("released_date")
+def get_release_date(ega_dataset: Dict) -> Optional[datetime]:
+    released_date = ega_dataset.get("released_date")
+    if released_date is None:
+        return None
+
+    try:
+        return datetime.fromisoformat(released_date)
+    except ValueError:
+        logger.warning("Could not parse EGA release date %r as ISO 8601, passing through as-is", released_date)
+        return released_date
 
 def get_keyword(ega_dataset: Dict) -> List[LiteralField]:
     """Map EGA's free-text `technologies` field to DCAT-AP keywords."""
@@ -73,6 +82,7 @@ def map_ega_to_healthri_dcat_dataset(ega_dataset: Dict, config: Dict) -> HRIData
         creator=[publisher],
         theme=dataset_themes,
         applicable_legislation=dataset_applicable_legislation,
+        access_rights=AccessRights(URIRef(dataset_config["access_rights"])),
     )
 
     return dataset
