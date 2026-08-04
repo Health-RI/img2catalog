@@ -34,7 +34,7 @@ def get_release_date(ega_dataset: Dict) -> Optional[datetime]:
     try:
         return datetime.fromisoformat(released_date)
     except ValueError:
-        logger.warning("Could not parse EGA release date %r as ISO 8601, passing through as-is", released_date)
+        logger.error("Could not parse EGA release date %r", released_date)
         return released_date
 
 def get_keyword(ega_dataset: Dict) -> List[LiteralField]:
