@@ -14,6 +14,8 @@ from img2catalog.__about__ import __version__
 from img2catalog.configmanager import load_img2catalog_configuration
 
 from img2catalog.const import (
+    EGA_API_URL_ENV,
+    EGA_DEFAULT_API_URL,
     FDP_PASS_ENV,
     FDP_SERVER_ENV,
     FDP_USER_ENV,
@@ -28,6 +30,8 @@ from img2catalog.inputs.xnat import XNATInput
 from img2catalog.mappings.xnat import map_xnat_to_healthriv2
 from img2catalog.inputs.csv_reader import read_csv
 from img2catalog.mappings.xds import map_xds_to_healthri_dcat_dataset
+from img2catalog.inputs.ega import fetch_ega_datasets
+from img2catalog.mappings.ega import map_ega_to_healthri_dcat_dataset
 from img2catalog.outputs.fdp import FDPOutput
 from img2catalog.outputs.rdf import RDFOutput
 
@@ -349,6 +353,58 @@ def mapping_xds(ctx: click.Context):
 
 input_xds.add_command(mapping_xds)
 mapping_xds.add_command(output_fdp)
+
+
+@click.group(name="ega")
+@click.option(
+    "-a",
+    "--dataset-id",
+    "dataset_ids",
+    type=str,
+    multiple=True,
+    required=True,
+    help="EGA dataset dataset to import (e.g. EGAD00001005083). Can be repeated to import multiple datasets.",
+)
+@click.option(
+    "--api-url",
+    envvar=EGA_API_URL_ENV,
+    type=str,
+    default=EGA_DEFAULT_API_URL,
+    help=f"Base URL of the EGA metadata API. Defaults to {EGA_DEFAULT_API_URL}.",
+)
+@click.pass_context
+def input_ega(ctx: click.Context, dataset_ids: tuple, api_url: str):
+    """Extract dataset metadata from the EGA (European Genome-phenome Archive) metadata API."""
+    ega_datasets = fetch_ega_datasets(list(dataset_ids), api_url)
+    ctx.obj['unmapped_objects'] = {
+        'dataset': ega_datasets
+    }
+
+cli_click.add_command(input_ega)
+
+
+@click.group("map-ega-hriv2")
+@click.pass_context
+def mapping_ega_healthriv2(ctx: click.Context):
+    """Map metadata from EGA to the Health-RI model."""
+    config = ctx.obj["config"]
+    unmapped_objects = ctx.obj['unmapped_objects']
+
+    datasets = []
+    for ega_dataset in unmapped_objects['dataset']:
+        dataset = map_ega_to_healthri_dcat_dataset(ega_dataset, config)
+        datasets.append({
+            'uri': URIRef(f"http://img2catalog.internal/dataset/{ega_dataset['accession_id']}"),
+            'model_object': dataset
+        })
+
+    ctx.obj['mapped_objects'] = {
+        'dataset': datasets
+    }
+
+input_ega.add_command(mapping_ega_healthriv2)
+mapping_ega_healthriv2.add_command(output_rdf)
+mapping_ega_healthriv2.add_command(output_fdp)
 
 if __name__ == "__main__":
     cli_click()
