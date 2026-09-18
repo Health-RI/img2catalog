@@ -80,7 +80,6 @@ def test_second_env_var(connect, isolated_cli_runner, monkeypatch):
 
     connect.return_value.__enter__.return_value = mock_xnat_session
 
-    # monkeypatch.setenv(XNATPY_HOST_ENV, "http://test.example.com")
     monkeypatch.setenv(XNAT_HOST_ENV, "http://pass_test.example.com")
     # Run isolated (to keep log files safe)
     result = isolated_cli_runner.invoke(cli_click, ["xnat", "map-xnat-hriv2", "rdf"])
@@ -107,7 +106,6 @@ def test_user_pass_prio_env(connect, isolated_cli_runner, monkeypatch):
 
     monkeypatch.setenv(XNAT_USER_ENV, "fail_user")
     monkeypatch.setenv(XNAT_PASS_ENV, "fail_password")
-    # monkeypatch.setenv(XNAT_HOST_ENV, "http://fail_test.example.com")
     # Run isolated (to keep log files safe)
     result = isolated_cli_runner.invoke(
         cli_click, ["xnat", "-u", "pass_user", "-s", "http://test.example.com", "map-xnat-hriv2", "rdf"]
@@ -148,7 +146,7 @@ def test_user_pass_envvar(connect, isolated_cli_runner, monkeypatch):
 
 @patch("xnat.connect")
 @pytest.mark.parametrize(
-    "test_input, expected",
+    ("test_input", "expected"),
     [
         (["xnat", "-s", "http://test.example.com", "map-xnat-hriv2", "rdf"], {"format": "turtle"}),
         (
@@ -259,11 +257,11 @@ def test_config_dir(fileopen, toml_patch_target, config_param):
 @patch("img2catalog.outputs.fdp.FDPOutput.__init__")
 @patch("fairclient.fdpclient.FDPClient.__init__")
 @patch("xnat.connect")
-def test_fdp_cli(connect, mock_FDPClient, mock_FDPOutput, isolated_cli_runner):
+def test_fdp_cli(connect, mock_fdp_client, mock_fdp_output, isolated_cli_runner):
     """Test CLI push to FDP, using CLI configuration"""
     connect.__enter__.return_value = True
 
-    mock_FDPClient.return_value = None
+    mock_fdp_client.return_value = None
 
     isolated_cli_runner.invoke(
         cli_click,
@@ -286,18 +284,18 @@ def test_fdp_cli(connect, mock_FDPClient, mock_FDPOutput, isolated_cli_runner):
     )
 
     connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
-    mock_FDPOutput.assert_called_once()
+    mock_fdp_output.assert_called_once()
 
 
 @patch("fairclient.fdpclient.FDPClient.__init__")
 @patch("fairclient.sparqlclient.FDPSPARQLClient.__init__")
 @patch("xnat.connect")
-def test_fdp_cli_env(connect, mock_SPARQLClient, mock_FDPClient, isolated_cli_runner, monkeypatch):
+def test_fdp_cli_env(connect, mock_sparql_client, mock_fdp_client, isolated_cli_runner, monkeypatch):
     """Test CLI push to FDP, using environment variables configuration"""
     connect.__enter__.return_value = True
 
-    mock_FDPClient.return_value = None
-    mock_SPARQLClient.return_value = None
+    mock_fdp_client.return_value = None
+    mock_sparql_client.return_value = None
 
     monkeypatch.setenv(XNAT_HOST_ENV, "http://example.com")
     monkeypatch.setenv(FDP_USER_ENV, "userFDP")
@@ -317,17 +315,17 @@ def test_fdp_cli_env(connect, mock_SPARQLClient, mock_FDPClient, isolated_cli_ru
         ],
     )
 
-    mock_FDPClient.assert_called_once_with("http://fdp.example.com", "userFDP", "passwordFDP")
-    mock_SPARQLClient.assert_called_once_with(URIRef("http://sparql.example.com"))
+    mock_fdp_client.assert_called_once_with("http://fdp.example.com", "userFDP", "passwordFDP")
+    mock_sparql_client.assert_called_once_with(URIRef("http://sparql.example.com"))
     connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
 
 
 @patch("img2catalog.outputs.fdp.FDPOutput.__init__")
 @patch("fairclient.fdpclient.FDPClient.__init__")
-def test_xds_cli(mock_FDPClient, mock_FDPOutput, isolated_cli_runner, xds_csv_example):
+def test_xds_cli(mock_fdp_client, mock_fdp_output, isolated_cli_runner, xds_csv_example):
     """Test CLI push to FDP, using an XDS CSV export as input"""
-    mock_FDPClient.return_value = None
-    mock_FDPOutput.return_value = None
+    mock_fdp_client.return_value = None
+    mock_fdp_output.return_value = None
 
     config_path = str(pathlib.Path(__file__).parent / "examples" / "xds" / "example-config.toml")
 
@@ -352,7 +350,7 @@ def test_xds_cli(mock_FDPClient, mock_FDPOutput, isolated_cli_runner, xds_csv_ex
         ],
     )
 
-    mock_FDPOutput.assert_called_once()
+    mock_fdp_output.assert_called_once()
 
 
 @patch("xnat.connect")

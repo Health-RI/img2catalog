@@ -16,7 +16,7 @@ from img2catalog.inputs.xnat import XNATInput, XNATParserError, filter_keyword
 
 @patch("xnat.core.XNATBaseObject")
 @pytest.mark.parametrize(
-    "test_input, expected",
+    ("test_input", "expected"),
     [
         ("public", False),
         ("PUBLIC", False),
@@ -399,7 +399,7 @@ def test_no_description(mock_check_eligibility, session, project, empty_graph: G
 
 
 @pytest.mark.parametrize(
-    "private, optin, expected",
+    ("private", "optin", "expected"),
     [
         (False, True, True),
         (True, True, False),
@@ -424,7 +424,7 @@ def test_project_eligibility(mock_check_optin_optout, mock_is_private_project, p
 
 
 @pytest.mark.parametrize(
-    "config, expected",
+    ("config", "expected"),
     [
         ({}, ["apple", "banana", "pear"]),
         ({"img2catalog": {"optin": "banana"}}, ["apple", "pear"]),  # test default remove
@@ -442,7 +442,7 @@ def test_keyword_filter(config, expected):
 
 
 @pytest.mark.parametrize(
-    "keywords, config, expected",
+    ("keywords", "config", "expected"),
     [
         # Test fallback keywords with empty list
         ([], {"img2catalog": {"fallback_keywords": ["default", "fallback"]}}, ["default", "fallback"]),
@@ -719,7 +719,7 @@ def test_update_metadata_with_custom_form_list_to_non_list():
 
 
 @pytest.mark.parametrize(
-    "value, expected",
+    ("value", "expected"),
     [
         (None, True),
         ("", True),
@@ -805,7 +805,7 @@ def test_filter_empty_values_nested_structures():
 
 
 @pytest.mark.parametrize(
-    "uri, expected",
+    ("uri", "expected"),
     [
         ("http://localhost/data/archive/projects/test_project", "test_project"),
         ("https://xnat.example.com/projects/PROJECT_NAME", "PROJECT_NAME"),

@@ -53,13 +53,13 @@ class XnatpyRequestsMocker(Mocker):
         return super().request(method, url, **kwargs)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def xnatpy_mock() -> XnatpyRequestsMocker:
     with XnatpyRequestsMocker() as mocker:
         yield mocker
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def xnatpy_connection(mocker: MockerFixture, xnatpy_mock: XnatpyRequestsMocker) -> XNATSession:
     # Create a working mocked XNATpy connection object
     threading_patch = mocker.patch("xnat.session.threading")  # Avoid background threads getting started
@@ -130,15 +130,15 @@ def xnat4tests_config(tmp_path_factory) -> Config:
 
     docker_host = os.environ.get("DOCKER_HOST")
     if docker_host:
-        print(f"Docker host set in environment set to {docker_host}.")
+        logger.info("Docker host set in environment set to %s.", docker_host)
         docker_host = urlparse(docker_host).netloc.split(":")[0]
     else:
-        print("No docker host set in environment, using localhost as default.")
+        logger.info("No docker host set in environment, using localhost as default.")
         docker_host = "localhost"
-    print(f"Determined docker hostname to be {docker_host}")
+    logger.info("Determined docker hostname to be %s", docker_host)
 
     set_loggers(loglevel="INFO")
-    yield Config(
+    return Config(
         xnat_root_dir=tmp_path,
         xnat_port=8080,
         docker_image="xnatpy_xnat4tests",

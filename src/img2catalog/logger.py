@@ -3,7 +3,7 @@ import sys
 from logging import StreamHandler
 from logging.handlers import RotatingFileHandler
 from os import PathLike
-from typing import Union
+from typing import Optional, Union
 
 LOGGING_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 LOGGING_DATEFMT = "%Y-%m-%d %H:%M:%S"
@@ -21,7 +21,7 @@ class Logger:
 
     """
 
-    def __init__(self, logger_name: str, logger_path: Union[str, PathLike] = None) -> None:
+    def __init__(self, logger_name: str, logger_path: Optional[Union[str, PathLike]] = None) -> None:
         logger = logging.getLogger(logger_name)
         logger.setLevel(logging.INFO)
 
@@ -39,7 +39,7 @@ class Logger:
         if self.logger_path is None:
             self.logger_path = f"./{self.logger_name}.log"
 
-    def _add_file_handler(self, logger_path: Union[str, PathLike] = None) -> None:
+    def add_file_handler(self, logger_path: Optional[Union[str, PathLike]] = None) -> None:
         """Adds a file handler to logging
 
         Parameters

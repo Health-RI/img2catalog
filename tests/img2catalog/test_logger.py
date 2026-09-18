@@ -10,5 +10,5 @@ def test_logger_path():
 def test_logger_path_add_filehandler():
     """Test if the logger path is changed correctly when adding a file handler"""
     logger = Logger("test_logger", logger_path=None)
-    logger._add_file_handler("./new_logger_path.log")
+    logger.add_file_handler("./new_logger_path.log")
     assert logger.logger_path == "./new_logger_path.log"
