@@ -21,3 +21,4 @@ EGA_DEFAULT_API_URL = "https://metadata.ega-archive.org"
 # Default setting
 REMOVE_OPTIN_KEYWORD = True
 INCLUDE_PRIVATE = False
+XDS_MIN_UNIQUE_INDIVIDUALS_DEFAULT = 0
