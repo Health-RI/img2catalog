@@ -1,14 +1,14 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.12.16,<0.13.0"]
+build-backend = "uv_build"
 
 
 [project]
 name = "img2catalog"
-dynamic = ["version"]
+version = "2.0.0"
 description = 'This tool generates RDF metadata from medical imaging respositories'
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.8.1"
 license = { text = "MIT License" }
 keywords = []
 authors = [{ name = "Mark Janse", email = "mark.janse@health-ri.nl" }]
@@ -20,6 +20,7 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
@@ -34,7 +35,8 @@ dependencies = [
   "sparqlwrapper~=2.0",
   "fairclient >= 1.0.0",
   "pandas >= 2.0.0",
-  "requests >= 2.34.2",
+  "requests >= 2.34.2 ; python_version >= '3.10'",
+  "requests >= 2.32.0 ; python_version < '3.10'",
 ]
 
 [project.entry-points]
@@ -48,11 +50,8 @@ Source = "https://github.com/health-ri/img2catalog"
 [project.scripts]
 img2catalog = "img2catalog.cli_app:cli_click"
 
-[tool.hatch.version]
-path = "src/img2catalog/__about__.py"
-
-[tool.hatch.envs.test]
-dependencies = [
+[dependency-groups]
+test = [
   "pytest",
   "pytest-mock",
   "requests-mock",
@@ -60,34 +59,13 @@ dependencies = [
   "pytest-click",
   "pytest-repeat",
   "freezegun",
-  "xnat4tests==0.3.12"
+  "xnat4tests==0.3.12",
+  "coverage",
 ]
-
-[[tool.hatch.envs.test.matrix]]
-python = ["3.8", "3.9", "3.10", "3.11", "3.12", "pypy3.9", "pypy3.10"]
-
-[tool.hatch.envs.test.scripts]
-test = "pytest {args:tests}"
-test-cov = "coverage run -m pytest {args:tests}"
-test-cov-integration = "coverage run -m pytest {args:tests} --runint"
-cov-report = ["- coverage combine", "coverage report", "coverage xml"]
-cov = ["test-cov", "cov-report"]
-cov-integration = ["test-cov-integration", "cov-report"]
-
-[tool.hatch.envs.lint]
-detached = true
-dependencies = ["black>=23.1.0", "mypy>=1.0.0", "ruff>=0.0.243"]
-
-[tool.hatch.envs.lint.scripts]
-typing = "mypy --install-types --non-interactive {args:src/img2catalog tests}"
-style = ["ruff {args:.}", "black --check --diff {args:.}"]
-fmt = ["black {args:.}", "ruff --fix {args:.}", "style"]
-all = ["style", "typing"]
-
-[tool.black]
-target-version = ["py38"]
-line-length = 120
-skip-string-normalization = true
+lint = [
+  "mypy>=1.0.0",
+  "ruff>=0.16",
+]
 
 [tool.ruff]
 target-version = "py38"
@@ -95,51 +73,38 @@ line-length = 120
 
 [tool.ruff.lint]
 select = [
-  "A",
-  "ARG",
-  "B",
-  "C",
-  "DTZ",
-  "E",
-  "EM",
-  "F",
-  "FBT",
-  "I",
-  "ICN",
-  "ISC",
-  "N",
-  "PLC",
-  "PLE",
-  "PLR",
-  "PLW",
-  "Q",
-  "RUF",
-  "S",
-  "T",
-  "TID",
-  "UP",
-  "W",
-  "YTT",
-]
-ignore = [
-  # Allow non-abstract empty methods in abstract base classes
-  "B027",
-  # Allow boolean positional values in function calls, like `dict.get(... True)`
-  "FBT003",
-  # Ignore checks for possible passwords
-  "S105",
-  "S106",
-  "S107",
-  # Ignore complexity
-  "C901",
-  "PLR0911",
-  "PLR0912",
-  "PLR0913",
-  "PLR0915",
+  "E",    # pycodestyle errors
+  "W",    # pycodestyle warnings
+  "F",    # Pyflakes
+  "I",    # isort
+  "N",    # pep8-naming
+  "UP",   # pyupgrade
+  "B",    # flake8-bugbear
+  "C4",   # flake8-comprehensions
+  "SIM",  # flake8-simplify
+  "PTH",  # flake8-use-pathlib
+  "ARG",  # flake8-unused-arguments
+  "S",    # flake8-bandit
+  "PT",   # flake8-pytest-style
+  "RET",  # flake8-return
+  "ERA",  # eradicate
+  "T20",  # flake8-print
+  "TID",  # flake8-tidy-imports
+  "DTZ",  # flake8-datetimez
+  "PERF", # Perflint
+  "PL",   # Pylint
+  "G",    # flake8-logging-format
+  "SLF",  # flake8-self
+  "RUF",  # Ruff-specific rules
 ]
 unfixable = [
   # Don't touch unused imports
   "F401",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+  "S101", # assert is the standard way to check expectations in pytest
 ]
 
 [tool.ruff.lint.isort]
@@ -147,10 +112,6 @@ known-first-party = ["img2catalog"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
-
-[tool.ruff.lint.per-file-ignores]
-# Tests can use magic values, assertions, relative imports, and Mixed-Case arguments
-"tests/**/*" = ["PLR2004", "S101", "TID252", "N803"]
 
 [tool.coverage.run]
 source_pkgs = ["img2catalog"]

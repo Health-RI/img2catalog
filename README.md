@@ -154,16 +154,15 @@ if both opt-in and opt-out keywords are given, then only the opt-in keyword is a
 
 ## Development
 
-This project uses [Hatch](https://hatch.pypa.io/latest/) as a project manager. After cloning the
-repository, the development version can be run by `hatch run img2catalog`. Hatch will take care of
+This project uses [uv](https://docs.astral.sh/uv/) as a project manager. After cloning the
+repository, the development version can be run by `uv run img2catalog`. uv will take care of
 dependencies and all of that.
 
-You can run unit tests by running `hatch run test:test`, or get in a shell in the python environment by
-running `hatch shell`. Hatch uses whatever Python version is currently loaded.
-This project is compatible with Python 3.8 and up.
+You can run unit tests by running `uv run --group test pytest tests`, or get in a shell in the python environment by
+running `uv run --group test bash` (or your shell of choice). This project is compatible with Python 3.8 and up.
 
-Integration tests with XNAT can be run with `xnat4tests` by executing `hatch run test:cov-integration`. They also will
-be triggered on a pull request.
+Integration tests with XNAT can be run with `xnat4tests` by executing
+`uv run --group test pytest tests --runint`. They also will be triggered on a pull request.
 
 Pull requests are very much welcomed! As long the output remains at least DCAT-AP v3 compliant,
 we are open to any additions.
