@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from img2catalog.inputs.xnat import split_keywords, check_optin_optout
+from img2catalog.inputs.xnat import check_optin_optout, split_keywords
 
 
 @pytest.mark.parametrize(

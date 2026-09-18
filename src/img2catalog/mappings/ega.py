@@ -6,25 +6,30 @@ from pydantic import AnyHttpUrl
 from rdflib import URIRef
 from sempyro import LiteralField
 from sempyro.dcat import AccessRights
-from sempyro.hri_dcat import DatasetStatus, DatasetTheme, HRIAgent, HRIDataset, HRIVCard
+from sempyro.hri_dcat import DatasetTheme, HRIAgent, HRIDataset, HRIVCard
 
 logger = logging.getLogger(__name__)
 
 # Source used:
 # https://healthri.sharepoint.com/:x:/r/sites/hri-team022/_layouts/15/Doc.aspx?sourcedoc=%7BE3EC5B3F-6BB2-404B-9DA9-489A90BAC077%7D&file=EGA%20Health-RI%20Core%20mapping.xlsx&action=default&mobileredirect=true
 
+
 def get_identifier(ega_dataset: Dict) -> str:
     """Build the identifiers.org URI for an EGA dataset's accession_id."""
     return f"http://identifiers.org/ega.dataset:{ega_dataset['accession_id']}"
 
+
 def get_title(ega_dataset: Dict) -> str:
     return ega_dataset["title"]
+
 
 def get_description(ega_dataset: Dict) -> str:
     return ega_dataset["description"]
 
+
 def get_number_of_records(ega_dataset: Dict) -> Optional[int]:
     return ega_dataset.get("num_samples")
+
 
 def get_release_date(ega_dataset: Dict) -> Optional[datetime]:
     released_date = ega_dataset.get("released_date")
@@ -37,9 +42,11 @@ def get_release_date(ega_dataset: Dict) -> Optional[datetime]:
         logger.error("Could not parse EGA release date %r", released_date)
         return released_date
 
+
 def get_keyword(ega_dataset: Dict) -> List[LiteralField]:
     """Map EGA's free-text `technologies` field to DCAT-AP keywords."""
     return [LiteralField(value=technology) for technology in ega_dataset.get("technologies", [])]
+
 
 def map_ega_to_healthri_dcat_dataset(ega_dataset: Dict, config: Dict) -> HRIDataset:
     dataset_config = config["dataset"]
