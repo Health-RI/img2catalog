@@ -97,6 +97,19 @@ select = [
   "SLF",  # flake8-self
   "RUF",  # Ruff-specific rules
 ]
+ignore = [
+  # CLI options and pytest fixtures naturally need more than 5 args; not worth restructuring
+  # into config objects just to satisfy this.
+  "PLR0913",
+  "PLR0917",
+  # Ditto for branch/return-statement counts in CLI dispatch and mapping functions.
+  "PLR0911",
+  "PLR0912",
+  # False positives: these flag *_ENV constants (env var *names*, not secrets) and the
+  # fixed "admin"/test credentials used to talk to the ephemeral xnat4tests container.
+  "S105",
+  "S106",
+]
 unfixable = [
   # Don't touch unused imports
   "F401",
@@ -104,7 +117,41 @@ unfixable = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
-  "S101", # assert is the standard way to check expectations in pytest
+  "S101",   # assert is the standard way to check expectations in pytest
+  "ARG001", # unittest.mock/pytest inject fixture and mock args that a test may not reference
+  "DTZ001", # test fixtures must mirror the naive datetimes the code under test actually produces
+  "SLF001", # tests exercise private helper methods directly; they have no public equivalent
+  "PLR2004", # test assertions compare against literal expected values, not shared constants
+  "TID252", # tests import sibling test helpers (e.g. conftest) via relative imports
+]
+"src/img2catalog/cli_app.py" = [
+  "ARG001", # cli_click(**kwargs) works around a click limitation, see https://github.com/pallets/click/issues/714
+]
+"src/img2catalog/logger.py" = [
+  "N802", # setLevel mirrors the stdlib logging.Logger API this class wraps
+]
+"src/img2catalog/configmanager.py" = [
+  # test_config_dir patches builtins.open and asserts the exact call signature
+  # open(path, "rb"); switching to Path.open() changes that call shape and breaks it.
+  "PTH123",
+]
+"src/img2catalog/outputs/rdf.py" = [
+  "T201", # print() is the actual stdout output contract of the `rdf` CLI output, not debug output
+]
+"tests/img2catalog/xnatpy_fixtures.py" = [
+  "T201", # diagnostic prints for xnat4tests docker setup, useful with `pytest -s`
+]
+"tests/img2catalog/test_xnat_integration.py" = [
+  "T201", # diagnostic print of CLI stdout for integration test debugging
+]
+"src/img2catalog/inputs/xnat.py" = [
+  "DTZ005", # stub `issued`/`modified` values (see TODO); tests freeze/compare them as naive datetimes
+]
+"src/img2catalog/mappings/xds.py" = [
+  "DTZ007", # source format is a date only (no time-of-day or zone), so there is no zone to attach
+]
+"src/img2catalog/inputs/ega.py" = [
+  "PERF203", # per-dataset error isolation; network I/O dominates cost, not the try/except
 ]
 
 [tool.ruff.lint.isort]
