@@ -35,6 +35,9 @@ def filter_by_unique_individuals(df: DataFrame, config: Dict) -> DataFrame:
     DataFrame
         Dataframe containing only rows that meet the configured minimum.
     """
+    if df.empty or "numberOfUniqueIndividuals" not in df.columns:
+        return df
+
     minimum = config.get("xds", {}).get("minimum_unique_individuals", XDS_MIN_UNIQUE_INDIVIDUALS_DEFAULT)
 
     filtered_df = df[df["numberOfUniqueIndividuals"].astype(int) >= int(minimum)]

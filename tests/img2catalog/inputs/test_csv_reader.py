@@ -71,3 +71,14 @@ def test_filter_by_unique_individuals_keeps_all_when_section_missing(xds_csv_exa
 
     # Assert
     assert len(result) == len(df)
+
+def test_filter_by_unique_individuals_returns_empty_dataframe_unchanged():
+    # Arrange
+    df = pd.DataFrame()
+    config = {"xds": {"minimum_unique_individuals": 5000}}
+
+    # Act
+    result = filter_by_unique_individuals(df, config)
+
+    # Assert
+    assert result.empty
