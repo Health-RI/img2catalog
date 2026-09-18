@@ -1,3 +1,6 @@
+[xds]
+# minimum_unique_individuals = 10
+
 [dataset]
 identifier = "https://www.example.com/img-123"
 title = "Example Imaging Dataset Title"
