@@ -2,13 +2,14 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Union
 
-from rdflib import Graph, DCAT, DCTERMS, FOAF
+from rdflib import DCAT, DCTERMS, FOAF, Graph
 from sempyro.vcard import VCARD
 
 logger = logging.getLogger(__name__)
 
+
 class RDFOutput:
-    """ Output class that handles writing to RDF files
+    """Output class that handles writing to RDF files
 
     Parameters
     ----------
@@ -18,12 +19,13 @@ class RDFOutput:
         Format to serialize to.
 
     """
+
     def __init__(self, config: Dict, format: str = "turtle") -> None:
         self.config = config
         self.format = format
 
     def create_graph(self, input_obj: Dict[str, List[Dict]]) -> None:
-        """ Create graph from Health-RI concept objects
+        """Create graph from Health-RI concept objects
 
         Parameters
         ----------
@@ -39,11 +41,11 @@ class RDFOutput:
         self.graph.bind("vcard", VCARD)
         for concept_obj in input_obj.values():
             for obj in concept_obj:
-                self.graph += obj['model_object'].to_graph(obj['uri'])
+                self.graph += obj["model_object"].to_graph(obj["uri"])
         logger.debug("Finished acquiring RDF graph")
 
     def to_stdout(self, input_obj: Dict[str, List[Dict]]) -> None:
-        """ Create Health-RI concept objects to stdout
+        """Create Health-RI concept objects to stdout
 
         Parameters
         ----------
@@ -56,7 +58,7 @@ class RDFOutput:
         print(self.graph.serialize(format=self.format))
 
     def to_file(self, input_obj: Dict[str, List[Dict]], output_path: Union[str, Path]) -> None:
-        """ Create Health-RI concept objects to file
+        """Create Health-RI concept objects to file
 
         Parameters
         ----------
@@ -67,6 +69,5 @@ class RDFOutput:
 
         """
         self.create_graph(input_obj)
-        logger.debug("Output option set, serializing output to file %s in %s format",
-                     output_path, self.format)
+        logger.debug("Output option set, serializing output to file %s in %s format", output_path, self.format)
         self.graph.serialize(destination=output_path, format=self.format)

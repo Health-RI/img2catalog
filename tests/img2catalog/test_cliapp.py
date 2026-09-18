@@ -1,28 +1,29 @@
 import pathlib
-from unittest.mock import ANY, Mock, patch, MagicMock
+from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
 from rdflib import URIRef
 
-from ..conftest import TEST_CONFIG
 from img2catalog.cli_app import cli_click, load_img2catalog_configuration
 from img2catalog.const import (
+    FDP_PASS_ENV,
+    FDP_SERVER_ENV,
+    FDP_USER_ENV,
+    SPARQL_ENV,
     XNAT_HOST_ENV,
     XNAT_PASS_ENV,
     XNAT_USER_ENV,
     XNATPY_HOST_ENV,
-    SPARQL_ENV,
-    FDP_USER_ENV,
-    FDP_PASS_ENV,
-    FDP_SERVER_ENV,
 )
 from img2catalog.inputs.xnat import XNATInput
 from img2catalog.outputs.rdf import RDFOutput
 
+from ..conftest import TEST_CONFIG
+
 
 @patch("xnat.connect")
 def test_cli_connect(connect, isolated_cli_runner):
-    """ Test CLI connect
+    """Test CLI connect
 
     Test if calling `img2catalog dcat` works.
     """
@@ -34,8 +35,9 @@ def test_cli_connect(connect, isolated_cli_runner):
     connect.return_value.__enter__.return_value = mock_xnat_session
 
     # Run isolated (to keep log files safe)
-    result = isolated_cli_runner.invoke(cli_click, ["--verbose", "xnat", "--server", "http://example.com",
-                                                    "map-xnat-hriv2", "rdf"])
+    result = isolated_cli_runner.invoke(
+        cli_click, ["--verbose", "xnat", "--server", "http://example.com", "map-xnat-hriv2", "rdf"]
+    )
 
     connect.assert_called_once_with(server="http://example.com", user=None, password=None)
     assert result.exit_code == 0
@@ -43,7 +45,7 @@ def test_cli_connect(connect, isolated_cli_runner):
 
 @patch("xnat.connect")
 def test_anonymous_envhost(connect, isolated_cli_runner, monkeypatch):
-    """ Test XNATPY_HOST_ENV
+    """Test XNATPY_HOST_ENV
 
     Test that `img2catalog dcat` uses the XNAT server configuration set through
     `XNATPY_HOST_ENV` and not `XNAT_HOST_ENV`, when both are set.
@@ -67,7 +69,7 @@ def test_anonymous_envhost(connect, isolated_cli_runner, monkeypatch):
 
 @patch("xnat.connect")
 def test_second_env_var(connect, isolated_cli_runner, monkeypatch):
-    """ Test XNAT_HOST_ENV
+    """Test XNAT_HOST_ENV
 
     Test that `img2catalog dcat` uses the XNAT server configuration set through
     `XNAT_HOST_ENV`, when it is set and `XNATPY_HOST_ENV` is not.
@@ -91,7 +93,7 @@ def test_second_env_var(connect, isolated_cli_runner, monkeypatch):
 # @pytest.mark.xfail(reason="Clearing password not implemented yet")
 @patch("xnat.connect")
 def test_user_pass_prio_env(connect, isolated_cli_runner, monkeypatch):
-    """ Test credentials CLI priority
+    """Test credentials CLI priority
 
     Test that `img2catalog dcat` uses the credentials set through the CLI, and not through `XNAT_USER_ENV` and
     `XNAT_PASS_ENV`. When only one of the two is set through the CLI, both environment variables should still be
@@ -107,8 +109,9 @@ def test_user_pass_prio_env(connect, isolated_cli_runner, monkeypatch):
     monkeypatch.setenv(XNAT_PASS_ENV, "fail_password")
     # monkeypatch.setenv(XNAT_HOST_ENV, "http://fail_test.example.com")
     # Run isolated (to keep log files safe)
-    result = isolated_cli_runner.invoke(cli_click, ["xnat", "-u", "pass_user", "-s", "http://test.example.com",
-                                                    "map-xnat-hriv2", "rdf"])
+    result = isolated_cli_runner.invoke(
+        cli_click, ["xnat", "-u", "pass_user", "-s", "http://test.example.com", "map-xnat-hriv2", "rdf"]
+    )
 
     # FIXME Not sure if this is desired behavior. Ideally, if the username is set as an argument,
     # it should prompt for the password or at least ignore the environment variable.
@@ -119,7 +122,7 @@ def test_user_pass_prio_env(connect, isolated_cli_runner, monkeypatch):
 
 @patch("xnat.connect")
 def test_user_pass_envvar(connect, isolated_cli_runner, monkeypatch):
-    """ Test credentials environment variables.
+    """Test credentials environment variables.
 
     Test that `img2catalog dcat` uses the credentials set through `XNAT_USER_ENV` and `XNAT_PASS_ENV`,
     when none are supplied through the CLI.
@@ -134,7 +137,8 @@ def test_user_pass_envvar(connect, isolated_cli_runner, monkeypatch):
     monkeypatch.setenv(XNAT_PASS_ENV, "password")
     # Run isolated (to keep log files safe)
     result = isolated_cli_runner.invoke(
-        cli_click, ["xnat", "-s", "http://test.example.com", "map-xnat-hriv2", "rdf"],
+        cli_click,
+        ["xnat", "-s", "http://test.example.com", "map-xnat-hriv2", "rdf"],
     )
 
     connect.assert_called_once_with(server="http://test.example.com", user="pass_user", password="password")
@@ -149,28 +153,39 @@ def test_user_pass_envvar(connect, isolated_cli_runner, monkeypatch):
         (["xnat", "-s", "http://test.example.com", "map-xnat-hriv2", "rdf"], {"format": "turtle"}),
         (
             [
-                "xnat", "-s", "http://test.example.com",
+                "xnat",
+                "-s",
+                "http://test.example.com",
                 "map-xnat-hriv2",
-                "rdf", "-o", "tester_1.ttl", "-f", "xml",
+                "rdf",
+                "-o",
+                "tester_1.ttl",
+                "-f",
+                "xml",
             ],
             {"destination": "tester_1.ttl", "format": "xml"},
         ),
         (
             [
-                "xnat", "-s", "http://test.example.com",
+                "xnat",
+                "-s",
+                "http://test.example.com",
                 "map-xnat-hriv2",
-                "rdf", "-o", "tester_2.ttl",
+                "rdf",
+                "-o",
+                "tester_2.ttl",
             ],
             {"destination": "tester_2.ttl", "format": "turtle"},
         ),
     ],
 )
 def test_serialize_cli_args(connect, test_input, expected, empty_graph, isolated_cli_runner):
-    """ Test CLI input for RDF serialization
+    """Test CLI input for RDF serialization
 
     See the parametrize decorator for the CLI input and the expected output.
     """
-    def mock_init(self, config, format='turtle'):
+
+    def mock_init(self, config, format="turtle"):
         self.config = config
         self.format = format
 
@@ -194,16 +209,16 @@ def test_serialize_cli_args(connect, test_input, expected, empty_graph, isolated
     assert result.exit_code == 0
 
 
-
 @patch("xnat.connect")
 def test_nonexisting_config(connect, isolated_cli_runner):
-    """ Test nonexisting configuration
+    """Test nonexisting configuration
 
     The CLI should return exit code 2 and not proceed to connecting to XNAT if a nonexisting configuration
     file is supplied.
     """
-    result = isolated_cli_runner.invoke(cli_click, ["--config", "non_existing_file.toml",
-                                                    "xnat", "-s", "http://example.com"])
+    result = isolated_cli_runner.invoke(
+        cli_click, ["--config", "non_existing_file.toml", "xnat", "-s", "http://example.com"]
+    )
 
     assert not connect.called, "Function was called despite having to error out"
 
@@ -212,7 +227,7 @@ def test_nonexisting_config(connect, isolated_cli_runner):
 
 
 def test_config_loader_error():
-    """ Test config loader error
+    """Test config loader error
 
     The function load_img2catalog_configuration() should return a FileNotFoundError if the config file does not exist.
     """
@@ -227,7 +242,7 @@ def test_config_loader_error():
 @patch("img2catalog.configmanager.CONFIG_HOME_PATH", TEST_CONFIG)
 @patch("builtins.open")
 def test_config_dir(fileopen, toml_patch_target, config_param):
-    """ Test config dir
+    """Test config dir
 
     If config_param is `None`, no files should be opened; an example config is loaded from a hardcoded string.
     If config_param is `TEST_CONFIG`, this file should be loaded.
@@ -245,7 +260,7 @@ def test_config_dir(fileopen, toml_patch_target, config_param):
 @patch("fairclient.fdpclient.FDPClient.__init__")
 @patch("xnat.connect")
 def test_fdp_cli(connect, mock_FDPClient, mock_FDPOutput, isolated_cli_runner):
-    """ Test CLI push to FDP, using CLI configuration """
+    """Test CLI push to FDP, using CLI configuration"""
     connect.__enter__.return_value = True
 
     mock_FDPClient.return_value = None
@@ -278,7 +293,7 @@ def test_fdp_cli(connect, mock_FDPClient, mock_FDPOutput, isolated_cli_runner):
 @patch("fairclient.sparqlclient.FDPSPARQLClient.__init__")
 @patch("xnat.connect")
 def test_fdp_cli_env(connect, mock_SPARQLClient, mock_FDPClient, isolated_cli_runner, monkeypatch):
-    """ Test CLI push to FDP, using environment variables configuration """
+    """Test CLI push to FDP, using environment variables configuration"""
     connect.__enter__.return_value = True
 
     mock_FDPClient.return_value = None
@@ -310,7 +325,7 @@ def test_fdp_cli_env(connect, mock_SPARQLClient, mock_FDPClient, isolated_cli_ru
 @patch("img2catalog.outputs.fdp.FDPOutput.__init__")
 @patch("fairclient.fdpclient.FDPClient.__init__")
 def test_xds_cli(mock_FDPClient, mock_FDPOutput, isolated_cli_runner, xds_csv_example):
-    """ Test CLI push to FDP, using an XDS CSV export as input """
+    """Test CLI push to FDP, using an XDS CSV export as input"""
     mock_FDPClient.return_value = None
     mock_FDPOutput.return_value = None
 
@@ -341,15 +356,15 @@ def test_xds_cli(mock_FDPClient, mock_FDPOutput, isolated_cli_runner, xds_csv_ex
 
 
 @patch("xnat.connect")
-@patch.object(XNATInput, 'project_to_dataset')
+@patch.object(XNATInput, "project_to_dataset")
 def test_output_project(
-        mock_project_to_dataset,
-        connect,
-        mock_dataset,
-        empty_graph,
-        isolated_cli_runner,
+    mock_project_to_dataset,
+    connect,
+    mock_dataset,
+    empty_graph,
+    isolated_cli_runner,
 ):
-    """ Test CLI for one project, stdout
+    """Test CLI for one project, stdout
 
     This CLI should only retrieve metadata of the project `test_project` and only return that dataset.
     The output is parsed from stdout.
@@ -358,9 +373,8 @@ def test_output_project(
 
     _ = isolated_cli_runner.invoke(
         cli_click,
-        ["--verbose", "xnat-project", "-s", "http://example.com", "test_project",
-         "map-xnat-hriv2", "rdf"],
+        ["--verbose", "xnat-project", "-s", "http://example.com", "test_project", "map-xnat-hriv2", "rdf"],
     )
 
     connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
-    mock_project_to_dataset.assert_called_once_with('test_project')
+    mock_project_to_dataset.assert_called_once_with("test_project")

@@ -2,7 +2,7 @@ import pathlib
 import sys
 
 import pytest
-from rdflib import Graph, DCAT, DCTERMS
+from rdflib import DCAT, DCTERMS, Graph
 from sempyro.dcat.dcat_catalog import DCATCatalog
 from sempyro.dcat.dcat_dataset import DCATDataset
 from sempyro.vcard import VCARD
@@ -20,7 +20,7 @@ pytest_plugins = [
 ]
 
 
-@pytest.fixture()
+@pytest.fixture
 def config():
     """Loads the default configuration TOML"""
     config_path = TEST_CONFIG
@@ -31,19 +31,19 @@ def config():
     return config
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_catalog():
     catalog = DCATCatalog(title=["Example XNAT catalog"], description=["This is an example XNAT catalog description"])
     return catalog
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_dataset():
     dataset = DCATDataset(title=["test project"], description=["test description"])
     return dataset
 
 
-@pytest.fixture()
+@pytest.fixture
 def empty_graph():
     graph = Graph()
     graph.bind("dcat", DCAT)
@@ -52,7 +52,7 @@ def empty_graph():
     return graph
 
 
-@pytest.fixture()
+@pytest.fixture
 def second_empty_graph():
     graph = Graph()
     graph.bind("dcat", DCAT)
@@ -61,20 +61,17 @@ def second_empty_graph():
     return graph
 
 
-@pytest.fixture()
+@pytest.fixture
 def toml_patch_target():
     # Python 3.11 and up has tomllib built-in, for 3.10 and lower we use tomli which provides
     # the same functonality. We check if it's Python 3.10 or lower to patch the correct target.
     if sys.version_info < (3, 11):
         return "tomli.load"
-    else:
-        return "tomllib.load"
+    return "tomllib.load"
 
 
 def pytest_addoption(parser):
-    parser.addoption(
-        "--runint", action="store_true", default=False, help="Run integration tests"
-    )
+    parser.addoption("--runint", action="store_true", default=False, help="Run integration tests")
 
 
 def pytest_configure(config):

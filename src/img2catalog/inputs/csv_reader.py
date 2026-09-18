@@ -60,7 +60,9 @@ def filter_by_unique_individuals(df: DataFrame, config: Dict) -> DataFrame:
 
     logger.info(
         "Filtered out %d of %d dataset(s) with fewer than %s unique individuals",
-        len(df) - len(filtered_df), len(df), numeric_minimum,
+        len(df) - len(filtered_df),
+        len(df),
+        numeric_minimum,
     )
 
     return filtered_df
