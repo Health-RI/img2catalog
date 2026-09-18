@@ -39,12 +39,28 @@ def filter_by_unique_individuals(df: DataFrame, config: Dict) -> DataFrame:
         return df
 
     minimum = config.get("xds", {}).get("minimum_unique_individuals", XDS_MIN_UNIQUE_INDIVIDUALS_DEFAULT)
+    numeric_minimum = pd.to_numeric(minimum, errors="coerce")
+    if pd.isna(numeric_minimum):
+        logger.warning(
+            "Configured xds.minimum_unique_individuals %r is not numeric, falling back to default %s",
+            minimum,
+            XDS_MIN_UNIQUE_INDIVIDUALS_DEFAULT,
+        )
+        numeric_minimum = XDS_MIN_UNIQUE_INDIVIDUALS_DEFAULT
 
-    filtered_df = df[df["numberOfUniqueIndividuals"].astype(int) >= int(minimum)]
+    unique_individuals = pd.to_numeric(df["numberOfUniqueIndividuals"], errors="coerce")
+    invalid_rows = df.loc[unique_individuals.isna(), "numberOfUniqueIndividuals"]
+    if not invalid_rows.empty:
+        raise ValueError(
+            f"Column 'numberOfUniqueIndividuals' contains non-numeric value(s) at row(s) "
+            f"{invalid_rows.index.tolist()}: {invalid_rows.tolist()}"
+        )
+
+    filtered_df = df[unique_individuals >= numeric_minimum]
 
     logger.info(
         "Filtered out %d of %d dataset(s) with fewer than %s unique individuals",
-        len(df) - len(filtered_df), len(df), minimum,
+        len(df) - len(filtered_df), len(df), numeric_minimum,
     )
 
     return filtered_df

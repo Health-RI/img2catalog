@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 from img2catalog.inputs.csv_reader import read_csv, filter_by_unique_individuals
 
 def test_read_csv_returns_dataframe_on_success(xds_csv_example):
@@ -82,3 +83,28 @@ def test_filter_by_unique_individuals_returns_empty_dataframe_unchanged():
 
     # Assert
     assert result.empty
+
+
+def test_filter_by_unique_individuals_falls_back_to_default_on_invalid_config(xds_csv_example, caplog):
+    # Arrange
+    df = read_csv(xds_csv_example)
+    config = {"xds": {"minimum_unique_individuals": "not-a-number"}}
+
+    # Act
+    result = filter_by_unique_individuals(df, config)
+
+    # Assert
+    assert len(result) == len(df)
+    assert "falling back to default" in caplog.text
+
+
+def test_filter_by_unique_individuals_raises_on_non_numeric_row_value(xds_csv_example):
+    # Arrange
+    df = read_csv(xds_csv_example)
+    df["numberOfUniqueIndividuals"] = df["numberOfUniqueIndividuals"].astype(object)
+    df.loc[0, "numberOfUniqueIndividuals"] = "not-a-number"
+    config = {"xds": {"minimum_unique_individuals": 5000}}
+
+    # Act & Assert
+    with pytest.raises(ValueError, match="non-numeric value"):
+        filter_by_unique_individuals(df, config)
