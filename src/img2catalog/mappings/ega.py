@@ -74,7 +74,7 @@ def map_ega_to_healthri_dcat_dataset(ega_dataset: Dict, config: Dict) -> HRIData
         formatted_name=contact_point_config["formatted_name"],
     )
 
-    dataset = HRIDataset(
+    return HRIDataset(
         # Directly mapped from EGA
         identifier=LiteralField(value=get_identifier(ega_dataset)),
         title=[LiteralField(value=get_title(ega_dataset))],
@@ -91,5 +91,3 @@ def map_ega_to_healthri_dcat_dataset(ega_dataset: Dict, config: Dict) -> HRIData
         applicable_legislation=dataset_applicable_legislation,
         access_rights=AccessRights(URIRef(dataset_config["access_rights"])),
     )
-
-    return dataset

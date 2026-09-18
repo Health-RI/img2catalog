@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 # Python < 3.11 does not have tomllib, but tomli provides same functionality
 try:
@@ -24,7 +24,7 @@ def example_standard_config() -> str:
     str
         String of a toml-serialized configuration file.
     """
-    standard_config = """[img2catalog]
+    return """[img2catalog]
 # optin = "include_catalog"
 # optout = "exclude_catalog"
 
@@ -69,10 +69,9 @@ email = "mailto:datamanager@example.com"
 title = "XNAT imaging distribution"
 description = "Link to XNAT instance where the imaging data can be accessed."
 """
-    return standard_config
 
 
-def load_img2catalog_configuration(config_path: Path = None) -> Dict:
+def load_img2catalog_configuration(config_path: Optional[Path] = None) -> Dict:
     """Loads a configuration file for img2catalog
 
     First, it checks if config_path is given. If not, it will look for ~/.img2catalog/config.toml,
@@ -98,14 +97,11 @@ def load_img2catalog_configuration(config_path: Path = None) -> Dict:
             raise FileNotFoundError(f"Configuration file does not exist at {config_path}")
     elif not CONFIG_HOME_PATH.exists():
         logger.warning("No configuration file found or specified! Using example configuration")
-        config = tomllib.loads(example_standard_config())
-        return config
+        return tomllib.loads(example_standard_config())
     else:
         config_path = CONFIG_HOME_PATH
 
     logger.info("Using configuration file %s", config_path)
 
     with open(config_path, "rb") as f:
-        config = tomllib.load(f)
-
-    return config
+        return tomllib.load(f)
