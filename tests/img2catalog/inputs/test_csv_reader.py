@@ -1,6 +1,8 @@
 import pandas as pd
 import pytest
-from img2catalog.inputs.csv_reader import read_csv, filter_by_unique_individuals
+
+from img2catalog.inputs.csv_reader import filter_by_unique_individuals, read_csv
+
 
 def test_read_csv_returns_dataframe_on_success(xds_csv_example):
     # Arrange
@@ -14,6 +16,7 @@ def test_read_csv_returns_dataframe_on_success(xds_csv_example):
     assert not result.empty
     assert len(result) == expected_rows
     assert len(result.columns) == expected_columns
+
 
 def test_read_csv_returns_empty_dataframe_on_error():
     # Arrange
@@ -51,6 +54,7 @@ def test_filter_by_unique_individuals_keeps_rows_equal_to_threshold(xds_csv_exam
     # Assert
     assert 5041 in result["numberOfUniqueIndividuals"].values
 
+
 def test_filter_by_unique_individuals_keeps_all_when_key_missing(xds_csv_example):
     # Arrange
     df = read_csv(xds_csv_example)
@@ -62,6 +66,7 @@ def test_filter_by_unique_individuals_keeps_all_when_key_missing(xds_csv_example
     # Assert
     assert len(result) == len(df)
 
+
 def test_filter_by_unique_individuals_keeps_all_when_section_missing(xds_csv_example):
     # Arrange
     df = read_csv(xds_csv_example)
@@ -72,6 +77,7 @@ def test_filter_by_unique_individuals_keeps_all_when_section_missing(xds_csv_exa
 
     # Assert
     assert len(result) == len(df)
+
 
 def test_filter_by_unique_individuals_returns_empty_dataframe_unchanged():
     # Arrange

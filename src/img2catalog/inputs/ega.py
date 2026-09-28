@@ -1,9 +1,10 @@
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import requests
 
 logger = logging.getLogger(__name__)
+
 
 def fetch_ega_dataset(dataset_id: str, api_url: str) -> Dict:
     response = requests.get(f"{api_url}/datasets/{dataset_id}", timeout=30)

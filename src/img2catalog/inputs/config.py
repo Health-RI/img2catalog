@@ -1,8 +1,8 @@
-from typing import List, Dict, Union
+from typing import Dict, List, Union
 
 
 class ConfigInput:
-    """ Input class that handles the metadata input from configuration
+    """Input class that handles the metadata input from configuration
 
     Parameters
     ----------
@@ -10,11 +10,12 @@ class ConfigInput:
         Dictionary containing the contents of the configuration
 
     """
+
     def __init__(self, config: Dict):
         self.config = config
 
     def get_metadata_concept(self, concept_type: str) -> List[Union[Dict, None]]:
-        """ Get metadata for a specified concept type
+        """Get metadata for a specified concept type
 
         This method returns a list of length one containing a dictionary with the metadata for the specified
         concept type from the configuration file. If no metadata can be found, None is returned.
@@ -32,7 +33,7 @@ class ConfigInput:
         return [self.config.get(concept_type, {})]
 
     def update_metadata(self, source_objects: List[Dict], config_object: List[Dict]) -> List[Dict]:
-        """ Update the metadata for a concept with additional metadata
+        """Update the metadata for a concept with additional metadata
 
         The list of dictionaries containing metadata, `source_objects`, gets updated with the metadata in
         `config_object`. `config_object` should be a list of length 1 containing a dictionary with the
@@ -68,10 +69,10 @@ class ConfigInput:
                 for source_key, source_value in source_obj.items():
                     if source_key in config_object.keys():
                         if isinstance(source_value, list):
-                            for item in source_obj[source_key]:
+                            for item in source_value:
                                 item.update(config_object[source_key])
                         elif isinstance(source_value, dict):
-                            source_obj[source_key].update(config_object[source_key])
+                            source_value.update(config_object[source_key])
                         else:
                             source_obj[source_key] = config_object[source_key]
                         items_already_updated.append(source_key)

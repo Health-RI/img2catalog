@@ -10,14 +10,10 @@ def test_xnat_to_rdf(mock_dataset, mock_catalog, config, empty_graph):
     Tests if `xnat_to_RDF` creates a Catalog based on the XNAT URL from the XNATSession object, and combines them
     properly with the discovered datasets.
     """
-    mock_catalog.dataset = [URIRef('https://example.com/dataset')]
+    mock_catalog.dataset = [URIRef("https://example.com/dataset")]
     mapped_objects = {
-        'catalog': [{
-            'uri': URIRef('https://example.com'),
-            'model_object': mock_catalog}],
-        'dataset': [{
-            'uri': URIRef('https://example.com/dataset'),
-            'model_object': mock_dataset}]
+        "catalog": [{"uri": URIRef("https://example.com"), "model_object": mock_catalog}],
+        "dataset": [{"uri": URIRef("https://example.com/dataset"), "model_object": mock_dataset}],
     }
     rdf_output = RDFOutput(config)
     rdf_output.create_graph(mapped_objects)

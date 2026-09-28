@@ -9,23 +9,22 @@ from typing import Any, Pattern, Union
 from urllib.parse import urlparse
 
 import pandas as pd
-import requests
 import pytest
+import requests
 import xnat
+import xnat4tests
 from click.testing import CliRunner
 from pandas import Series
-
 from pytest_mock import MockerFixture
 from requests import Response
 from requests_mock import Mocker
 from xnat.session import XNATSession
-
-import xnat4tests
-from xnat4tests import start_xnat, stop_xnat, add_data, Config, connect
+from xnat4tests import Config, start_xnat, stop_xnat
 from xnat4tests.utils import set_loggers
 
 try:
     import docker
+
     DOCKER_IMPORTED = True
 except ImportError:
     docker = None
@@ -38,6 +37,7 @@ logger = logging.getLogger(__name__)
 # Standard Python loggers do not provide this method, so add a safe alias for tests.
 if not hasattr(logger, "verbose"):
     logger.verbose = logger.debug
+
 
 class CreatedObject:
     def __init__(self, uri, type_, fieldname, **kwargs):
@@ -126,18 +126,18 @@ def xnatpy_connection(mocker: MockerFixture, xnatpy_mock: XnatpyRequestsMocker) 
 # Fixtures for xnat4tests, setup a config, use the pytest tmp_path_factory fixture for the tmpdir
 @pytest.fixture(scope="session")
 def xnat4tests_config(tmp_path_factory) -> Config:
-    tmp_path = tmp_path_factory.mktemp('config')
+    tmp_path = tmp_path_factory.mktemp("config")
 
-    docker_host = os.environ.get('DOCKER_HOST')
+    docker_host = os.environ.get("DOCKER_HOST")
     if docker_host:
-        print(f'Docker host set in environment set to {docker_host}.')
-        docker_host = urlparse(docker_host).netloc.split(':')[0]
+        print(f"Docker host set in environment set to {docker_host}.")
+        docker_host = urlparse(docker_host).netloc.split(":")[0]
     else:
-        print('No docker host set in environment, using localhost as default.')
-        docker_host = 'localhost'
-    print(f'Determined docker hostname to be {docker_host}')
+        print("No docker host set in environment, using localhost as default.")
+        docker_host = "localhost"
+    print(f"Determined docker hostname to be {docker_host}")
 
-    set_loggers(loglevel='INFO')
+    set_loggers(loglevel="INFO")
     yield Config(
         xnat_root_dir=tmp_path,
         xnat_port=8080,
@@ -170,28 +170,30 @@ def xnat4tests_fixture(config):
     optin_keywords = "include_catalogue xnat"
     try:
         project_dicts = [
-            {'project_id': 'public_optout', 'accessibility': 'public', 'keywords': 'exclude_catalogue xnat'},
-            {'project_id': 'public_optin', 'accessibility': 'public', 'keywords': optin_keywords},
-            {'project_id': 'public_nokeyword', 'accessibility': 'public', 'keywords': ''},
-            {'project_id': 'protected_optin', 'accessibility': 'protected', 'keywords': optin_keywords},
-            {'project_id': 'private_optin', 'accessibility': 'private', 'keywords': optin_keywords}
+            {"project_id": "public_optout", "accessibility": "public", "keywords": "exclude_catalogue xnat"},
+            {"project_id": "public_optin", "accessibility": "public", "keywords": optin_keywords},
+            {"project_id": "public_nokeyword", "accessibility": "public", "keywords": ""},
+            {"project_id": "protected_optin", "accessibility": "protected", "keywords": optin_keywords},
+            {"project_id": "private_optin", "accessibility": "private", "keywords": optin_keywords},
         ]
         with xnat4tests.connect(config) as login:
             for project_dict in project_dicts:
                 login.put(f"/data/archive/projects/{project_dict['project_id']}")
-                login.put(f"/data/archive/projects/{project_dict['project_id']}/accessibility/{project_dict['accessibility']}")
-        with xnat.connect(config.xnat_uri, user='admin', password='admin') as connection:
-            connection.post("/xapi/investigators", json={
-                "title" : "Prof.",
-                "firstname" : "Example",
-                "lastname" : "Exampleton",
-                "email": "email@example.com"
-            })
+                login.put(
+                    f"/data/archive/projects/{project_dict['project_id']}/accessibility/{project_dict['accessibility']}"
+                )
+        with xnat.connect(config.xnat_uri, user="admin", password="admin") as connection:
+            connection.post(
+                "/xapi/investigators",
+                json={"title": "Prof.", "firstname": "Example", "lastname": "Exampleton", "email": "email@example.com"},
+            )
             for project_dict in project_dicts:
-                project = connection.projects[project_dict['project_id']]
+                project = connection.projects[project_dict["project_id"]]
                 project.description = f"{project_dict['project_id']}"
-                project.keywords = project_dict['keywords']
-                connection.put(f"/data/projects/{project_dict['project_id']}?pi_firstname=Example&pi_lastname=Exampleton")
+                project.keywords = project_dict["keywords"]
+                connection.put(
+                    f"/data/projects/{project_dict['project_id']}?pi_firstname=Example&pi_lastname=Exampleton"
+                )
 
         yield config.xnat_uri
     finally:
@@ -202,8 +204,9 @@ def xnat4tests_fixture(config):
 @pytest.fixture(scope="session")
 def xnat4tests_connection(xnat4tests_uri) -> XNATSession:
     # with xnat.connect(xnat4tests_uri) as connection:
-    with xnat.connect(xnat4tests_uri, user='admin', password='admin') as connection:
+    with xnat.connect(xnat4tests_uri, user="admin", password="admin") as connection:
         yield connection
+
 
 @pytest.fixture
 def isolated_cli_runner(tmp_path):
@@ -212,42 +215,55 @@ def isolated_cli_runner(tmp_path):
     with runner.isolated_filesystem(temp_dir=tmp_path):
         yield runner
 
+
 @pytest.fixture
 def xds_csv_example(tmp_path):
     """An example xds CSV file."""
-    data = pd.DataFrame({
-        "instituteName":             ["Hospital A", "Hospital A", "Hospital B", "Hospital B"],
-        "numberOfUniqueIndividuals": [5041, 4367, 6543, 5790],
-        "numberOfRecords":           [11052, 9943, 8436, 7002],
-        "minTypicalAge":             [16, 12, 21, 8],
-        "maxTypicalAge":             [89, 67, 92, 91],
-        "temporalCoverage":          ["01-01-2024 to 31-12-2024","01-01-2024 to 31-12-2024","01-01-2024 to 31-12-2024","01-01-2023 to 31-12-2023"],
-        "modality":                  ["CT", "MR", "CT", "CT"],
-        "exportDate":                ["2025-11-14", "2025-11-14", "2025-11-14", "2025-11-14"],
-    })
+    data = pd.DataFrame(
+        {
+            "instituteName": ["Hospital A", "Hospital A", "Hospital B", "Hospital B"],
+            "numberOfUniqueIndividuals": [5041, 4367, 6543, 5790],
+            "numberOfRecords": [11052, 9943, 8436, 7002],
+            "minTypicalAge": [16, 12, 21, 8],
+            "maxTypicalAge": [89, 67, 92, 91],
+            "temporalCoverage": [
+                "01-01-2024 to 31-12-2024",
+                "01-01-2024 to 31-12-2024",
+                "01-01-2024 to 31-12-2024",
+                "01-01-2023 to 31-12-2023",
+            ],
+            "modality": ["CT", "MR", "CT", "CT"],
+            "exportDate": ["2025-11-14", "2025-11-14", "2025-11-14", "2025-11-14"],
+        }
+    )
 
     csv_path = tmp_path / "input_example.csv"
     data.to_csv(csv_path, index=False)
     return str(csv_path)
 
+
 @pytest.fixture
 def default_csv_data():
-    return Series({
-        "modality": "CT",
-        "instituteName": "Amsterdam Hospital",
-        "temporalCoverage": "01-01-2026 to 31-12-2026",
-        "numberOfUniqueIndividuals": "200",
-        "numberOfRecords": "100",
-        "minTypicalAge": "18",
-        "maxTypicalAge": "65",
-    })
+    return Series(
+        {
+            "modality": "CT",
+            "instituteName": "Amsterdam Hospital",
+            "temporalCoverage": "01-01-2026 to 31-12-2026",
+            "numberOfUniqueIndividuals": "200",
+            "numberOfRecords": "100",
+            "minTypicalAge": "18",
+            "maxTypicalAge": "65",
+        }
+    )
 
 
 @pytest.fixture
 def missing_csv_data():
-    return Series({
-        "instituteName": "Amsterdam Hospital",
-    })
+    return Series(
+        {
+            "instituteName": "Amsterdam Hospital",
+        }
+    )
 
 
 @pytest.fixture

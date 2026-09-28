@@ -8,13 +8,14 @@ from tqdm import tqdm
 from xnat.core import XNATBaseObject
 from xnat.session import XNATSession
 
-from img2catalog.const import REMOVE_OPTIN_KEYWORD, INCLUDE_PRIVATE
+from img2catalog.const import REMOVE_OPTIN_KEYWORD
 from img2catalog.inputs.config import ConfigInput
 
 logger = logging.getLogger(__name__)
 
+
 class XNATInput:
-    """ Input class that handles getting the metadata from XNAT
+    """Input class that handles getting the metadata from XNAT
 
     Parameters
     ----------
@@ -44,19 +45,19 @@ class XNATInput:
         """
         # 1. Get base XNAT metadata
         unmapped_objects = self.get_metadata()
-        config_catalog = config_input.get_metadata_concept('catalog')
-        config_dataset = config_input.get_metadata_concept('dataset')
+        config_catalog = config_input.get_metadata_concept("catalog")
+        config_dataset = config_input.get_metadata_concept("dataset")
 
         # 2. Apply config overrides (existing functionality)
         unmapped_objects = {
-            'catalog': config_input.update_metadata(unmapped_objects['catalog'], config_catalog),
-            'dataset': config_input.update_metadata(unmapped_objects['dataset'], config_dataset)
+            "catalog": config_input.update_metadata(unmapped_objects["catalog"], config_catalog),
+            "dataset": config_input.update_metadata(unmapped_objects["dataset"], config_dataset),
         }
 
         # 3. Apply custom form overrides (new functionality)
         unmapped_objects = {
-            'catalog': self.apply_custom_form_metadata(unmapped_objects['catalog'], 'catalog'),
-            'dataset': self.apply_custom_form_metadata(unmapped_objects['dataset'], 'dataset')
+            "catalog": self.apply_custom_form_metadata(unmapped_objects["catalog"], "catalog"),
+            "dataset": self.apply_custom_form_metadata(unmapped_objects["dataset"], "dataset"),
         }
 
         return unmapped_objects
@@ -72,12 +73,9 @@ class XNATInput:
         xnat_catalogs = self.get_metadata_catalogs()
         xnat_datasets = self.get_metadata_datasets()
 
-        xnat_catalogs[0]['dataset'] = [dataset['uri'] for dataset in xnat_datasets]
+        xnat_catalogs[0]["dataset"] = [dataset["uri"] for dataset in xnat_datasets]
 
-        unmapped_objects = {
-            'catalog': xnat_catalogs,
-            'dataset': xnat_datasets
-        }
+        unmapped_objects = {"catalog": xnat_catalogs, "dataset": xnat_datasets}
         return unmapped_objects
 
     def get_metadata_datasets(self) -> List[Dict]:
@@ -174,14 +172,14 @@ class XNATInput:
             "identifier": dataset_uri,
             "issued": issued,
             "modified": modified,
-            'uri': dataset_uri
+            "uri": dataset_uri,
         }
 
         return dataset_dict
 
     def _format_investigator(self, investigator) -> Dict:
         creator = {
-            'name': [f"{investigator.title or ''} {investigator.firstname} {investigator.lastname}".strip()],
+            "name": [f"{investigator.title or ''} {investigator.firstname} {investigator.lastname}".strip()],
         }
         return creator
 
@@ -193,7 +191,7 @@ class XNATInput:
         List[Dict]
             A list with dictionaries containing metadata per catalog
         """
-        catalog = {'uri': self.session.url_for(self.session), 'dataset': []}
+        catalog = {"uri": self.session.url_for(self.session), "dataset": []}
         return [catalog]
 
     def _is_private_project(self, project) -> bool:
@@ -255,54 +253,55 @@ class XNATInput:
 
     def get_custom_form_metadata(self, project: XNATBaseObject, concept_type: str) -> Dict:
         """Retrieve custom form metadata for a specific project and concept type
-        
+
         Parameters
         ----------
         project : XNATBaseObject
             XNAT project instance
         concept_type : str
             The concept type ('dataset', etc.)
-            
+
         Returns
         -------
         Dict
             Dictionary containing custom form metadata, empty dict if no custom form or error
         """
         # Check if custom form ID is configured for this concept type
-        custom_form_id = self.config.get('xnat', {}).get(f'{concept_type}_form_id')
+        custom_form_id = self.config.get("xnat", {}).get(f"{concept_type}_form_id")
         if not custom_form_id:
             logger.debug("No custom form ID configured for concept type %s", concept_type)
             return {}
-            
+
         try:
             # Retrieve custom form data from XNAT API
             custom_fields_url = f"/xapi/custom-fields/projects/{project.id}/fields"
             response = project.xnat_session.get(custom_fields_url)
-            
+
             if response.status_code != 200:
-                logger.warning("Failed to retrieve custom fields for project %s: HTTP %d", 
-                             project.name, response.status_code)
+                logger.warning(
+                    "Failed to retrieve custom fields for project %s: HTTP %d", project.name, response.status_code
+                )
                 return {}
-                
+
             custom_fields_data = response.json()
 
             # Extract data for the specific custom form ID
             return self._parse_custom_form_response(custom_fields_data, custom_form_id)
-            
+
         except Exception as e:
             logger.warning("Error retrieving custom form metadata for project %s: %s", project.name, e)
             return {}
 
     def _parse_custom_form_response(self, custom_fields_data: Dict, custom_form_id: str) -> Dict:
         """Parse custom form response to extract metadata for specific form ID
-        
+
         Parameters
         ----------
         custom_fields_data : Dict
             Raw custom fields data from XNAT API - format: {form_id: {field_name: field_value, ...}, ...}
         custom_form_id : str
             ID of the custom form to extract data from
-            
+
         Returns
         -------
         Dict
@@ -311,7 +310,7 @@ class XNATInput:
         # The custom fields API returns a dictionary with form IDs as keys
         # and form field data as values
         form_metadata = custom_fields_data.get(custom_form_id, {})
-        
+
         # Filter out empty values from the form metadata
         filtered_metadata = self._filter_empty_values(form_metadata)
 
@@ -320,12 +319,12 @@ class XNATInput:
 
     def _filter_empty_values(self, data: Dict) -> Dict:
         """Filter out empty values from custom form dictionary
-        
+
         Parameters
         ----------
         data : Dict
             Custom form data dictionary
-            
+
         Returns
         -------
         Dict
@@ -337,15 +336,15 @@ class XNATInput:
                 continue
             filtered_dict[key] = value
         return filtered_dict
-    
+
     def _is_empty_value(self, value) -> bool:
         """Check if a value is considered empty
-        
+
         Parameters
         ----------
         value : Any
             Value to check
-            
+
         Returns
         -------
         bool
@@ -369,14 +368,14 @@ class XNATInput:
 
     def _update_metadata_with_custom_form(self, source_obj: Dict, custom_form_data: Dict) -> Dict:
         """Update metadata object with custom form data
-        
+
         Parameters
         ----------
         source_obj : Dict
             Source metadata dictionary to update
         custom_form_data : Dict
             Custom form metadata to apply
-            
+
         Returns
         -------
         Dict
@@ -384,44 +383,42 @@ class XNATInput:
         """
         if not custom_form_data:
             return source_obj
-            
+
         # Apply custom form data as overrides
         for key, value in custom_form_data.items():
-            if (key in source_obj) and (
-                    isinstance(source_obj[key], list) and not isinstance(value, list)
-            ):
+            if (key in source_obj) and (isinstance(source_obj[key], list) and not isinstance(value, list)):
                 source_obj[key] = [value]
             else:
                 # Add new field from custom form
                 source_obj[key] = value
-                
+
         return source_obj
 
     def apply_custom_form_metadata(self, metadata_objects: List[Dict], concept_type: str) -> List[Dict]:
         """Apply custom form metadata to a list of metadata objects
-        
+
         Parameters
         ----------
         metadata_objects : List[Dict]
             List of metadata dictionaries to update
         concept_type : str
             The concept type ('dataset', etc.)
-            
+
         Returns
         -------
         List[Dict]
             Updated list of metadata dictionaries with custom form data applied
         """
         # Only apply custom forms to dataset concept type for now
-        if concept_type != 'dataset':
+        if concept_type != "dataset":
             return metadata_objects
-            
+
         updated_objects = []
 
         # For datasets, we need to get the project for each dataset
         for metadata_obj in metadata_objects:
             # Extract project name from the dataset URI/identifier to get the project
-            project_name = self._extract_project_name_from_dataset_uri(metadata_obj.get('uri'))
+            project_name = self._extract_project_name_from_dataset_uri(metadata_obj.get("uri"))
 
             if project_name:
                 try:
@@ -434,17 +431,17 @@ class XNATInput:
                     updated_objects.append(metadata_obj)
             else:
                 updated_objects.append(metadata_obj)
-                
+
         return updated_objects
 
     def _extract_project_name_from_dataset_uri(self, uri: str) -> Union[str, None]:
         """Extract project name from dataset URI
-        
+
         Parameters
         ----------
         uri : str
             Dataset URI that should contain project information
-            
+
         Returns
         -------
         Union[str, None]
@@ -452,11 +449,11 @@ class XNATInput:
         """
         if not uri:
             return None
-            
+
         # Extract the project name after '/projects/' from https://xnat.example.com/projects/PROJECT_NAME
-        if isinstance(uri, str) and '/projects/' in uri:
-            return uri.split('/projects/')[-1]
-                
+        if isinstance(uri, str) and "/projects/" in uri:
+            return uri.rsplit("/projects/", maxsplit=1)[-1]
+
         return None
 
 
@@ -500,7 +497,7 @@ def filter_keyword(keywords: Union[List[str], None], config: Dict) -> List[str]:
     # Handle None keywords
     if keywords is None:
         keywords = []
-    
+
     # Remove opt-in keyword if configured
     if config.get("img2catalog") and config["img2catalog"].get("remove_optin", REMOVE_OPTIN_KEYWORD):
         optin_kw = config["img2catalog"].get("optin")
@@ -535,11 +532,7 @@ def split_keywords(keywords: Union[str, None]) -> List[str]:
     """
     keyword_list = []
     if keywords and len(keywords.strip()) > 0:
-        keyword_list = [
-            kw.strip()
-            for kw in re.split(r"[\.,;: ]", keywords)
-        ]
-
+        keyword_list = [kw.strip() for kw in re.split(r"[\.,;: ]", keywords)]
 
     # Filter out all empty strings, then return list
     return list(filter(None, keyword_list))
@@ -570,7 +563,7 @@ def check_optin_optout(project, config: Dict) -> bool:
     if optin_kw and optin_kw not in split_keywords(project.keywords):
         logger.debug("Project %s does not contain keyword on opt-in list, skipping", project)
         return False
-    elif optout_kw and optout_kw in split_keywords(project.keywords):
+    if optout_kw and optout_kw in split_keywords(project.keywords):
         logger.debug("Project %s contains keyword on opt-out list, skipping", project)
         return False
 

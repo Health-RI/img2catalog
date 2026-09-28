@@ -1,7 +1,6 @@
 import logging
 import uuid
 from pathlib import Path
-from uuid import UUID
 
 import click
 import xnat
@@ -12,30 +11,30 @@ from xnat import XNATSession
 from img2catalog import log
 from img2catalog.__about__ import __version__
 from img2catalog.configmanager import load_img2catalog_configuration
-
 from img2catalog.const import (
     EGA_API_URL_ENV,
     EGA_DEFAULT_API_URL,
     FDP_PASS_ENV,
     FDP_SERVER_ENV,
     FDP_USER_ENV,
+    SPARQL_ENV,
     XNAT_HOST_ENV,
     XNAT_PASS_ENV,
     XNAT_USER_ENV,
     XNATPY_HOST_ENV,
-    SPARQL_ENV,
 )
 from img2catalog.inputs.config import ConfigInput
-from img2catalog.inputs.xnat import XNATInput
-from img2catalog.mappings.xnat import map_xnat_to_healthriv2
-from img2catalog.inputs.csv_reader import read_csv, filter_by_unique_individuals
-from img2catalog.mappings.xds import map_xds_to_healthri_dcat_dataset
+from img2catalog.inputs.csv_reader import filter_by_unique_individuals, read_csv
 from img2catalog.inputs.ega import fetch_ega_datasets
+from img2catalog.inputs.xnat import XNATInput
 from img2catalog.mappings.ega import map_ega_to_healthri_dcat_dataset
+from img2catalog.mappings.xds import map_xds_to_healthri_dcat_dataset
+from img2catalog.mappings.xnat import map_xnat_to_healthriv2
 from img2catalog.outputs.fdp import FDPOutput
 from img2catalog.outputs.rdf import RDFOutput
 
 logger = logging.getLogger(__name__)
+
 
 def __connect_xnat(server: str, username: str, password: str) -> XNATSession:
     """This function collects credentials and connects to XNAT
@@ -142,15 +141,15 @@ def cli_click(
     default=None,
     envvar=XNAT_PASS_ENV,
     help=(
-            "Password to use with the username, leave empty when using netrc. If a"
-            " username is given and no password or environment variable, there will be a prompt on the console"
-            f" requesting the password. Environment variable: {XNAT_PASS_ENV}"
+        "Password to use with the username, leave empty when using netrc. If a"
+        " username is given and no password or environment variable, there will be a prompt on the console"
+        f" requesting the password. Environment variable: {XNAT_PASS_ENV}"
     ),
 )
 @click.pass_context
 def input_xnat(ctx: click.Context, server: str, username: str, password: str):
-    """ Extract metadata from the projects on an XNAT server."""
-    config = ctx.obj['config']
+    """Extract metadata from the projects on an XNAT server."""
+    config = ctx.obj["config"]
     # If username is not environment variable and password is, that's usually not intended
     # Thus we clear password so xnatpy can deal with it
     if ctx.get_parameter_source("username") != click.core.ParameterSource.ENVIRONMENT:
@@ -164,7 +163,8 @@ def input_xnat(ctx: click.Context, server: str, username: str, password: str):
         xnat_input = XNATInput(config, session)
         config_input = ConfigInput(config)
         unmapped_objects = xnat_input.get_and_update_metadata(config_input)
-    ctx.obj['unmapped_objects'] = unmapped_objects
+    ctx.obj["unmapped_objects"] = unmapped_objects
+
 
 cli_click.add_command(input_xnat)
 
@@ -172,12 +172,13 @@ cli_click.add_command(input_xnat)
 @click.group("map-xnat-hriv2")
 @click.pass_context
 def mapping_xnat_healthriv2(ctx: click.Context):
-    """ Map metadata from XNAT to the Health-RI v2 model."""
-    unmapped_objects = ctx.obj['unmapped_objects']
+    """Map metadata from XNAT to the Health-RI v2 model."""
+    unmapped_objects = ctx.obj["unmapped_objects"]
 
     mapped_objects = map_xnat_to_healthriv2(unmapped_objects)
 
-    ctx.obj['mapped_objects'] = mapped_objects
+    ctx.obj["mapped_objects"] = mapped_objects
+
 
 input_xnat.add_command(mapping_xnat_healthriv2)
 
@@ -207,9 +208,9 @@ input_xnat.add_command(mapping_xnat_healthriv2)
 )
 @click.pass_context
 def output_rdf(ctx: click.Context, output: click.Path, format: str):
-    """ Serialize metadata to RDF, either to file or stdout. """
+    """Serialize metadata to RDF, either to file or stdout."""
     config = ctx.obj["config"]
-    mapped_objects = ctx.obj['mapped_objects']
+    mapped_objects = ctx.obj["mapped_objects"]
 
     rdf_output = RDFOutput(config, format)
 
@@ -236,12 +237,11 @@ def output_rdf(ctx: click.Context, output: click.Path, format: str):
 @mapping_xnat_healthriv2.command(name="fdp")
 @click.pass_context
 def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catalog: URIRef, sparql: str):
-    """ Push metadata to a FAIR Data Point (FDP). """
+    """Push metadata to a FAIR Data Point (FDP)."""
     config = ctx.obj["config"]
-    mapped_objects = ctx.obj['mapped_objects']
+    mapped_objects = ctx.obj["mapped_objects"]
 
-    fdp_output = FDPOutput(config, fdp, username, password,
-                           catalog_uri=catalog, sparql=sparql)
+    fdp_output = FDPOutput(config, fdp, username, password, catalog_uri=catalog, sparql=sparql)
 
     fdp_output.push_to_fdp(mapped_objects)
 
@@ -271,16 +271,16 @@ def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catal
     default=None,
     envvar=XNAT_PASS_ENV,
     help=(
-            "Password to use with the username, leave empty when using netrc. If a"
-            " username is given and no password or environment variable, there will be a prompt on the console"
-            f" requesting the password. Environment variable: {XNAT_PASS_ENV}"
+        "Password to use with the username, leave empty when using netrc. If a"
+        " username is given and no password or environment variable, there will be a prompt on the console"
+        f" requesting the password. Environment variable: {XNAT_PASS_ENV}"
     ),
 )
 @click.pass_context
 def input_xnat_project(ctx: click.Context, project_id: str, server: str, username: str, password: str):
-    """ Extract metadata from one XNAT project.
+    """Extract metadata from one XNAT project.
 
-     The XNAT project is specified by project ID."""
+    The XNAT project is specified by project ID."""
     config = ctx.obj["config"]
     # If username is not environment variable and password is, that's usually not intended
     # Thus we clear password so xnatpy can deal with it
@@ -297,29 +297,24 @@ def input_xnat_project(ctx: click.Context, project_id: str, server: str, usernam
         config_input = ConfigInput(config)
 
         xnat_catalog = xnat_input.get_metadata_catalogs()
-        config_catalog = config_input.get_metadata_concept('catalog')
+        config_catalog = config_input.get_metadata_concept("catalog")
         xnat_catalog = config_input.update_metadata(xnat_catalog, config_catalog)
 
         xnat_datasets = [xnat_input.project_to_dataset(project)]
-        config_dataset = config_input.get_metadata_concept('dataset')
+        config_dataset = config_input.get_metadata_concept("dataset")
         xnat_datasets = config_input.update_metadata(xnat_datasets, config_dataset)
 
-    unmapped_objects = {
-        'catalog': xnat_catalog,
-        'dataset': xnat_datasets
-    }
-    ctx.obj['unmapped_objects'] = unmapped_objects
+    unmapped_objects = {"catalog": xnat_catalog, "dataset": xnat_datasets}
+    ctx.obj["unmapped_objects"] = unmapped_objects
 
 
 cli_click.add_command(input_xnat_project)
 input_xnat_project.add_command(mapping_xnat_healthriv2)
 
+
 @click.group(name="xds")
 @click.option(
-    "--input",
-    type=click.Path(exists=True, path_type=Path),
-    required=True,
-    help="Path to the XDS CSV data file."
+    "--input", type=click.Path(exists=True, path_type=Path), required=True, help="Path to the XDS CSV data file."
 )
 @click.pass_context
 def input_xds(ctx: click.Context, input: Path):
@@ -327,9 +322,8 @@ def input_xds(ctx: click.Context, input: Path):
     config = ctx.obj["config"]
     csv_rows = read_csv(input)
     csv_rows = filter_by_unique_individuals(csv_rows, config)
-    ctx.obj['unmapped_objects'] = {
-        'dataset': csv_rows
-    }
+    ctx.obj["unmapped_objects"] = {"dataset": csv_rows}
+
 
 cli_click.add_command(input_xds)
 
@@ -339,19 +333,15 @@ cli_click.add_command(input_xds)
 def mapping_xds(ctx: click.Context):
     """Map metadata from XDS to the Health-RI model."""
     config = ctx.obj["config"]
-    unmapped_objects = ctx.obj['unmapped_objects']
+    unmapped_objects = ctx.obj["unmapped_objects"]
 
     datasets = []
-    for i, row in unmapped_objects['dataset'].iterrows():
+    for i, row in unmapped_objects["dataset"].iterrows():
         dataset = map_xds_to_healthri_dcat_dataset(row, config)
-        datasets.append({
-            'uri': URIRef(f"http://img2catalog.internal/dataset/{uuid.uuid4()}"),
-            'model_object': dataset
-        })
+        datasets.append({"uri": URIRef(f"http://img2catalog.internal/dataset/{uuid.uuid4()}"), "model_object": dataset})
 
-    ctx.obj['mapped_objects'] = {
-        'dataset': datasets
-    }
+    ctx.obj["mapped_objects"] = {"dataset": datasets}
+
 
 input_xds.add_command(mapping_xds)
 mapping_xds.add_command(output_fdp)
@@ -378,9 +368,8 @@ mapping_xds.add_command(output_fdp)
 def input_ega(ctx: click.Context, dataset_ids: tuple, api_url: str):
     """Extract dataset metadata from the EGA (European Genome-phenome Archive) metadata API."""
     ega_datasets = fetch_ega_datasets(list(dataset_ids), api_url)
-    ctx.obj['unmapped_objects'] = {
-        'dataset': ega_datasets
-    }
+    ctx.obj["unmapped_objects"] = {"dataset": ega_datasets}
+
 
 cli_click.add_command(input_ega)
 
@@ -390,19 +379,20 @@ cli_click.add_command(input_ega)
 def mapping_ega_healthriv2(ctx: click.Context):
     """Map metadata from EGA to the Health-RI model."""
     config = ctx.obj["config"]
-    unmapped_objects = ctx.obj['unmapped_objects']
+    unmapped_objects = ctx.obj["unmapped_objects"]
 
     datasets = []
-    for ega_dataset in unmapped_objects['dataset']:
+    for ega_dataset in unmapped_objects["dataset"]:
         dataset = map_ega_to_healthri_dcat_dataset(ega_dataset, config)
-        datasets.append({
-            'uri': URIRef(f"http://img2catalog.internal/dataset/{ega_dataset['accession_id']}"),
-            'model_object': dataset
-        })
+        datasets.append(
+            {
+                "uri": URIRef(f"http://img2catalog.internal/dataset/{ega_dataset['accession_id']}"),
+                "model_object": dataset,
+            }
+        )
 
-    ctx.obj['mapped_objects'] = {
-        'dataset': datasets
-    }
+    ctx.obj["mapped_objects"] = {"dataset": datasets}
+
 
 input_ega.add_command(mapping_ega_healthriv2)
 mapping_ega_healthriv2.add_command(output_rdf)

@@ -1,12 +1,11 @@
 import logging
-
-import pytest
 from unittest.mock import patch
 
+import pytest
 from requests_mock import Mocker
 from xnat.session import XNATSession
 
-from img2catalog.inputs.xnat import XNATParserError, XNATInput
+from img2catalog.inputs.xnat import XNATInput, XNATParserError
 
 logger = logging.getLogger(__name__)
 
