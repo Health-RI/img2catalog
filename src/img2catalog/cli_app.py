@@ -28,7 +28,7 @@ from img2catalog.const import (
 from img2catalog.inputs.config import ConfigInput
 from img2catalog.inputs.xnat import XNATInput
 from img2catalog.mappings.xnat import map_xnat_to_healthriv2
-from img2catalog.inputs.csv_reader import read_csv
+from img2catalog.inputs.csv_reader import read_csv, filter_by_unique_individuals
 from img2catalog.mappings.xds import map_xds_to_healthri_dcat_dataset
 from img2catalog.inputs.ega import fetch_ega_datasets
 from img2catalog.mappings.ega import map_ega_to_healthri_dcat_dataset
@@ -324,7 +324,9 @@ input_xnat_project.add_command(mapping_xnat_healthriv2)
 @click.pass_context
 def input_xds(ctx: click.Context, input: Path):
     """Extract metadata from an XDS CSV file."""
+    config = ctx.obj["config"]
     csv_rows = read_csv(input)
+    csv_rows = filter_by_unique_individuals(csv_rows, config)
     ctx.obj['unmapped_objects'] = {
         'dataset': csv_rows
     }

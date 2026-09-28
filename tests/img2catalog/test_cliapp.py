@@ -307,6 +307,39 @@ def test_fdp_cli_env(connect, mock_SPARQLClient, mock_FDPClient, isolated_cli_ru
     connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
 
 
+@patch("img2catalog.outputs.fdp.FDPOutput.__init__")
+@patch("fairclient.fdpclient.FDPClient.__init__")
+def test_xds_cli(mock_FDPClient, mock_FDPOutput, isolated_cli_runner, xds_csv_example):
+    """ Test CLI push to FDP, using an XDS CSV export as input """
+    mock_FDPClient.return_value = None
+    mock_FDPOutput.return_value = None
+
+    config_path = str(pathlib.Path(__file__).parent / "examples" / "xds" / "example-config.toml")
+
+    isolated_cli_runner.invoke(
+        cli_click,
+        [
+            "--config",
+            config_path,
+            "xds",
+            "--input",
+            xds_csv_example,
+            "map-xds",
+            "fdp",
+            "--fdp",
+            "http://fdp.example.com",
+            "-u",
+            "test",
+            "-p",
+            "more_test",
+            "-c",
+            "http://catalog.example.com",
+        ],
+    )
+
+    mock_FDPOutput.assert_called_once()
+
+
 @patch("xnat.connect")
 @patch.object(XNATInput, 'project_to_dataset')
 def test_output_project(

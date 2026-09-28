@@ -103,9 +103,17 @@ The metadata can be supplemented by defining fallback values in the configuratio
 
 ### Configuration XDS
 
-The XDS (External Data Source) module allows you to ingest metadata directly from structured CSV files. This requires two primary configuration components:
+The XDS (Cross-enterprise Document Sharing) module allows you to ingest metadata directly from structured CSV files. This requires two primary configuration components:
 - CSV file: contains the dataset metadata rows. See `/examples/xds/input_example.csv` for the expected format.
 - Config file (.toml):  defines metadata fields that apply to all datasets (e.g. publisher, contact point, access rights). Base yours on `/examples/xds/example-config.toml`.
+
+Datasets can be filtered by minimum number of unique individuals, so that small, real-world datasets that are
+not useful for reuse are not submitted to the FDP. Configure the minimum in the `[xds]` section:
+```toml
+[xds]
+minimum_unique_individuals = 10
+```
+If not set, no datasets are filtered out.
 
 
 
