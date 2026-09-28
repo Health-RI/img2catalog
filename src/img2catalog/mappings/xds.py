@@ -45,7 +45,7 @@ def format_title(data) -> str:
         formatted_date_range = format_date(start, end)
 
     except KeyError as e:
-        raise KeyError(f"Missing required field in data: {e}")
+        raise KeyError(f"Missing required field in data: {e}") from e
 
     return f"{institute} - {modality} - {formatted_date_range}"
 
@@ -77,7 +77,7 @@ def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
         formatted_name=contact_point_config["formatted_name"],
     )
 
-    dataset = HRIDataset(
+    return HRIDataset(
         # MANDATORY DCAT FIELDS
         identifier=LiteralField(value=dataset_config["identifier"]),
         title=[LiteralField(value=dataset_formatted_title)],
@@ -95,5 +95,3 @@ def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
         minimum_typical_age=int(row["minTypicalAge"]),
         maximum_typical_age=int(row["maxTypicalAge"]),
     )
-
-    return dataset

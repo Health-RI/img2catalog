@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 @patch("xnat.core.XNATBaseObject")
 @pytest.mark.parametrize(
-    "test_input, expected",
+    ("test_input", "expected"),
     [
         ("public", False),
         ("PUBLIC", False),

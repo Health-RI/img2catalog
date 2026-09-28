@@ -1,4 +1,5 @@
 import logging
+import sys
 from pathlib import Path
 from typing import Dict, List, Union
 
@@ -55,7 +56,7 @@ class RDFOutput:
         """
         self.create_graph(input_obj)
         logger.debug("Sending output to stdout")
-        print(self.graph.serialize(format=self.format))
+        sys.stdout.write(self.graph.serialize(format=self.format) + "\n")
 
     def to_file(self, input_obj: Dict[str, List[Dict]], output_path: Union[str, Path]) -> None:
         """Create Health-RI concept objects to file

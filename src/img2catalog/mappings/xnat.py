@@ -152,5 +152,4 @@ def map_xnat_to_healthriv2(unmapped_objects: Dict[str, List[Dict]]) -> Dict[str,
             }
         )
 
-    mapped_objects = {"catalog": [catalog_obj], "dataset": datasets}
-    return mapped_objects
+    return {"catalog": [catalog_obj], "dataset": datasets}

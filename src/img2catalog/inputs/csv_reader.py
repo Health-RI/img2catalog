@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 def read_csv(csv_path: str) -> DataFrame:
     try:
         return pd.read_csv(csv_path)
-    except Exception as e:
-        print(f"error reading .csv file: {e}")
+    except Exception:
+        logger.exception("Error reading .csv file")
         return pd.DataFrame()
 
 

@@ -15,7 +15,7 @@ def test_format_temporal_coverage_raises_value_error():
     invalid_temporal_coverage = "01-01-2026_31-12-2026"
 
     # Act & Assert
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="not enough values to unpack"):
         format_temporal_coverage(invalid_temporal_coverage)
 
 

@@ -6,7 +6,7 @@ from img2catalog.inputs.xnat import check_optin_optout, split_keywords
 
 
 @pytest.mark.parametrize(
-    "test_str, expected",
+    ("test_str", "expected"),
     [
         # Various type of whitespace and variations
         ("", []),

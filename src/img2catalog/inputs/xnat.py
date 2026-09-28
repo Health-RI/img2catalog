@@ -2,7 +2,7 @@ import datetime
 import html
 import logging
 import re
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 from tqdm import tqdm
 from xnat.core import XNATBaseObject
@@ -12,6 +12,8 @@ from img2catalog.const import REMOVE_OPTIN_KEYWORD
 from img2catalog.inputs.config import ConfigInput
 
 logger = logging.getLogger(__name__)
+
+HTTP_OK = 200
 
 
 class XNATInput:
@@ -55,12 +57,10 @@ class XNATInput:
         }
 
         # 3. Apply custom form overrides (new functionality)
-        unmapped_objects = {
+        return {
             "catalog": self.apply_custom_form_metadata(unmapped_objects["catalog"], "catalog"),
             "dataset": self.apply_custom_form_metadata(unmapped_objects["dataset"], "dataset"),
         }
-
-        return unmapped_objects
 
     def get_metadata(self) -> Dict[str, List[Dict]]:
         """Gathers metadata from XNAT
@@ -75,8 +75,7 @@ class XNATInput:
 
         xnat_catalogs[0]["dataset"] = [dataset["uri"] for dataset in xnat_datasets]
 
-        unmapped_objects = {"catalog": xnat_catalogs, "dataset": xnat_datasets}
-        return unmapped_objects
+        return {"catalog": xnat_catalogs, "dataset": xnat_datasets}
 
     def get_metadata_datasets(self) -> List[Dict]:
         """Gathers metadata for datasets from XNAT projects
@@ -95,11 +94,11 @@ class XNATInput:
                 dcat_dataset = self.project_to_dataset(p)
 
             except XNATParserError as v:
-                logger.info(f"Project {p.name} could not be converted into DCAT: {v}")
+                logger.info("Project %s could not be converted into DCAT: %s", p.name, v)
 
                 if v.error_list:
                     for err in v.error_list:
-                        logger.info(f"- {err}")
+                        logger.info("- %s", err)
                 failure_counter += 1
                 continue
 
@@ -164,7 +163,7 @@ class XNATInput:
 
         project_description = html.unescape(project.description)
 
-        dataset_dict = {
+        return {
             "title": [project.name],
             "description": [project_description],
             "creator": creator_list,
@@ -175,13 +174,10 @@ class XNATInput:
             "uri": dataset_uri,
         }
 
-        return dataset_dict
-
     def _format_investigator(self, investigator) -> Dict:
-        creator = {
+        return {
             "name": [f"{investigator.title or ''} {investigator.firstname} {investigator.lastname}".strip()],
         }
-        return creator
 
     def get_metadata_catalogs(self) -> List[Dict]:
         """Gathers metadata for catalogs from the XNAT instance
@@ -277,7 +273,7 @@ class XNATInput:
             custom_fields_url = f"/xapi/custom-fields/projects/{project.id}/fields"
             response = project.xnat_session.get(custom_fields_url)
 
-            if response.status_code != 200:
+            if response.status_code != HTTP_OK:
                 logger.warning(
                     "Failed to retrieve custom fields for project %s: HTTP %d", project.name, response.status_code
                 )
@@ -469,7 +465,7 @@ class XNATParserError(ValueError):
 
     """
 
-    def __init__(self, message: str, error_list: List[str] = None):
+    def __init__(self, message: str, error_list: Optional[List[str]] = None):
         super().__init__(message)
         self.error_list = error_list
 

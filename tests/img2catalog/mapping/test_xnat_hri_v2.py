@@ -146,7 +146,6 @@ def test_invalid_project_no_keywords(empty_graph):
                 "description": ['In this project, we test "xnat" & dcat and make sure a description appears.'],
                 "issued": datetime(2024, 4, 1, 0, 0),
                 "identifier": "http://localhost/data/archive/projects/test_img2catalog",
-                # "keyword": ['test', 'demo', 'dcat'],
                 "modified": datetime(2024, 4, 1, 0, 0),
                 "publisher": {
                     "identifier": ["http://example.com"],
@@ -478,7 +477,7 @@ BASE_CATALOG_TEMPLATE = {
 
 
 @pytest.mark.parametrize(
-    "field_name,field_value",
+    ("field_name", "field_value"),
     [
         # URI list fields
         ("health_theme", ["http://example.com/health1", "http://example.com/health2"]),
@@ -538,7 +537,7 @@ def test_optional_dataset_fields(field_name, field_value):
 
 
 @pytest.mark.parametrize(
-    "field_name,field_value",
+    ("field_name", "field_value"),
     [
         # Complex fields that require special handling
         ("other_identifier", [{"notation": "ALT-ID-123", "schema_agency": "http://example.com/agency"}]),

@@ -67,7 +67,7 @@ class ConfigInput:
                 # a list, and update each item in the list one by one.
                 items_already_updated = []
                 for source_key, source_value in source_obj.items():
-                    if source_key in config_object.keys():
+                    if source_key in config_object:
                         if isinstance(source_value, list):
                             for item in source_value:
                                 item.update(config_object[source_key])

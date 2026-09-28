@@ -46,7 +46,6 @@ def test_xnat_integration(
             f"{tmp_path}/output.ttl",
         ],
     )
-    print(result.stdout)
     result_graph = empty_graph.parse(source=f"{tmp_path}/output.ttl")
     reference_graph = second_empty_graph.parse(
         source=pathlib.Path(__file__).parent.parent / "references" / "xnat_integration_test.ttl"

@@ -23,24 +23,18 @@ pytest_plugins = [
 @pytest.fixture
 def config():
     """Loads the default configuration TOML"""
-    config_path = TEST_CONFIG
-
-    with open(config_path, "rb") as f:
-        config = tomllib.load(f)
-
-    return config
+    with TEST_CONFIG.open("rb") as f:
+        return tomllib.load(f)
 
 
 @pytest.fixture
 def mock_catalog():
-    catalog = DCATCatalog(title=["Example XNAT catalog"], description=["This is an example XNAT catalog description"])
-    return catalog
+    return DCATCatalog(title=["Example XNAT catalog"], description=["This is an example XNAT catalog description"])
 
 
 @pytest.fixture
 def mock_dataset():
-    dataset = DCATDataset(title=["test project"], description=["test description"])
-    return dataset
+    return DCATDataset(title=["test project"], description=["test description"])
 
 
 @pytest.fixture

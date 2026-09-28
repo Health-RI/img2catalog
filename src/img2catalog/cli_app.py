@@ -55,9 +55,7 @@ def __connect_xnat(server: str, username: str, password: str) -> XNATSession:
 
     logger.debug("Connecting to server %s using username %s", server, username)
 
-    session = xnat.connect(server=server, user=username, password=password)
-
-    return session
+    return xnat.connect(server=server, user=username, password=password)
 
 
 @click.group(invoke_without_command=True)
@@ -102,7 +100,7 @@ def cli_click(
 ):
     """Extract metadata from an imaging data repository."""
     ctx.ensure_object(dict)
-    log._add_file_handler(logfile)
+    log.add_file_handler(logfile)
     logger.info("======= img2catalog New Run ========")
     if verbose:
         log.setLevel(logging.DEBUG)
@@ -124,7 +122,10 @@ def cli_click(
     type=str,
     envvar=[XNATPY_HOST_ENV, XNAT_HOST_ENV],
     required=True,
-    help=f"URI of the server to connect to (including http:// or https://). If not set, will use environment variables {XNATPY_HOST_ENV} or {XNAT_HOST_ENV}.",
+    help=(
+        "URI of the server to connect to (including http:// or https://). If not set, will use"
+        f" environment variables {XNATPY_HOST_ENV} or {XNAT_HOST_ENV}."
+    ),
 )
 @click.option(
     "-u",
@@ -152,9 +153,11 @@ def input_xnat(ctx: click.Context, server: str, username: str, password: str):
     config = ctx.obj["config"]
     # If username is not environment variable and password is, that's usually not intended
     # Thus we clear password so xnatpy can deal with it
-    if ctx.get_parameter_source("username") != click.core.ParameterSource.ENVIRONMENT:
-        if ctx.get_parameter_source("password") == click.core.ParameterSource.ENVIRONMENT:
-            password = None
+    if (
+        ctx.get_parameter_source("username") != click.core.ParameterSource.ENVIRONMENT
+        and ctx.get_parameter_source("password") == click.core.ParameterSource.ENVIRONMENT
+    ):
+        password = None
 
     ctx.obj["xnat_conn"] = __connect_xnat(server, username, password)
 
@@ -254,7 +257,10 @@ def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catal
     type=str,
     envvar=[XNATPY_HOST_ENV, XNAT_HOST_ENV],
     required=True,
-    help=f"URI of the server to connect to (including http:// or https://). If not set, will use environment variables {XNATPY_HOST_ENV} or {XNAT_HOST_ENV}.",
+    help=(
+        "URI of the server to connect to (including http:// or https://). If not set, will use"
+        f" environment variables {XNATPY_HOST_ENV} or {XNAT_HOST_ENV}."
+    ),
 )
 @click.option(
     "-u",
@@ -284,9 +290,11 @@ def input_xnat_project(ctx: click.Context, project_id: str, server: str, usernam
     config = ctx.obj["config"]
     # If username is not environment variable and password is, that's usually not intended
     # Thus we clear password so xnatpy can deal with it
-    if ctx.get_parameter_source("username") != click.core.ParameterSource.ENVIRONMENT:
-        if ctx.get_parameter_source("password") == click.core.ParameterSource.ENVIRONMENT:
-            password = None
+    if (
+        ctx.get_parameter_source("username") != click.core.ParameterSource.ENVIRONMENT
+        and ctx.get_parameter_source("password") == click.core.ParameterSource.ENVIRONMENT
+    ):
+        password = None
 
     ctx.obj["xnat_conn"] = __connect_xnat(server, username, password)
 
@@ -336,7 +344,7 @@ def mapping_xds(ctx: click.Context):
     unmapped_objects = ctx.obj["unmapped_objects"]
 
     datasets = []
-    for i, row in unmapped_objects["dataset"].iterrows():
+    for _i, row in unmapped_objects["dataset"].iterrows():
         dataset = map_xds_to_healthri_dcat_dataset(row, config)
         datasets.append({"uri": URIRef(f"http://img2catalog.internal/dataset/{uuid.uuid4()}"), "model_object": dataset})
 

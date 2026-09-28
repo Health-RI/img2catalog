@@ -42,7 +42,6 @@ def test_xnat_to_fdp_push_error(mock_fdp_client, mock_add_or_update_dataset, moc
     # FIXME: Figure out what the goal is of this test also
     mock_add_or_update_dataset.side_effect = [ValueError, None]
 
-    # xnat_to_FDP(None, config, URIRef("http://example.com/catalog"), None, None)
     mapped_objects = {
         "catalog": [],
         "dataset": [
@@ -76,5 +75,5 @@ def test_fdp_catalog_uri_from_config(mock_fdp_client, config):
 
 @patch.object(FDPClient, "__init__", return_value=None)
 def test_fdp_no_catalog_uri(mock_fdp_client):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="No catalog URI set to push to"):
         _ = FDPOutput({}, fdp="http://localhost", fdp_username=None, fdp_password=None)
