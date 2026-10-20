@@ -4,8 +4,8 @@ title = "Example Imaging Dataset Title"
 description = "This is imaging data description"
 theme = ["http://publications.europa.eu/resource/authority/data-theme/HEAL"]
 keyword = ["list", "of", "key", "words"]
-access_rights = "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
-applicable_legislation = ["http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC"]
+access_rights = "http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC"
+applicable_legislation = ["http://publications.europa.eu/resource/authority/access-right/PUBLIC"]
 
 [dataset.publisher]
 name = ["Example publisher list"]
