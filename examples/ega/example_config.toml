@@ -5,7 +5,10 @@ description = "This is imaging data description"
 theme = ["http://publications.europa.eu/resource/authority/data-theme/HEAL"]
 keyword = ["list", "of", "key", "words"]
 access_rights = "http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC"
-applicable_legislation = ["http://publications.europa.eu/resource/authority/access-right/PUBLIC"]
+applicable_legislation = ["http://data.europa.eu/eli/reg/2025/327/oj"]
+type = ["http://publications.europa.eu/resource/authority/dataset-type/STATISTICAL"]
+personal_data = ["https://w3id.org/dpv/pd#DNACode"]
+language = ["http://publications.europa.eu/resource/authority/language/ENG"]
 
 [dataset.publisher]
 name = ["Example publisher list"]
