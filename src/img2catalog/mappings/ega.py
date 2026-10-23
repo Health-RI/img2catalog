@@ -5,7 +5,8 @@ from typing import Any, Callable, Dict, List, Optional
 from pydantic import AnyHttpUrl
 from rdflib import URIRef
 from sempyro import LiteralField
-from sempyro.dcat import AccessRights
+from sempyro.dcat import AccessRights, Attribution
+from sempyro.foaf import Agent
 from sempyro.hri_dcat import DatasetStatus, DatasetTheme, HRIAgent, HRIDataset, HRIVCard
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,37 @@ def get_keyword(ega_dataset: Dict) -> List[LiteralField]:
 def get_contact_page(ega_dataset: Dict) -> List[str]:
     """Build the EGA archive URLs of the Data Access Committees (DACs) controlling the dataset."""
     return [f"{EGA_DAC_URL}{dac['accession_id']}" for dac in ega_dataset.get("dacs", [])]
+
+
+def get_qualified_attribution(ega_dataset: Dict, dataset_config: Dict) -> List[Attribution]:
+    """Attribute the dataset to the main contact(s) of its Data Access Committees (DACs).
+
+    EGA does not provide an ORCID for DAC contacts, so the DAC page is used as the agent's identifier.
+    The role is not present in EGA metadata and is taken from the local node configuration when set.
+    """
+    attribution_kwargs = {}
+    role = dataset_config.get("qualified_attribution", {}).get("role")
+    if role:
+        attribution_kwargs["role"] = role
+
+    attributions = []
+    for dac in ega_dataset.get("dacs", []):
+        for contact in dac.get("contacts") or []:
+            if not contact.get("is_main"):
+                continue
+
+            agent_kwargs = {}
+            if contact.get("email"):
+                agent_kwargs["mbox"] = [f"mailto:{contact['email']}"]
+
+            agent = Agent(
+                name=[LiteralField(value=f"{contact.get('first_name', '')} {contact.get('surname', '')}".strip())],
+                identifier=LiteralField(value=f"{EGA_DAC_URL}{dac['accession_id']}"),
+                **agent_kwargs,
+            )
+            attributions.append(Attribution(agent=agent, **attribution_kwargs))
+
+    return attributions
 
 
 def map_ega_to_healthri_dcat_dataset(ega_dataset: Dict, config: Dict) -> HRIDataset:
@@ -129,6 +161,7 @@ def map_ega_to_healthri_dcat_dataset(ega_dataset: Dict, config: Dict) -> HRIData
         ),
         "publisher": publisher,
         "purpose": _optional(dataset_config, "purpose", _to_urls),
+        "qualified_attribution": get_qualified_attribution(ega_dataset, dataset_config) or None,
         "release_date": get_release_date(ega_dataset),
         "status": _optional(dataset_config, "status", lambda value: DatasetStatus(URIRef(value))),
         "theme": dataset_themes,
