@@ -27,7 +27,7 @@ from img2catalog.inputs.config import ConfigInput
 from img2catalog.inputs.csv_reader import filter_by_unique_individuals, read_csv
 from img2catalog.inputs.ega import fetch_ega_datasets
 from img2catalog.inputs.xnat import XNATInput
-from img2catalog.mappings.ega import map_ega_to_healthri_dcat_dataset
+from img2catalog.mappings.ega import map_ega_to_healthri_dcat_catalog, map_ega_to_healthri_dcat_dataset
 from img2catalog.mappings.xds import map_xds_to_healthri_dcat_dataset
 from img2catalog.mappings.xnat import map_xnat_to_healthriv2
 from img2catalog.outputs.fdp import FDPOutput
@@ -399,7 +399,16 @@ def mapping_ega_healthriv2(ctx: click.Context):
             }
         )
 
-    ctx.obj["mapped_objects"] = {"dataset": datasets}
+    mapped_objects = {"dataset": datasets}
+
+    # A Catalog grouping the EGA datasets is optional, as EGA has no equivalent of it
+    if "catalog" in config:
+        catalog = map_ega_to_healthri_dcat_catalog(config, [dataset["uri"] for dataset in datasets])
+        mapped_objects["catalog"] = [
+            {"uri": URIRef("http://img2catalog.internal/catalog/ega"), "model_object": catalog}
+        ]
+
+    ctx.obj["mapped_objects"] = mapped_objects
 
 
 input_ega.add_command(mapping_ega_healthriv2)

@@ -23,3 +23,11 @@ email = "mailto:datamanager@example.com"
 [distribution]
 license = "http://definities.geostandaarden.nl/DCAT-AP-NL/id/waarde/licentieValue/niet-open"
 language = ["http://publications.europa.eu/resource/authority/language/ENG"]
+
+[catalog]
+title = "Example EGA catalog"
+description = "This is an example EGA catalog description"
+
+[catalog.contact_point]
+formatted_name = "Example Data Management office"
+email = "mailto:datamanager@example.com"

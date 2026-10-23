@@ -1,13 +1,21 @@
 import logging
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from pydantic import AnyHttpUrl
 from rdflib import URIRef
 from sempyro import LiteralField
 from sempyro.dcat import AccessRights, Attribution
 from sempyro.foaf import Agent
-from sempyro.hri_dcat import DatasetStatus, DatasetTheme, HRIAgent, HRIDataset, HRIDistribution, HRIVCard
+from sempyro.hri_dcat import (
+    DatasetStatus,
+    DatasetTheme,
+    HRIAgent,
+    HRICatalog,
+    HRIDataset,
+    HRIDistribution,
+    HRIVCard,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +32,13 @@ TEXT_FILE_EXTENSIONS = {"vcf", "sam", "txt", "csv", "tsv"}
 
 def _to_urls(values: List[str]) -> List[AnyHttpUrl]:
     return [AnyHttpUrl(value) for value in values]
+
+
+def _to_datetime(value: Union[str, datetime]) -> datetime:
+    """Accept a TOML datetime or an ISO 8601 string; "Z" is only parsed by fromisoformat from Python 3.11."""
+    if isinstance(value, datetime):
+        return value
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 def _optional(dataset_config: Dict, key: str, convert: Callable[[Any], Any]) -> Any:
@@ -147,9 +162,25 @@ def map_ega_to_healthri_dcat_distributions(ega_dataset: Dict, config: Dict) -> L
     return distributions
 
 
+def get_publisher(publisher_config: Dict) -> HRIAgent:
+    """Build the publishing organisation, which is not present in EGA metadata, from the local node configuration."""
+    publisher_identifiers = [LiteralField(value=identifier) for identifier in publisher_config["identifier"]]
+
+    publisher_kwargs = {}
+    if "publisher_type" in publisher_config:
+        publisher_kwargs["publisher_type"] = publisher_config["publisher_type"]
+
+    return HRIAgent(
+        name=[LiteralField(value=name) for name in publisher_config["name"]],
+        identifier=publisher_identifiers,
+        mbox=publisher_config["mbox"],
+        homepage=publisher_config["homepage"],
+        **publisher_kwargs,
+    )
+
+
 def map_ega_to_healthri_dcat_dataset(ega_dataset: Dict, config: Dict) -> HRIDataset:
     dataset_config = config["dataset"]
-    publisher_config = dataset_config["publisher"]
     contact_point_config = dataset_config["contact_point"]
 
     dataset_themes = [DatasetTheme(URIRef(theme)) for theme in dataset_config["theme"]]
@@ -159,19 +190,7 @@ def map_ega_to_healthri_dcat_dataset(ega_dataset: Dict, config: Dict) -> HRIData
 
     dataset_applicable_legislation = _to_urls(dataset_config["applicable_legislation"])
 
-    publisher_identifiers = [LiteralField(value=identifier) for identifier in publisher_config["identifier"]]
-
-    publisher_kwargs = {}
-    if "publisher_type" in publisher_config:
-        publisher_kwargs["publisher_type"] = publisher_config["publisher_type"]
-
-    publisher = HRIAgent(
-        name=[LiteralField(value=name) for name in publisher_config["name"]],
-        identifier=publisher_identifiers,
-        mbox=publisher_config["mbox"],
-        homepage=publisher_config["homepage"],
-        **publisher_kwargs,
-    )
+    publisher = get_publisher(dataset_config["publisher"])
 
     contact_point_kwargs = {}
     contact_page = get_contact_page(ega_dataset)
@@ -220,3 +239,32 @@ def map_ega_to_healthri_dcat_dataset(ega_dataset: Dict, config: Dict) -> HRIData
     }
 
     return HRIDataset(**{field: value for field, value in dataset_fields.items() if value is not None})
+
+
+def map_ega_to_healthri_dcat_catalog(config: Dict, dataset_uris: List[URIRef]) -> HRICatalog:
+    """Map a Catalog grouping all EGA datasets of one institute.
+
+    EGA has no equivalent of a Catalog, so its properties are supplied from the local node configuration. The
+    institute publishing the datasets is also the creator and publisher of the Catalog.
+    """
+    catalog_config = config["catalog"]
+    contact_point_config = catalog_config["contact_point"]
+    publisher = get_publisher(config["dataset"]["publisher"])
+
+    # Properties in the order of the FSD mapping document
+    catalog_fields = {
+        "contact_point": HRIVCard(
+            hasEmail=contact_point_config["email"],
+            formatted_name=contact_point_config["formatted_name"],
+        ),
+        "creator": [publisher],
+        "dataset": dataset_uris,
+        "description": [LiteralField(value=catalog_config["description"])],
+        "geographical_coverage": _optional(catalog_config, "spatial", _to_urls),
+        "language": _optional(catalog_config, "language", _to_urls),
+        "publisher": publisher,
+        "release_date": _optional(catalog_config, "release_date", _to_datetime),
+        "title": [LiteralField(value=catalog_config["title"])],
+    }
+
+    return HRICatalog(**{field: value for field, value in catalog_fields.items() if value is not None})
