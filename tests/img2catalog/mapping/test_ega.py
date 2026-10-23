@@ -12,6 +12,7 @@ from img2catalog.mappings.ega import (
     get_identifier,
     get_keyword,
     get_number_of_records,
+    get_qualified_attribution,
     get_release_date,
     get_title,
     map_ega_to_healthri_dcat_dataset,
@@ -98,6 +99,39 @@ def test_get_contact_page_returns_empty_without_dacs(missing_ega_dataset):
     assert result == []
 
 
+def test_get_qualified_attribution_maps_main_dac_contact(default_ega_dataset):
+    result = get_qualified_attribution(default_ega_dataset, {})
+
+    assert len(result) == 1
+    agent = result[0].agent
+    assert [name.value for name in agent.name] == ["John Doe"]
+    assert agent.identifier.value == "https://ega-archive.org/dacs/EGAC00001001143"
+    assert [str(mbox) for mbox in agent.mbox] == ["mailto:dac@example.com"]
+    assert result[0].role is None
+
+
+def test_get_qualified_attribution_uses_configured_role(default_ega_dataset):
+    role = "https://standards.iso.org/iso/19115/resources/Codelists/gml/CI_RoleCode.xml#principalInvestigator"
+
+    result = get_qualified_attribution(default_ega_dataset, {"qualified_attribution": {"role": role}})
+
+    assert str(result[0].role) == role
+
+
+def test_get_qualified_attribution_skips_non_main_contacts(default_ega_dataset):
+    default_ega_dataset["dacs"][0]["contacts"][0]["is_main"] = False
+
+    result = get_qualified_attribution(default_ega_dataset, {})
+
+    assert result == []
+
+
+def test_get_qualified_attribution_returns_empty_without_dacs(missing_ega_dataset):
+    result = get_qualified_attribution(missing_ega_dataset, {})
+
+    assert result == []
+
+
 def test_map_ega_to_healthri_dcat_dataset_returns_model(default_ega_dataset, default_config):
     # Act
     result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, default_config)
@@ -145,6 +179,14 @@ def test_map_ega_to_healthri_dcat_dataset_without_dacs_has_no_contact_page(defau
     result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, default_config)
 
     assert result.contact_point.contact_page is None
+    assert result.qualified_attribution is None
+
+
+def test_map_ega_to_healthri_dcat_dataset_maps_qualified_attribution(default_ega_dataset, default_config):
+    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, default_config)
+
+    assert len(result.qualified_attribution) == 1
+    assert result.qualified_attribution[0].agent.identifier.value == "https://ega-archive.org/dacs/EGAC00001001143"
 
 
 def test_map_ega_to_healthri_dcat_dataset_leaves_optional_fields_empty(default_ega_dataset, default_config):
