@@ -19,3 +19,7 @@ homepage = "http://www.example.com"
 [dataset.contact_point]
 formatted_name = "Example Data Management office"
 email = "mailto:datamanager@example.com"
+
+[distribution]
+license = "http://definities.geostandaarden.nl/DCAT-AP-NL/id/waarde/licentieValue/niet-open"
+language = ["http://publications.europa.eu/resource/authority/language/ENG"]
