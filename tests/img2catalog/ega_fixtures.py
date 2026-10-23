@@ -20,6 +20,26 @@ def default_ega_dataset():
         "released_date": "2001-01-01T00:00:00+01:00",
         "is_deprecated": False,
         "policy_accession_id": "EGAP00001001117",
+        "dacs": [
+            {
+                "accession_id": "EGAC00001001143",
+                "title": "300-OB cohort",
+                "description": None,
+                "url": None,
+                "is_released": True,
+                "released_date": "2019-02-28T12:25:33+01:00",
+                "is_deprecated": False,
+                "contacts": [
+                    {
+                        "email": "dac@example.com",
+                        "is_main": True,
+                        "surname": "Doe",
+                        "first_name": "John",
+                        "institution_name": "Example Institute",
+                    }
+                ],
+            }
+        ],
     }
 
 
