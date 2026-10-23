@@ -4,7 +4,7 @@ import pytest
 from pydantic import AnyHttpUrl, ValidationError
 from rdflib import URIRef
 from sempyro.dcat import AccessRights
-from sempyro.hri_dcat import DatasetStatus, HRIDataset
+from sempyro.hri_dcat import DatasetStatus, HRICatalog, HRIDataset
 
 from img2catalog.mappings.ega import (
     get_contact_page,
@@ -16,6 +16,7 @@ from img2catalog.mappings.ega import (
     get_qualified_attribution,
     get_release_date,
     get_title,
+    map_ega_to_healthri_dcat_catalog,
     map_ega_to_healthri_dcat_dataset,
     map_ega_to_healthri_dcat_distributions,
 )
@@ -330,3 +331,74 @@ def test_map_ega_to_healthri_dcat_dataset_raises_without_dataset_config(default_
     # Act & Assert
     with pytest.raises((KeyError, ValidationError)):
         map_ega_to_healthri_dcat_dataset(default_ega_dataset, {})
+
+
+@pytest.fixture
+def ega_catalog_config(ega_config):
+    ega_config["catalog"] = {
+        "title": "Example EGA catalog",
+        "description": "This is an example EGA catalog description",
+        "contact_point": {
+            "formatted_name": "Example Data Management office",
+            "email": "mailto:datamanager@example.com",
+        },
+    }
+    return ega_config
+
+
+def test_map_ega_to_healthri_dcat_catalog_returns_model(ega_catalog_config):
+    # Arrange
+    dataset_uris = [URIRef("http://img2catalog.internal/dataset/EGAD00001005083")]
+
+    # Act
+    result = map_ega_to_healthri_dcat_catalog(ega_catalog_config, dataset_uris)
+
+    # Assert
+    catalog_config = ega_catalog_config["catalog"]
+    assert isinstance(result, HRICatalog)
+    assert result.title[0].value == catalog_config["title"]
+    assert result.description[0].value == catalog_config["description"]
+    assert [str(dataset) for dataset in result.dataset] == [str(uri) for uri in dataset_uris]
+    assert str(result.contact_point.hasEmail) == catalog_config["contact_point"]["email"]
+    assert result.contact_point.formatted_name == catalog_config["contact_point"]["formatted_name"]
+    # The institute publishing the datasets is also the creator and publisher of the catalog
+    publisher_config = ega_catalog_config["dataset"]["publisher"]
+    assert [name.value for name in result.publisher.name] == publisher_config["name"]
+    assert result.creator == [result.publisher]
+    assert result.geographical_coverage is None
+    assert result.language is None
+    assert result.release_date is None
+
+
+def test_map_ega_to_healthri_dcat_catalog_maps_optional_config_fields(ega_catalog_config):
+    # Arrange
+    ega_catalog_config["catalog"].update(
+        {
+            "spatial": ["http://publications.europa.eu/resource/authority/country/NLD"],
+            "language": ["http://publications.europa.eu/resource/authority/language/ENG"],
+            "release_date": "2019-06-10T00:00:00Z",
+        }
+    )
+
+    # Act
+    result = map_ega_to_healthri_dcat_catalog(ega_catalog_config, [])
+
+    # Assert
+    catalog_config = ega_catalog_config["catalog"]
+    assert result.geographical_coverage == [AnyHttpUrl(url) for url in catalog_config["spatial"]]
+    assert result.language == [AnyHttpUrl(url) for url in catalog_config["language"]]
+    assert result.release_date == datetime.fromisoformat("2019-06-10T00:00:00+00:00")
+
+
+def test_map_ega_to_healthri_dcat_catalog_accepts_toml_datetime(ega_catalog_config):
+    release_date = datetime.fromisoformat("2019-06-10T00:00:00+00:00")
+    ega_catalog_config["catalog"]["release_date"] = release_date
+
+    result = map_ega_to_healthri_dcat_catalog(ega_catalog_config, [])
+
+    assert result.release_date == release_date
+
+
+def test_map_ega_to_healthri_dcat_catalog_raises_without_catalog_config(ega_config):
+    with pytest.raises(KeyError):
+        map_ega_to_healthri_dcat_catalog(ega_config, [])
