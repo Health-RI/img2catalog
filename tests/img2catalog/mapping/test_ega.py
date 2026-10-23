@@ -9,6 +9,7 @@ from sempyro.hri_dcat import DatasetStatus, HRIDataset
 from img2catalog.mappings.ega import (
     get_contact_page,
     get_description,
+    get_file_type,
     get_identifier,
     get_keyword,
     get_number_of_records,
@@ -16,6 +17,7 @@ from img2catalog.mappings.ega import (
     get_release_date,
     get_title,
     map_ega_to_healthri_dcat_dataset,
+    map_ega_to_healthri_dcat_distributions,
 )
 
 
@@ -132,9 +134,68 @@ def test_get_qualified_attribution_returns_empty_without_dacs(missing_ega_datase
     assert result == []
 
 
-def test_map_ega_to_healthri_dcat_dataset_returns_model(default_ega_dataset, default_config):
+@pytest.mark.parametrize(
+    ("extension", "expected"),
+    [
+        ("bam", "http://publications.europa.eu/resource/authority/file-type/BIN"),
+        ("cram", "http://publications.europa.eu/resource/authority/file-type/BIN"),
+        ("vcf", "http://publications.europa.eu/resource/authority/file-type/TXT"),
+        ("SAM", "http://publications.europa.eu/resource/authority/file-type/TXT"),
+        (None, "http://publications.europa.eu/resource/authority/file-type/BIN"),
+    ],
+)
+def test_get_file_type_maps_extension(extension, expected):
+    assert get_file_type({"extension": extension}) == expected
+
+
+def test_map_ega_to_healthri_dcat_distributions_combines_files(default_ega_dataset, ega_config):
     # Act
-    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, default_config)
+    result = map_ega_to_healthri_dcat_distributions(default_ega_dataset, ega_config)
+
+    # Assert
+    distribution_config = ega_config["distribution"]
+    assert len(result) == 1
+    distribution = result[0]
+    assert str(distribution.access_url) == "https://ega-archive.org/datasets/EGAD00001005083"
+    assert distribution.byte_size == 3000
+    assert distribution.description[0].value == default_ega_dataset["description"]
+    assert str(distribution.format) == "http://publications.europa.eu/resource/authority/file-type/BIN"
+    assert distribution.language == [AnyHttpUrl(url) for url in distribution_config["language"]]
+    assert str(distribution.license) == distribution_config["license"]
+    assert distribution.release_date == datetime.fromisoformat(default_ega_dataset["released_date"])
+    assert str(distribution.rights) == "https://ega-archive.org/datasets/EGAD00001005083"
+    assert distribution.title[0].value == default_ega_dataset["title"]
+
+
+def test_map_ega_to_healthri_dcat_distributions_splits_per_format(default_ega_dataset, ega_config):
+    # Arrange
+    default_ega_dataset["files"].append({"accession_id": "EGAF00000000003", "filesize": 500, "extension": "vcf"})
+
+    # Act
+    result = map_ega_to_healthri_dcat_distributions(default_ega_dataset, ega_config)
+
+    # Assert
+    sizes_per_format = {str(distribution.format): distribution.byte_size for distribution in result}
+    assert sizes_per_format == {
+        "http://publications.europa.eu/resource/authority/file-type/BIN": 3000,
+        "http://publications.europa.eu/resource/authority/file-type/TXT": 500,
+    }
+
+
+def test_map_ega_to_healthri_dcat_distributions_returns_empty_without_files(missing_ega_dataset):
+    result = map_ega_to_healthri_dcat_distributions(missing_ega_dataset, {})
+
+    assert result == []
+
+
+def test_map_ega_to_healthri_dcat_distributions_raises_without_license(default_ega_dataset):
+    with pytest.raises(KeyError):
+        map_ega_to_healthri_dcat_distributions(default_ega_dataset, {"distribution": {}})
+
+
+def test_map_ega_to_healthri_dcat_dataset_returns_model(default_ega_dataset, ega_config):
+    # Act
+    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
 
     # Assert
     assert isinstance(result, HRIDataset)
@@ -147,24 +208,22 @@ def test_map_ega_to_healthri_dcat_dataset_returns_model(default_ega_dataset, def
     assert result.number_of_records == 297
     keyword_values = {keyword.value for keyword in result.keyword}
     assert "Illumina HiSeq 2000" in keyword_values
-    assert result.theme == [URIRef(theme) for theme in default_config["dataset"]["theme"]]
-    assert result.applicable_legislation == [
-        AnyHttpUrl(url) for url in default_config["dataset"]["applicable_legislation"]
-    ]
+    assert result.theme == [URIRef(theme) for theme in ega_config["dataset"]["theme"]]
+    assert result.applicable_legislation == [AnyHttpUrl(url) for url in ega_config["dataset"]["applicable_legislation"]]
 
 
-def test_map_ega_to_healthri_dcat_dataset_maps_publisher_and_contact_point(default_ega_dataset, default_config):
+def test_map_ega_to_healthri_dcat_dataset_maps_publisher_and_contact_point(default_ega_dataset, ega_config):
     # Act
-    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, default_config)
+    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
 
     # Assert
-    publisher_config = default_config["dataset"]["publisher"]
+    publisher_config = ega_config["dataset"]["publisher"]
     assert [name.value for name in result.publisher.name] == publisher_config["name"]
     assert [identifier.value for identifier in result.publisher.identifier] == publisher_config["identifier"]
     assert str(result.publisher.mbox) == publisher_config["mbox"]
     assert str(result.publisher.homepage) == publisher_config["homepage"] + "/"
 
-    contact_point_config = default_config["dataset"]["contact_point"]
+    contact_point_config = ega_config["dataset"]["contact_point"]
     assert str(result.contact_point.hasEmail) == contact_point_config["email"]
     assert result.contact_point.formatted_name == contact_point_config["formatted_name"]
     assert result.contact_point.contact_page == [AnyHttpUrl("https://ega-archive.org/dacs/EGAC00001001143")]
@@ -173,24 +232,39 @@ def test_map_ega_to_healthri_dcat_dataset_maps_publisher_and_contact_point(defau
     assert result.creator == [result.publisher]
 
 
-def test_map_ega_to_healthri_dcat_dataset_without_dacs_has_no_contact_page(default_ega_dataset, default_config):
+def test_map_ega_to_healthri_dcat_dataset_without_dacs_has_no_contact_page(default_ega_dataset, ega_config):
     del default_ega_dataset["dacs"]
 
-    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, default_config)
+    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
 
     assert result.contact_point.contact_page is None
     assert result.qualified_attribution is None
 
 
-def test_map_ega_to_healthri_dcat_dataset_maps_qualified_attribution(default_ega_dataset, default_config):
-    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, default_config)
+def test_map_ega_to_healthri_dcat_dataset_maps_distribution(default_ega_dataset, ega_config):
+    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
+
+    assert len(result.distribution) == 1
+    assert result.distribution[0].byte_size == 3000
+
+
+def test_map_ega_to_healthri_dcat_dataset_without_files_has_no_distribution(default_ega_dataset, ega_config):
+    default_ega_dataset["files"] = []
+
+    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
+
+    assert result.distribution is None
+
+
+def test_map_ega_to_healthri_dcat_dataset_maps_qualified_attribution(default_ega_dataset, ega_config):
+    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
 
     assert len(result.qualified_attribution) == 1
     assert result.qualified_attribution[0].agent.identifier.value == "https://ega-archive.org/dacs/EGAC00001001143"
 
 
-def test_map_ega_to_healthri_dcat_dataset_leaves_optional_fields_empty(default_ega_dataset, default_config):
-    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, default_config)
+def test_map_ega_to_healthri_dcat_dataset_leaves_optional_fields_empty(default_ega_dataset, ega_config):
+    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
 
     assert result.type is None
     assert result.personal_data is None
@@ -202,9 +276,9 @@ def test_map_ega_to_healthri_dcat_dataset_leaves_optional_fields_empty(default_e
     assert result.publisher.publisher_type is None
 
 
-def test_map_ega_to_healthri_dcat_dataset_maps_optional_config_fields(default_ega_dataset, default_config):
+def test_map_ega_to_healthri_dcat_dataset_maps_optional_config_fields(default_ega_dataset, ega_config):
     # Arrange
-    default_config["dataset"].update(
+    ega_config["dataset"].update(
         {
             "type": ["http://publications.europa.eu/resource/authority/dataset-type/STATISTICAL"],
             "personal_data": ["https://w3id.org/dpv/pd#DNACode"],
@@ -221,15 +295,15 @@ def test_map_ega_to_healthri_dcat_dataset_maps_optional_config_fields(default_eg
             "population_coverage": "adults aged >55 years and BMI>27 kg/m2",
         }
     )
-    default_config["dataset"]["publisher"]["publisher_type"] = (
+    ega_config["dataset"]["publisher"]["publisher_type"] = (
         "http://purl.org/adms/publishertype/Academia-ScientificOrganisation"
     )
 
     # Act
-    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, default_config)
+    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
 
     # Assert
-    dataset_config = default_config["dataset"]
+    dataset_config = ega_config["dataset"]
     assert result.type == [AnyHttpUrl(url) for url in dataset_config["type"]]
     assert result.personal_data == [AnyHttpUrl(url) for url in dataset_config["personal_data"]]
     assert result.language == [AnyHttpUrl(url) for url in dataset_config["language"]]
@@ -246,10 +320,10 @@ def test_map_ega_to_healthri_dcat_dataset_maps_optional_config_fields(default_eg
     assert str(result.publisher.publisher_type) == dataset_config["publisher"]["publisher_type"]
 
 
-def test_map_ega_to_healthri_dcat_dataset_raises_on_missing_field(missing_ega_dataset, default_config):
+def test_map_ega_to_healthri_dcat_dataset_raises_on_missing_field(missing_ega_dataset, ega_config):
     # Act & Assert
     with pytest.raises(KeyError):
-        map_ega_to_healthri_dcat_dataset(missing_ega_dataset, default_config)
+        map_ega_to_healthri_dcat_dataset(missing_ega_dataset, ega_config)
 
 
 def test_map_ega_to_healthri_dcat_dataset_raises_without_dataset_config(default_ega_dataset):

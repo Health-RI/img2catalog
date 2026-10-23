@@ -40,7 +40,21 @@ def default_ega_dataset():
                 ],
             }
         ],
+        "files": [
+            {"accession_id": "EGAF00000000001", "filesize": 1000, "extension": "bam"},
+            {"accession_id": "EGAF00000000002", "filesize": 2000, "extension": "bam"},
+        ],
     }
+
+
+@pytest.fixture
+def ega_config(default_config):
+    """The default configuration extended with the EGA distribution settings."""
+    default_config["distribution"] = {
+        "license": "http://definities.geostandaarden.nl/DCAT-AP-NL/id/waarde/licentieValue/niet-open",
+        "language": ["http://publications.europa.eu/resource/authority/language/ENG"],
+    }
+    return default_config
 
 
 @pytest.fixture

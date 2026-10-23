@@ -7,7 +7,7 @@ from rdflib import URIRef
 from sempyro import LiteralField
 from sempyro.dcat import AccessRights, Attribution
 from sempyro.foaf import Agent
-from sempyro.hri_dcat import DatasetStatus, DatasetTheme, HRIAgent, HRIDataset, HRIVCard
+from sempyro.hri_dcat import DatasetStatus, DatasetTheme, HRIAgent, HRIDataset, HRIDistribution, HRIVCard
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +15,11 @@ logger = logging.getLogger(__name__)
 
 EGA_DATASET_URL = "https://ega-archive.org/datasets/"
 EGA_DAC_URL = "https://ega-archive.org/dacs/"
+
+FILE_TYPE_BINARY = "http://publications.europa.eu/resource/authority/file-type/BIN"
+FILE_TYPE_TEXT = "http://publications.europa.eu/resource/authority/file-type/TXT"
+# Extensions of text based file formats; all other EGA files (bam, cram, ...) are binary
+TEXT_FILE_EXTENSIONS = {"vcf", "sam", "txt", "csv", "tsv"}
 
 
 def _to_urls(values: List[str]) -> List[AnyHttpUrl]:
@@ -98,6 +103,50 @@ def get_qualified_attribution(ega_dataset: Dict, dataset_config: Dict) -> List[A
     return attributions
 
 
+def get_file_type(ega_file: Dict) -> str:
+    """Map an EGA file extension to the EU file type: TXT for text formats, BIN for binary formats."""
+    extension = (ega_file.get("extension") or "").lower()
+    return FILE_TYPE_TEXT if extension in TEXT_FILE_EXTENSIONS else FILE_TYPE_BINARY
+
+
+def map_ega_to_healthri_dcat_distributions(ega_dataset: Dict, config: Dict) -> List[HRIDistribution]:
+    """Map the files of an EGA dataset to Distributions.
+
+    The files together form the Distribution of the dataset, so individual files are not mapped to separate
+    Distributions. Only when the data is available in multiple formats, a Distribution is made per format.
+    """
+    files_per_type: Dict[str, List[Dict]] = {}
+    for ega_file in ega_dataset.get("files", []):
+        files_per_type.setdefault(get_file_type(ega_file), []).append(ega_file)
+
+    if not files_per_type:
+        return []
+
+    distribution_config = config["distribution"]
+    dataset_page = get_identifier(ega_dataset)
+
+    distributions = []
+    for file_type, ega_files in files_per_type.items():
+        # Properties in the order of the FSD mapping document
+        distribution_fields = {
+            "access_url": dataset_page,
+            "byte_size": sum(ega_file.get("filesize") or 0 for ega_file in ega_files),
+            "description": [LiteralField(value=get_description(ega_dataset))],
+            "format": file_type,
+            "language": _optional(distribution_config, "language", _to_urls),
+            "license": distribution_config["license"],
+            "release_date": get_release_date(ega_dataset),
+            # EGA shows the DAC access policy on the dataset page
+            "rights": dataset_page,
+            "title": [LiteralField(value=get_title(ega_dataset))],
+        }
+        distributions.append(
+            HRIDistribution(**{field: value for field, value in distribution_fields.items() if value is not None})
+        )
+
+    return distributions
+
+
 def map_ega_to_healthri_dcat_dataset(ega_dataset: Dict, config: Dict) -> HRIDataset:
     dataset_config = config["dataset"]
     publisher_config = dataset_config["publisher"]
@@ -145,6 +194,7 @@ def map_ega_to_healthri_dcat_dataset(ega_dataset: Dict, config: Dict) -> HRIData
         "contact_point": contact_point,
         "creator": [publisher],
         "description": [LiteralField(value=get_description(ega_dataset))],
+        "distribution": map_ega_to_healthri_dcat_distributions(ega_dataset, config) or None,
         "geographical_coverage": _optional(dataset_config, "spatial", _to_urls),
         "health_theme": _optional(dataset_config, "health_theme", _to_urls),
         "identifier": LiteralField(value=get_identifier(ega_dataset)),
