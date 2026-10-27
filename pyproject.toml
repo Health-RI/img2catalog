@@ -66,6 +66,18 @@ lint = [
   "ruff>=0.16",
 ]
 
+[tool.uv]
+# Minimum versions for transitive dependencies with known vulnerabilities.
+# Only affects uv resolution for this project; not published to PyPI metadata.
+constraint-dependencies = [
+  "certifi>=2026.10.23", # GHSA-6q48-6c7w-9gw2
+  "requests>=2.32.4",
+  # Fixed releases need Python >= 3.10, so the floors apply only there; the
+  # Python 3.8/3.9 resolution forks cannot be patched.
+  "urllib3>=2.8.0; python_version >= '3.10'", # CVE-2026-97687, CVE-2026-97689, CVE-2026-44431, CVE-2026-44432
+  "pydicom>=3.0.2; python_version >= '3.10'", # CVE-2026-32711
+]
+
 [tool.ruff]
 target-version = "py38"
 line-length = 120
