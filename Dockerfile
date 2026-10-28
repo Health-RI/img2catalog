@@ -36,10 +36,11 @@ RUN uv export --frozen --no-dev -o requirements.txt \
 # ==========================================
 FROM python:3.12-alpine3.24 AS img2catalog
 
-WORKDIR /home/app
-
-# Create a non-root user for security
+# Create a non-root user for security (before WORKDIR, so /home/app is created
+# by adduser and owned by app)
 RUN adduser -D app
+
+WORKDIR /home/app
 
 # Copy installed global python packages/binaries from builder stage
 COPY --from=builder /usr/local /usr/local
