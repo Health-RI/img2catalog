@@ -63,4 +63,8 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 # Switch to the non-root user
 USER app
 
+# One-shot CLI or supercronic as PID 1: if the process dies the container exits,
+# so a separate health probe adds nothing.
+HEALTHCHECK NONE
+
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

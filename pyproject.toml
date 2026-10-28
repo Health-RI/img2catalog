@@ -76,6 +76,7 @@ constraint-dependencies = [
   # Python 3.8/3.9 resolution forks cannot be patched.
   "urllib3>=2.8.0; python_version >= '3.10'", # CVE-2026-97687, CVE-2026-97689, CVE-2026-44431, CVE-2026-44432
   "pydicom>=3.0.2; python_version >= '3.10'", # CVE-2026-32711
+  "dnspython>=2.9.0; python_version >= '3.11'", # CVE-2026-114605 (fix needs Python >= 3.11)
 ]
 
 [tool.ruff]
