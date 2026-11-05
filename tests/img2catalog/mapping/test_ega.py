@@ -109,6 +109,7 @@ def test_get_qualified_attribution_maps_main_dac_contact(default_ega_dataset):
     agent = result[0].agent
     assert [name.value for name in agent.name] == ["John Doe"]
     assert agent.identifier.value == "https://ega-archive.org/dacs/EGAC00001001143"
+    assert str(agent.homepage) == "https://ega-archive.org/dacs/EGAC00001001143"
     assert [str(mbox) for mbox in agent.mbox] == ["mailto:dac@example.com"]
     assert result[0].role is None
 
@@ -158,7 +159,7 @@ def test_map_ega_to_healthri_dcat_distributions_combines_files(default_ega_datas
     assert len(result) == 1
     distribution = result[0]
     assert str(distribution.access_url) == "https://ega-archive.org/datasets/EGAD00001005083"
-    assert distribution.byte_size == 3000
+    assert distribution.byte_size.value == "3000"
     assert distribution.description[0].value == default_ega_dataset["description"]
     assert str(distribution.format) == "http://publications.europa.eu/resource/authority/file-type/BIN"
     assert distribution.language == [AnyHttpUrl(url) for url in distribution_config["language"]]
@@ -176,10 +177,10 @@ def test_map_ega_to_healthri_dcat_distributions_splits_per_format(default_ega_da
     result = map_ega_to_healthri_dcat_distributions(default_ega_dataset, ega_config)
 
     # Assert
-    sizes_per_format = {str(distribution.format): distribution.byte_size for distribution in result}
+    sizes_per_format = {str(distribution.format): distribution.byte_size.value for distribution in result}
     assert sizes_per_format == {
-        "http://publications.europa.eu/resource/authority/file-type/BIN": 3000,
-        "http://publications.europa.eu/resource/authority/file-type/TXT": 500,
+        "http://publications.europa.eu/resource/authority/file-type/BIN": "3000",
+        "http://publications.europa.eu/resource/authority/file-type/TXT": "500",
     }
 
 
@@ -242,16 +243,15 @@ def test_map_ega_to_healthri_dcat_dataset_without_dacs_has_no_contact_page(defau
     assert result.qualified_attribution is None
 
 
-def test_map_ega_to_healthri_dcat_dataset_maps_distribution(default_ega_dataset, ega_config):
-    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
+def test_map_ega_to_healthri_dcat_dataset_refers_to_distributions(default_ega_dataset, ega_config):
+    distribution_uri = URIRef("http://img2catalog.internal/distribution/EGAD00001005083/BIN")
 
-    assert len(result.distribution) == 1
-    assert result.distribution[0].byte_size == 3000
+    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config, [distribution_uri])
+
+    assert [str(distribution) for distribution in result.distribution] == [str(distribution_uri)]
 
 
-def test_map_ega_to_healthri_dcat_dataset_without_files_has_no_distribution(default_ega_dataset, ega_config):
-    default_ega_dataset["files"] = []
-
+def test_map_ega_to_healthri_dcat_dataset_without_distributions(default_ega_dataset, ega_config):
     result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
 
     assert result.distribution is None
