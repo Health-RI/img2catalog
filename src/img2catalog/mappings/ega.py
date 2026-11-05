@@ -2,8 +2,7 @@ import logging
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from pydantic import AnyHttpUrl
-from rdflib import URIRef
+from rdflib import XSD, URIRef
 from sempyro import LiteralField
 from sempyro.dcat import AccessRights, Attribution
 from sempyro.foaf import Agent
@@ -30,8 +29,8 @@ FILE_TYPE_TEXT = "http://publications.europa.eu/resource/authority/file-type/TXT
 TEXT_FILE_EXTENSIONS = {"vcf", "sam", "txt", "csv", "tsv"}
 
 
-def _to_urls(values: List[str]) -> List[AnyHttpUrl]:
-    return [AnyHttpUrl(value) for value in values]
+def _to_urls(values: List[str]) -> List[URIRef]:
+    return [URIRef(value) for value in values]
 
 
 def _to_datetime(value: Union[str, datetime]) -> datetime:
@@ -90,7 +89,8 @@ def get_contact_page(ega_dataset: Dict) -> List[str]:
 def get_qualified_attribution(ega_dataset: Dict, dataset_config: Dict) -> List[Attribution]:
     """Attribute the dataset to the main contact(s) of its Data Access Committees (DACs).
 
-    EGA does not provide an ORCID for DAC contacts, so the DAC page is used as the agent's identifier.
+    EGA does not provide an ORCID or homepage for DAC contacts, so the DAC page is used as the agent's identifier
+    and homepage.
     The role is not present in EGA metadata and is taken from the local node configuration when set.
     """
     attribution_kwargs = {}
@@ -108,9 +108,11 @@ def get_qualified_attribution(ega_dataset: Dict, dataset_config: Dict) -> List[A
             if contact.get("email"):
                 agent_kwargs["mbox"] = [f"mailto:{contact['email']}"]
 
+            dac_page = f"{EGA_DAC_URL}{dac['accession_id']}"
             agent = Agent(
                 name=[LiteralField(value=f"{contact.get('first_name', '')} {contact.get('surname', '')}".strip())],
-                identifier=LiteralField(value=f"{EGA_DAC_URL}{dac['accession_id']}"),
+                identifier=LiteralField(value=dac_page),
+                homepage=dac_page,
                 **agent_kwargs,
             )
             attributions.append(Attribution(agent=agent, **attribution_kwargs))
@@ -123,6 +125,21 @@ def get_file_type(ega_file: Dict) -> str:
     extension = (ega_file.get("extension") or "").lower()
     return FILE_TYPE_TEXT if extension in TEXT_FILE_EXTENSIONS else FILE_TYPE_BINARY
 
+def get_publisher(publisher_config: Dict) -> HRIAgent:
+    """Build the publishing organisation, which is not present in EGA metadata, from the local node configuration."""
+    publisher_identifiers = [LiteralField(value=identifier) for identifier in publisher_config["identifier"]]
+
+    publisher_kwargs = {}
+    if "publisher_type" in publisher_config:
+        publisher_kwargs["publisher_type"] = publisher_config["publisher_type"]
+
+    return HRIAgent(
+        name=[LiteralField(value=name) for name in publisher_config["name"]],
+        identifier=publisher_identifiers,
+        mbox=publisher_config["mbox"],
+        homepage=publisher_config["homepage"],
+        **publisher_kwargs,
+    )
 
 def map_ega_to_healthri_dcat_distributions(ega_dataset: Dict, config: Dict) -> List[HRIDistribution]:
     """Map the files of an EGA dataset to Distributions.
@@ -145,7 +162,10 @@ def map_ega_to_healthri_dcat_distributions(ega_dataset: Dict, config: Dict) -> L
         # Properties in the order of the FSD mapping document
         distribution_fields = {
             "access_url": dataset_page,
-            "byte_size": sum(ega_file.get("filesize") or 0 for ega_file in ega_files),
+            "byte_size": LiteralField(
+                value=str(sum(ega_file.get("filesize") or 0 for ega_file in ega_files)),
+                datatype=XSD.nonNegativeInteger,
+            ),
             "description": [LiteralField(value=get_description(ega_dataset))],
             "format": file_type,
             "language": _optional(distribution_config, "language", _to_urls),
@@ -161,25 +181,10 @@ def map_ega_to_healthri_dcat_distributions(ega_dataset: Dict, config: Dict) -> L
 
     return distributions
 
-
-def get_publisher(publisher_config: Dict) -> HRIAgent:
-    """Build the publishing organisation, which is not present in EGA metadata, from the local node configuration."""
-    publisher_identifiers = [LiteralField(value=identifier) for identifier in publisher_config["identifier"]]
-
-    publisher_kwargs = {}
-    if "publisher_type" in publisher_config:
-        publisher_kwargs["publisher_type"] = publisher_config["publisher_type"]
-
-    return HRIAgent(
-        name=[LiteralField(value=name) for name in publisher_config["name"]],
-        identifier=publisher_identifiers,
-        mbox=publisher_config["mbox"],
-        homepage=publisher_config["homepage"],
-        **publisher_kwargs,
-    )
-
-
-def map_ega_to_healthri_dcat_dataset(ega_dataset: Dict, config: Dict) -> HRIDataset:
+def map_ega_to_healthri_dcat_dataset(
+    ega_dataset: Dict, config: Dict, distribution_uris: Optional[List[URIRef]] = None
+) -> HRIDataset:
+    """Map an EGA dataset to a Dataset, referring to its Distributions (mapped separately) by URI."""
     dataset_config = config["dataset"]
     contact_point_config = dataset_config["contact_point"]
 
@@ -213,7 +218,7 @@ def map_ega_to_healthri_dcat_dataset(ega_dataset: Dict, config: Dict) -> HRIData
         "contact_point": contact_point,
         "creator": [publisher],
         "description": [LiteralField(value=get_description(ega_dataset))],
-        "distribution": map_ega_to_healthri_dcat_distributions(ega_dataset, config) or None,
+        "distribution": distribution_uris or None,
         "geographical_coverage": _optional(dataset_config, "spatial", _to_urls),
         "health_theme": _optional(dataset_config, "health_theme", _to_urls),
         "identifier": LiteralField(value=get_identifier(ega_dataset)),
