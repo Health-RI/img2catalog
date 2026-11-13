@@ -63,9 +63,20 @@ def _is_empty(value: Any) -> bool:
     return False
 
 
+class MissingEGAValueError(KeyError):
+    """A mandatory value of an EGA dataset is missing or empty, so the dataset cannot be mapped."""
+
+
 def _text(value: Any) -> Optional[str]:
-    """Return a value as stripped text, or None when it is empty."""
-    return None if _is_empty(value) else str(value).strip()
+    """Return a single text or number as stripped text, or None when it is empty.
+
+    Lists and dicts are refused, as they would otherwise be shown as text like "['a', None]".
+    """
+    if _is_empty(value):
+        return None
+    if not isinstance(value, (str, int, float)):
+        raise TypeError(f"Expected a single text value, got {type(value).__name__}: {value!r}")
+    return str(value).strip()
 
 
 def _non_empty(values: Optional[List[Any]]) -> List[Any]:
@@ -75,6 +86,18 @@ def _non_empty(values: Optional[List[Any]]) -> List[Any]:
 
 def _to_literals(values: Optional[List[Any]]) -> List[LiteralField]:
     return [LiteralField(value=_text(value)) for value in _non_empty(values)]
+
+
+def _required_config_literals(config: Dict, key: str) -> List[LiteralField]:
+    """Convert a mandatory text config value, which may be a single text or a list of texts.
+
+    An empty mandatory value is refused with a clear error, instead of silently leaving the field out.
+    """
+    value = config[key]
+    literals = _to_literals(value if isinstance(value, list) else [value])
+    if not literals:
+        raise ValueError(f"Configuration value '{key}' is mandatory, but empty")
+    return literals
 
 
 def _without_empty(fields: Dict[str, Any]) -> Dict[str, Any]:
@@ -103,10 +126,16 @@ def _optional(dataset_config: Dict, key: str, convert: Callable[[Any], Any]) -> 
 
 def _required_text(ega_dataset: Dict, key: str) -> str:
     """Return a mandatory text field of an EGA dataset; an empty value counts as missing."""
-    value = _text(ega_dataset[key])
+    value = _text(ega_dataset.get(key))
     if value is None:
-        raise KeyError(f"EGA dataset {ega_dataset.get('accession_id')} has an empty {key}")
+        raise MissingEGAValueError(f"EGA dataset {ega_dataset.get('accession_id')} has no {key}")
     return value
+
+
+def _dac_page(dac: Dict) -> Optional[str]:
+    """Build the EGA archive URL of a Data Access Committee (DAC), or return None when it has no accession_id."""
+    accession_id = _text(dac.get("accession_id"))
+    return f"{EGA_DAC_URL}{accession_id}" if accession_id else None
 
 
 def get_identifier(ega_dataset: Dict) -> str:
@@ -145,7 +174,7 @@ def get_keyword(ega_dataset: Dict) -> List[LiteralField]:
 
 def get_contact_page(ega_dataset: Dict) -> List[str]:
     """Build the EGA archive URLs of the Data Access Committees (DACs) controlling the dataset."""
-    return [f"{EGA_DAC_URL}{dac['accession_id']}" for dac in ega_dataset.get("dacs") or []]
+    return _non_empty([_dac_page(dac) for dac in ega_dataset.get("dacs") or []])
 
 
 def get_main_contacts(ega_dataset: Dict) -> List[Dict]:
@@ -189,7 +218,8 @@ def get_qualified_attribution(ega_dataset: Dict, dataset_config: Dict) -> List[A
     EGA does not provide an ORCID or homepage for DAC contacts, so the DAC page is used as the agent's identifier
     and homepage.
     The role is not present in EGA metadata and is taken from the local node configuration when set.
-    Contacts without a name are left out, as an agent without a name has no content to show.
+    Contacts without a name, or of a DAC without an accession_id, are left out, as their agent would miss its
+    mandatory name or identifier.
     """
     attribution_kwargs = {}
     role = _text((dataset_config.get("qualified_attribution") or {}).get("role"))
@@ -199,8 +229,9 @@ def get_qualified_attribution(ega_dataset: Dict, dataset_config: Dict) -> List[A
     attributions = []
     for contact in get_main_contacts(ega_dataset):
         name = get_contact_name(contact)
-        if name is None:
-            logger.debug("Skipping DAC main contact without a name in DAC %s", contact["dac"]["accession_id"])
+        dac_page = _dac_page(contact["dac"])
+        if name is None or dac_page is None:
+            logger.debug("Skipping DAC main contact without a name or DAC accession_id: %s", contact)
             continue
 
         agent_kwargs = {}
@@ -208,7 +239,6 @@ def get_qualified_attribution(ega_dataset: Dict, dataset_config: Dict) -> List[A
         if email:
             agent_kwargs["mbox"] = [f"mailto:{email}"]
 
-        dac_page = f"{EGA_DAC_URL}{contact['dac']['accession_id']}"
         agent = Agent(
             name=[LiteralField(value=name)],
             identifier=LiteralField(value=dac_page),
@@ -226,31 +256,35 @@ def get_file_type(ega_file: Dict) -> str:
     return FILE_TYPE_TEXT if extension in TEXT_FILE_EXTENSIONS else FILE_TYPE_BINARY
 
 
-def get_byte_size(ega_files: List[Dict]) -> Optional[LiteralField]:
+def get_byte_size(ega_files: List[Dict], description: str = "files") -> Optional[LiteralField]:
     """Sum the known sizes of the files, or return None when no file size is known.
 
-    Unknown sizes are not counted as 0 bytes, so a size of 0 is never shown for files of unknown size.
+    Unknown sizes are not counted as 0 bytes, so a size of 0 is never shown for files of unknown size. When only
+    some sizes are known, their sum is a lower bound of the actual size, which is logged as a warning.
     """
-    file_sizes = [ega_file["filesize"] for ega_file in ega_files if ega_file.get("filesize") is not None]
+    file_sizes = [int(ega_file["filesize"]) for ega_file in ega_files if not _is_empty(ega_file.get("filesize"))]
     if not file_sizes:
         return None
     if len(file_sizes) < len(ega_files):
-        logger.warning("Size of %d of %d files is unknown", len(ega_files) - len(file_sizes), len(ega_files))
+        logger.warning(
+            "Size of %d of %d %s is unknown; byte size only counts the known sizes",
+            len(ega_files) - len(file_sizes),
+            len(ega_files),
+            description,
+        )
     return LiteralField(value=str(sum(file_sizes)), datatype=XSD.nonNegativeInteger)
 
 
 def get_publisher(publisher_config: Dict) -> HRIAgent:
     """Build the publishing organisation, which is not present in EGA metadata, from the local node configuration."""
-    publisher_identifiers = _to_literals(publisher_config["identifier"])
-
     publisher_kwargs = {}
     publisher_type = _text(publisher_config.get("publisher_type"))
     if publisher_type:
         publisher_kwargs["publisher_type"] = publisher_type
 
     return HRIAgent(
-        name=_to_literals(publisher_config["name"]),
-        identifier=publisher_identifiers,
+        name=_required_config_literals(publisher_config, "name"),
+        identifier=_required_config_literals(publisher_config, "identifier"),
         mbox=publisher_config["mbox"],
         homepage=publisher_config["homepage"],
         **publisher_kwargs,
@@ -276,11 +310,12 @@ def map_ega_to_healthri_dcat_distributions(ega_dataset: Dict, config: Dict) -> L
     distributions = []
     for file_type, ega_files in files_per_type.items():
         # The byte size is mandatory, so a Distribution without any known file size is left out
-        byte_size = get_byte_size(ega_files)
+        format_code = file_type.rsplit("/", 1)[-1]
+        byte_size = get_byte_size(ega_files, f"{format_code} files of EGA dataset {ega_dataset['accession_id']}")
         if byte_size is None:
             logger.warning(
                 "Skipping %s Distribution of EGA dataset %s: no file size is known",
-                file_type.rsplit("/", 1)[-1],
+                format_code,
                 ega_dataset["accession_id"],
             )
             continue
@@ -330,7 +365,7 @@ def map_ega_to_healthri_dcat_dataset(
     # The DAC handles access requests, so its main contact's email is used; the configured email is a fallback
     contact_point = HRIVCard(
         hasEmail=get_contact_email(ega_dataset) or _text(contact_point_config.get("email")),
-        formatted_name=_text(contact_point_config["formatted_name"]),
+        formatted_name=_required_config_literals(contact_point_config, "formatted_name")[0].value,
         **contact_point_kwargs,
     )
 
@@ -389,15 +424,15 @@ def map_ega_to_healthri_dcat_catalog(config: Dict, dataset_uris: List[URIRef]) -
     catalog_fields = {
         "contact_point": HRIVCard(
             hasEmail=_text(contact_point_config["email"]),
-            formatted_name=_text(contact_point_config["formatted_name"]),
+            formatted_name=_required_config_literals(contact_point_config, "formatted_name")[0].value,
         ),
         "creator": [publisher],
-        "description": _to_literals([catalog_config["description"]]),
+        "description": _required_config_literals(catalog_config, "description"),
         "geographical_coverage": _optional(catalog_config, "spatial", _to_urls),
         "language": _optional(catalog_config, "language", _to_urls),
         "publisher": publisher,
         "release_date": _optional(catalog_config, "release_date", _to_datetime),
-        "title": _to_literals([catalog_config["title"]]),
+        "title": _required_config_literals(catalog_config, "title"),
     }
 
     # The datasets are mandatory for a Catalog, so they are passed even when there are none
