@@ -44,6 +44,13 @@ def default_ega_dataset():
             {"accession_id": "EGAF00000000001", "filesize": 1000, "extension": "bam"},
             {"accession_id": "EGAF00000000002", "filesize": 2000, "extension": "bam"},
         ],
+        "studies": [
+            {
+                "accession_id": "EGAS00001003508",
+                "title": "300-Obese: clinical cohort of obese individuals, Nijmegen, the Netherlands",
+                "pubmed_ids": ["32526207"],
+            }
+        ],
     }
 
 

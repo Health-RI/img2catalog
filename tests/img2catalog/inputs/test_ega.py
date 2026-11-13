@@ -1,7 +1,13 @@
 import pytest
 import requests
 
-from img2catalog.inputs.ega import fetch_ega_dacs, fetch_ega_dataset, fetch_ega_datasets, fetch_ega_files
+from img2catalog.inputs.ega import (
+    fetch_ega_dacs,
+    fetch_ega_dataset,
+    fetch_ega_datasets,
+    fetch_ega_files,
+    fetch_ega_studies,
+)
 
 API_URL = "https://metadata.ega-archive.org"
 
@@ -48,10 +54,22 @@ def test_fetch_ega_files_returns_json(requests_mock, default_ega_dataset):
     assert result == default_ega_dataset["files"]
 
 
+def test_fetch_ega_studies_returns_json(requests_mock, default_ega_dataset):
+    # Arrange
+    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/studies", json=default_ega_dataset["studies"])
+
+    # Act
+    result = fetch_ega_studies("EGAD00001005083", API_URL)
+
+    # Assert
+    assert result == default_ega_dataset["studies"]
+
+
 def test_fetch_ega_datasets_returns_all_on_success(requests_mock, default_ega_dataset):
     # Arrange
     dacs = default_ega_dataset.pop("dacs")
     files = default_ega_dataset.pop("files")
+    studies = default_ega_dataset.pop("studies")
     other_dataset = {**default_ega_dataset, "accession_id": "EGAD00001005084"}
     requests_mock.get(f"{API_URL}/datasets/EGAD00001005083", json=default_ega_dataset)
     requests_mock.get(f"{API_URL}/datasets/EGAD00001005084", json=other_dataset)
@@ -59,14 +77,16 @@ def test_fetch_ega_datasets_returns_all_on_success(requests_mock, default_ega_da
     requests_mock.get(f"{API_URL}/datasets/EGAD00001005084/dacs", json=[])
     requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/files", json=files)
     requests_mock.get(f"{API_URL}/datasets/EGAD00001005084/files", json=[])
+    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/studies", json=studies)
+    requests_mock.get(f"{API_URL}/datasets/EGAD00001005084/studies", json=[])
 
     # Act
     result = fetch_ega_datasets(["EGAD00001005083", "EGAD00001005084"], API_URL)
 
     # Assert
     assert result == [
-        {**default_ega_dataset, "dacs": dacs, "files": files},
-        {**other_dataset, "dacs": [], "files": []},
+        {**default_ega_dataset, "dacs": dacs, "files": files, "studies": studies},
+        {**other_dataset, "dacs": [], "files": [], "studies": []},
     ]
 
 
@@ -76,14 +96,16 @@ def test_fetch_ega_datasets_skips_failed_dataset(requests_mock, default_ega_data
     files = default_ega_dataset.pop("files")
     requests_mock.get(f"{API_URL}/datasets/EGAD00001005083", json=default_ega_dataset)
     requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/dacs", json=dacs)
+    studies = default_ega_dataset.pop("studies")
     requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/files", json=files)
+    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/studies", json=studies)
     requests_mock.get(f"{API_URL}/datasets/EGAD00000000000", status_code=404)
 
     # Act
     result = fetch_ega_datasets(["EGAD00001005083", "EGAD00000000000"], API_URL)
 
     # Assert
-    assert result == [{**default_ega_dataset, "dacs": dacs, "files": files}]
+    assert result == [{**default_ega_dataset, "dacs": dacs, "files": files, "studies": studies}]
 
 
 def test_fetch_ega_datasets_keeps_dataset_when_dacs_fail(requests_mock, default_ega_dataset, caplog):
@@ -91,14 +113,16 @@ def test_fetch_ega_datasets_keeps_dataset_when_dacs_fail(requests_mock, default_
     default_ega_dataset.pop("dacs")
     files = default_ega_dataset.pop("files")
     requests_mock.get(f"{API_URL}/datasets/EGAD00001005083", json=default_ega_dataset)
+    studies = default_ega_dataset.pop("studies")
     requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/dacs", status_code=500)
     requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/files", json=files)
+    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/studies", json=studies)
 
     # Act
     result = fetch_ega_datasets(["EGAD00001005083"], API_URL)
 
     # Assert
-    assert result == [{**default_ega_dataset, "dacs": [], "files": files}]
+    assert result == [{**default_ega_dataset, "dacs": [], "files": files, "studies": studies}]
     assert "Error fetching DACs for EGA dataset EGAD00001005083" in caplog.text
 
 
@@ -108,11 +132,31 @@ def test_fetch_ega_datasets_keeps_dataset_when_files_fail(requests_mock, default
     default_ega_dataset.pop("files")
     requests_mock.get(f"{API_URL}/datasets/EGAD00001005083", json=default_ega_dataset)
     requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/dacs", json=dacs)
+    studies = default_ega_dataset.pop("studies")
     requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/files", status_code=500)
+    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/studies", json=studies)
 
     # Act
     result = fetch_ega_datasets(["EGAD00001005083"], API_URL)
 
     # Assert
-    assert result == [{**default_ega_dataset, "dacs": dacs, "files": []}]
+    assert result == [{**default_ega_dataset, "dacs": dacs, "files": [], "studies": studies}]
     assert "Error fetching files for EGA dataset EGAD00001005083" in caplog.text
+
+
+def test_fetch_ega_datasets_keeps_dataset_when_studies_fail(requests_mock, default_ega_dataset, caplog):
+    # Arrange
+    dacs = default_ega_dataset.pop("dacs")
+    files = default_ega_dataset.pop("files")
+    default_ega_dataset.pop("studies")
+    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083", json=default_ega_dataset)
+    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/dacs", json=dacs)
+    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/files", json=files)
+    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/studies", status_code=500)
+
+    # Act
+    result = fetch_ega_datasets(["EGAD00001005083"], API_URL)
+
+    # Assert
+    assert result == [{**default_ega_dataset, "dacs": dacs, "files": files, "studies": []}]
+    assert "Error fetching studies for EGA dataset EGAD00001005083" in caplog.text

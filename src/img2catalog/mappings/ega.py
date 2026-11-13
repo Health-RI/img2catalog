@@ -22,11 +22,30 @@ logger = logging.getLogger(__name__)
 
 EGA_DATASET_URL = "https://ega-archive.org/datasets/"
 EGA_DAC_URL = "https://ega-archive.org/dacs/"
+PUBMED_URL = "https://pubmed.ncbi.nlm.nih.gov/"
 
 FILE_TYPE_BINARY = "http://publications.europa.eu/resource/authority/file-type/BIN"
 FILE_TYPE_TEXT = "http://publications.europa.eu/resource/authority/file-type/TXT"
-# Extensions of text based file formats; all other EGA files (bam, cram, ...) are binary
-TEXT_FILE_EXTENSIONS = {"vcf", "sam", "txt", "csv", "tsv"}
+# Extensions of uncompressed text based file formats; all other EGA files (bam, cram, gzipped files, ...) are binary
+TEXT_FILE_EXTENSIONS = {
+    "bed",
+    "csv",
+    "fa",
+    "fasta",
+    "fastq",
+    "fq",
+    "gff",
+    "gff3",
+    "gtf",
+    "json",
+    "maf",
+    "sam",
+    "tab",
+    "tsv",
+    "txt",
+    "vcf",
+    "xml",
+}
 
 
 def _to_urls(values: List[str]) -> List[URIRef]:
@@ -86,6 +105,35 @@ def get_contact_page(ega_dataset: Dict) -> List[str]:
     return [f"{EGA_DAC_URL}{dac['accession_id']}" for dac in ega_dataset.get("dacs", [])]
 
 
+def get_main_contacts(ega_dataset: Dict) -> List[Dict]:
+    """Return the main contacts of the Data Access Committees (DACs) controlling the dataset, with their DAC."""
+    return [
+        {**contact, "dac": dac}
+        for dac in ega_dataset.get("dacs", [])
+        for contact in dac.get("contacts") or []
+        if contact.get("is_main")
+    ]
+
+
+def get_contact_email(ega_dataset: Dict) -> Optional[str]:
+    """Return the email of the first DAC main contact, which handles the access requests of the dataset."""
+    for contact in get_main_contacts(ega_dataset):
+        if contact.get("email"):
+            return f"mailto:{contact['email']}"
+    return None
+
+
+def get_is_referenced_by(ega_dataset: Dict) -> List[str]:
+    """Build PubMed URLs of the publications of the EGA studies the dataset belongs to."""
+    urls = []
+    for study in ega_dataset.get("studies", []):
+        for pubmed_id in study.get("pubmed_ids") or []:
+            url = f"{PUBMED_URL}{str(pubmed_id).strip()}/"
+            if url not in urls:
+                urls.append(url)
+    return urls
+
+
 def get_qualified_attribution(ega_dataset: Dict, dataset_config: Dict) -> List[Attribution]:
     """Attribute the dataset to the main contact(s) of its Data Access Committees (DACs).
 
@@ -99,23 +147,19 @@ def get_qualified_attribution(ega_dataset: Dict, dataset_config: Dict) -> List[A
         attribution_kwargs["role"] = role
 
     attributions = []
-    for dac in ega_dataset.get("dacs", []):
-        for contact in dac.get("contacts") or []:
-            if not contact.get("is_main"):
-                continue
+    for contact in get_main_contacts(ega_dataset):
+        agent_kwargs = {}
+        if contact.get("email"):
+            agent_kwargs["mbox"] = [f"mailto:{contact['email']}"]
 
-            agent_kwargs = {}
-            if contact.get("email"):
-                agent_kwargs["mbox"] = [f"mailto:{contact['email']}"]
-
-            dac_page = f"{EGA_DAC_URL}{dac['accession_id']}"
-            agent = Agent(
-                name=[LiteralField(value=f"{contact.get('first_name', '')} {contact.get('surname', '')}".strip())],
-                identifier=LiteralField(value=dac_page),
-                homepage=dac_page,
-                **agent_kwargs,
-            )
-            attributions.append(Attribution(agent=agent, **attribution_kwargs))
+        dac_page = f"{EGA_DAC_URL}{contact['dac']['accession_id']}"
+        agent = Agent(
+            name=[LiteralField(value=f"{contact.get('first_name', '')} {contact.get('surname', '')}".strip())],
+            identifier=LiteralField(value=dac_page),
+            homepage=dac_page,
+            **agent_kwargs,
+        )
+        attributions.append(Attribution(agent=agent, **attribution_kwargs))
 
     return attributions
 
@@ -124,6 +168,7 @@ def get_file_type(ega_file: Dict) -> str:
     """Map an EGA file extension to the EU file type: TXT for text formats, BIN for binary formats."""
     extension = (ega_file.get("extension") or "").lower()
     return FILE_TYPE_TEXT if extension in TEXT_FILE_EXTENSIONS else FILE_TYPE_BINARY
+
 
 def get_publisher(publisher_config: Dict) -> HRIAgent:
     """Build the publishing organisation, which is not present in EGA metadata, from the local node configuration."""
@@ -140,6 +185,7 @@ def get_publisher(publisher_config: Dict) -> HRIAgent:
         homepage=publisher_config["homepage"],
         **publisher_kwargs,
     )
+
 
 def map_ega_to_healthri_dcat_distributions(ega_dataset: Dict, config: Dict) -> List[HRIDistribution]:
     """Map the files of an EGA dataset to Distributions.
@@ -181,6 +227,7 @@ def map_ega_to_healthri_dcat_distributions(ega_dataset: Dict, config: Dict) -> L
 
     return distributions
 
+
 def map_ega_to_healthri_dcat_dataset(
     ega_dataset: Dict, config: Dict, distribution_uris: Optional[List[URIRef]] = None
 ) -> HRIDataset:
@@ -202,11 +249,15 @@ def map_ega_to_healthri_dcat_dataset(
     if contact_page:
         contact_point_kwargs["contact_page"] = contact_page
 
+    # The DAC handles access requests, so its main contact's email is used; the configured email is a fallback
     contact_point = HRIVCard(
-        hasEmail=contact_point_config["email"],
+        hasEmail=get_contact_email(ega_dataset) or contact_point_config["email"],
         formatted_name=contact_point_config["formatted_name"],
         **contact_point_kwargs,
     )
+
+    # Publications of the EGA studies, extended with configured publications
+    is_referenced_by = _to_urls(get_is_referenced_by(ega_dataset) + dataset_config.get("is_referenced_by", []))
 
     # Properties in the order of the FSD mapping document. Values not present in EGA metadata are
     # supplied from the local node configuration; optional ones are left out when not configured.
@@ -214,7 +265,7 @@ def map_ega_to_healthri_dcat_dataset(
         "access_rights": AccessRights(URIRef(dataset_config["access_rights"])),
         "applicable_legislation": dataset_applicable_legislation,
         "code_values": _optional(dataset_config, "code_values", _to_urls),
-        # Contact point combines the DAC from EGA with contact details from the local node configuration
+        # Contact point combines the DAC from EGA with the name from the local node configuration
         "contact_point": contact_point,
         "creator": [publisher],
         "description": [LiteralField(value=get_description(ega_dataset))],
@@ -222,7 +273,7 @@ def map_ega_to_healthri_dcat_dataset(
         "geographical_coverage": _optional(dataset_config, "spatial", _to_urls),
         "health_theme": _optional(dataset_config, "health_theme", _to_urls),
         "identifier": LiteralField(value=get_identifier(ega_dataset)),
-        "is_referenced_by": _optional(dataset_config, "is_referenced_by", _to_urls),
+        "is_referenced_by": is_referenced_by or None,
         "keyword": dataset_keywords,
         "language": _optional(dataset_config, "language", _to_urls),
         "legal_basis": _optional(dataset_config, "legal_basis", _to_urls),
