@@ -275,8 +275,8 @@ def default_config():
             "description": "This is imaging data description",
             "theme": ["http://publications.europa.eu/resource/authority/data-theme/HEAL"],
             "keyword": ["list", "of", "key", "words"],
-            "access_rights": "http://publications.europa.eu/resource/authority/access-right/PUBLIC",
-            "applicable_legislation": ["http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC"],
+            "access_rights": "http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC",
+            "applicable_legislation": ["http://data.europa.eu/eli/reg/2025/327/oj"],
             "publisher": {
                 "name": ["Example publisher list"],
                 "identifier": ["http://example.com"],
