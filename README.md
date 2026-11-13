@@ -65,38 +65,54 @@ and serializes that to RDF and outputs it to the terminal using the output `rdf`
 In this mapping the XNAT itself will be converted to a Catalog object, and the projects to Datasets.
 
 ### Pushing to a FAIR Data Point (FDP)
-Pushing datasets to an existing Catalog on FDP can be done from both XNAT and an XDS export. 
+The output `fdp` pushes the mapped metadata to an FDP, from XNAT, an XDS export and EGA:
 
+| Input | Catalog | Datasets | Distributions |
+|-------|---------|----------|---------------|
+| XNAT  | from the `[catalog]` configuration | one per project | none; links entered in the custom form are kept on the Dataset |
+| XDS   | none; give an existing catalog with `-c` | one per row of the export | none |
+| EGA   | from the `[catalog]` configuration, if present | one per EGA dataset | one per file format |
 
-Using `img2catalog` one can directly push the Datasets created from XNAT projects to an existing Catalog on an FDP. 
-To do so, run the following command with the output `fdp`:
-
-```sh 
-img2catalog xnat --server https://xnat.health-ri.nl map-xnat-hriv2 fdp --fdp "https://fdp.healthdata.nl" -u "albert.einstein@example.com" -p "password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d"
-```
-This will add the new Datasets to the Catalog. In order to update the Datasets on the FAIR Data Point when rerunning 
-`img2catalog`, it is necessary to first perform a SPARQL query on the GraphDB, or another triple store, that contains
-the metadata stored in your FDP. To do so, supply the SPARQL endpoint as an argument to the `fdp` output.
+The Catalog is pushed first, then the Datasets into it, then the Distributions into their Dataset. The contact points
+(`vcard:Kind`) of the Catalog and the Datasets are pushed as part of them.
 
 ```sh
-img2catalog xnat --server https://xnat.health-ri.nl map-xnat-hriv2 fdp --fdp "https://fdp.healthdata.nl" -u "albert.einstein@example.com" -p "password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d" -s "https://sparql-acc.healthdata.nl/repositories/fdp"
+img2catalog xnat --server https://xnat.health-ri.nl map-xnat-hriv2 fdp --fdp "https://fdp-acc.healthdata.nl" -u "albert.einstein@example.com" -p "password" -s "https://sparql-acc.healthdata.nl/repositories/fdp"
 ```
 
-#### Updating EGA datasets
-EGA datasets are pushed the same way; only the Datasets are pushed, into the existing Catalog given with `-c`. With
-the SPARQL endpoint of the same FDP supplied, rerunning the same command updates the EGA datasets already in the
-Catalog instead of adding them again, so the FDP stays up to date with EGA:
+Which catalog in the FDP is used:
+- With `-c` (or `catalog` in the `[fdp]` configuration), the Datasets are pushed into that existing catalog. Its
+  metadata is left as it is, unless `--update-catalog` is given: then it is replaced by the Catalog of the mapping
+  (XNAT, EGA).
+- Without `-c`, the Catalog of the mapping is looked up in the FDP by its title (this needs `-s`), updated when it is
+  there and created when it is not. If more than one catalog in the FDP has that title, the push stops; give the one to
+  use with `-c`. XDS has no Catalog, so it needs `-c`.
+
+If you pushed datasets into a catalog with `-c` before, keep giving that catalog with `-c`: datasets are matched within
+their catalog, so pushing without it would add all datasets again to a new catalog.
+
+#### Updating the FDP by rerunning
+To update the records on the FAIR Data Point when rerunning `img2catalog`, supply the SPARQL endpoint of the triple store
+(e.g. GraphDB) that holds the metadata of your FDP with `-s`. Rerunning the same command then updates the records
+already in the FDP instead of adding them again, so the FDP stays up to date:
+- a Catalog is found by its title, or given with `-c`; use the same one on every run
+- a Dataset is found by its identifier within the Catalog: the EGA archive URL (e.g.
+  `https://ega-archive.org/datasets/EGAD00001005083`), the XNAT project URL, or for XDS the configured identifier
+  followed by the dataset title (e.g. `https://www.example.com/img-123/hospital-a-ct-2024`)
+- a Distribution is found by its format within its Dataset
+
+An updated record keeps the links to its children in the FDP, also to children that are not pushed again, and is
+published if it was still a draft.
 
 ```sh
-img2catalog -c config.toml ega -a EGAD00001005083 -a EGAD00001005084 map-ega-hriv2 fdp --fdp "https://fdp-acc.healthdata.nl" -u "albert.einstein@example.com" -p "password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d" -s "https://sparql-acc.healthdata.nl/repositories/fdp"
+img2catalog -c config.toml ega -a EGAD00001005083 -a EGAD00001005084 map-ega-hriv2 fdp --fdp "https://fdp-acc.healthdata.nl" -u "albert.einstein@example.com" -p "password" -s "https://sparql-acc.healthdata.nl/repositories/fdp"
 ```
 
-A dataset is matched on its identifier, the EGA archive URL (e.g. `https://ega-archive.org/datasets/EGAD00001005083`),
-within the Catalog, so use the same Catalog URI on every run. Datasets pushed by an earlier version of `img2catalog`,
-with another identifier, are not matched; remove those from the FDP once. If the Catalog holds more than one dataset
-with the same identifier, that dataset is skipped with a warning until the duplicates are removed. A dataset of which
-the EGA metadata cannot be fetched completely is skipped, so that it does not replace the dataset in the FDP with
-incomplete metadata.
+Records pushed by an earlier version of `img2catalog`, with another identifier, are not matched; remove those from the
+FDP once. If the FDP holds more than one dataset or distribution that matches, that one is skipped with a warning until
+the duplicates are removed. A record that cannot be read from the FDP is not updated, as the update would remove its
+links to its children. An EGA dataset of which the metadata cannot be fetched completely is skipped, so that it does
+not replace the dataset in the FDP with incomplete metadata.
 
 ### Configuration XNAT
 

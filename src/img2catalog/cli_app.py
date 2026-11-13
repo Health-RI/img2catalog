@@ -233,23 +233,41 @@ def output_rdf(ctx: click.Context, output: click.Path, format: str):
 @click.option("-u", "--username", envvar=FDP_USER_ENV, type=str, required=True, help="Username of FDP to push to")
 @click.option("-p", "--password", envvar=FDP_PASS_ENV, type=str, required=True, help="Password of FDP to push to")
 @click.option(
-    "-c", "--catalog", default=None, type=URIRef, help="Catalog URI where datasets will be placed in", required=True
+    "-c",
+    "--catalog",
+    default=None,
+    type=URIRef,
+    help=(
+        "URI of an existing catalog in the FDP where datasets will be placed in. When not given, the Catalog of the "
+        "mapping (EGA, XNAT) is found in the FDP by its title, or created. Required when the mapping has no Catalog "
+        "(XDS), unless set as 'catalog' in the [fdp] configuration."
+    ),
+)
+@click.option(
+    "--update-catalog",
+    is_flag=True,
+    default=False,
+    help="Update the catalog given with -c with the Catalog of the mapping (EGA, XNAT), replacing its metadata.",
 )
 @click.option(
     "-s",
     "--sparql",
     envvar=SPARQL_ENV,
     type=URIRef,
-    help=" URL of SPARQL endpoint of FDP, used for querying which dataset to update",
+    help=" URL of SPARQL endpoint of FDP, used for querying which records to update",
 )
 @mapping_xnat_healthriv2.command(name="fdp")
 @click.pass_context
-def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catalog: URIRef, sparql: str):
-    """Push metadata to a FAIR Data Point (FDP)."""
+def output_fdp(
+    ctx: click.Context, fdp: str, username: str, password: str, catalog: URIRef, update_catalog: bool, sparql: str
+):
+    """Push metadata to a FAIR Data Point (FDP): the Catalog, Datasets and Distributions."""
     config = ctx.obj["config"]
     mapped_objects = ctx.obj["mapped_objects"]
 
-    fdp_output = FDPOutput(config, fdp, username, password, catalog_uri=catalog, sparql=sparql)
+    fdp_output = FDPOutput(
+        config, fdp, username, password, catalog_uri=catalog, sparql=sparql, update_catalog=update_catalog
+    )
 
     fdp_output.push_to_fdp(mapped_objects)
 
