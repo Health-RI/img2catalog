@@ -238,10 +238,16 @@ def output_rdf(ctx: click.Context, output: click.Path, format: str):
     default=None,
     type=URIRef,
     help=(
-        "URI of the catalog in the FDP where datasets will be placed in. When the mapping has a Catalog (EGA, XNAT), "
-        "this catalog is updated with it; when not given, that Catalog is found in the FDP by its title, or created. "
-        "Required when the mapping has no Catalog (XDS), unless set as 'catalog' in the [fdp] configuration."
+        "URI of an existing catalog in the FDP where datasets will be placed in. When not given, the Catalog of the "
+        "mapping (EGA, XNAT) is found in the FDP by its title, or created. Required when the mapping has no Catalog "
+        "(XDS), unless set as 'catalog' in the [fdp] configuration."
     ),
+)
+@click.option(
+    "--update-catalog",
+    is_flag=True,
+    default=False,
+    help="Update the catalog given with -c with the Catalog of the mapping (EGA, XNAT), replacing its metadata.",
 )
 @click.option(
     "-s",
@@ -252,12 +258,16 @@ def output_rdf(ctx: click.Context, output: click.Path, format: str):
 )
 @mapping_xnat_healthriv2.command(name="fdp")
 @click.pass_context
-def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catalog: URIRef, sparql: str):
+def output_fdp(
+    ctx: click.Context, fdp: str, username: str, password: str, catalog: URIRef, update_catalog: bool, sparql: str
+):
     """Push metadata to a FAIR Data Point (FDP): the Catalog, Datasets and Distributions."""
     config = ctx.obj["config"]
     mapped_objects = ctx.obj["mapped_objects"]
 
-    fdp_output = FDPOutput(config, fdp, username, password, catalog_uri=catalog, sparql=sparql)
+    fdp_output = FDPOutput(
+        config, fdp, username, password, catalog_uri=catalog, sparql=sparql, update_catalog=update_catalog
+    )
 
     fdp_output.push_to_fdp(mapped_objects)
 

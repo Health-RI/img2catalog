@@ -69,7 +69,7 @@ The output `fdp` pushes the mapped metadata to an FDP, from XNAT, an XDS export 
 
 | Input | Catalog | Datasets | Distributions |
 |-------|---------|----------|---------------|
-| XNAT  | from the `[catalog]` configuration | one per project | links entered in the custom form |
+| XNAT  | from the `[catalog]` configuration | one per project | none; links entered in the custom form are kept on the Dataset |
 | XDS   | none; give an existing catalog with `-c` | one per row of the export | none |
 | EGA   | from the `[catalog]` configuration, if present | one per EGA dataset | one per file format |
 
@@ -81,16 +81,21 @@ img2catalog xnat --server https://xnat.health-ri.nl map-xnat-hriv2 fdp --fdp "ht
 ```
 
 Which catalog in the FDP is used:
-- With `-c` (or `catalog` in the `[fdp]` configuration), the Datasets are pushed into that catalog. When the mapping has
-  a Catalog (XNAT, EGA), that catalog is updated with it.
-- Without `-c`, the mapped Catalog is looked up in the FDP by its title, and created when it is not there. XDS has no
-  Catalog, so it needs `-c`.
+- With `-c` (or `catalog` in the `[fdp]` configuration), the Datasets are pushed into that existing catalog. Its
+  metadata is left as it is, unless `--update-catalog` is given: then it is replaced by the Catalog of the mapping
+  (XNAT, EGA).
+- Without `-c`, the Catalog of the mapping is looked up in the FDP by its title (this needs `-s`), updated when it is
+  there and created when it is not. If more than one catalog in the FDP has that title, the push stops; give the one to
+  use with `-c`. XDS has no Catalog, so it needs `-c`.
+
+If you pushed datasets into a catalog with `-c` before, keep giving that catalog with `-c`: datasets are matched within
+their catalog, so pushing without it would add all datasets again to a new catalog.
 
 #### Updating the FDP by rerunning
 To update the records on the FAIR Data Point when rerunning `img2catalog`, supply the SPARQL endpoint of the triple store
 (e.g. GraphDB) that holds the metadata of your FDP with `-s`. Rerunning the same command then updates the records
 already in the FDP instead of adding them again, so the FDP stays up to date:
-- a Catalog is found by its title (or given with `-c`; use the same one on every run)
+- a Catalog is found by its title, or given with `-c`; use the same one on every run
 - a Dataset is found by its identifier within the Catalog: the EGA archive URL (e.g.
   `https://ega-archive.org/datasets/EGAD00001005083`), the XNAT project URL, or for XDS the configured identifier
   followed by the dataset title (e.g. `https://www.example.com/img-123/hospital-a-ct-2024`)
@@ -104,8 +109,9 @@ img2catalog -c config.toml ega -a EGAD00001005083 -a EGAD00001005084 map-ega-hri
 ```
 
 Records pushed by an earlier version of `img2catalog`, with another identifier, are not matched; remove those from the
-FDP once. If the FDP holds more than one record that matches, that record is skipped with a warning until the
-duplicates are removed. An EGA dataset of which the metadata cannot be fetched completely is skipped, so that it does
+FDP once. If the FDP holds more than one dataset or distribution that matches, that one is skipped with a warning until
+the duplicates are removed. A record that cannot be read from the FDP is not updated, as the update would remove its
+links to its children. An EGA dataset of which the metadata cannot be fetched completely is skipped, so that it does
 not replace the dataset in the FDP with incomplete metadata.
 
 ### Configuration XNAT

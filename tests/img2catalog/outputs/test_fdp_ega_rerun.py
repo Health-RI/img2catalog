@@ -166,10 +166,31 @@ def test_rerun_updates_dataset_when_state_cannot_be_checked(fdp_output, default_
     fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
     default_ega_dataset["title"] = "Updated title"
 
-    unreachable = patch.object(fdp_output.fdpclient, "get", side_effect=requests.ConnectionError("timeout"))
-    with unreachable, caplog.at_level(logging.WARNING):
+    fdp = fdp_output.fdpclient
+    get_record = fdp.get
+
+    def state_unreachable(url, headers, timeout):
+        if url.endswith("/meta"):
+            raise requests.ConnectionError("timeout")
+        return get_record(url, headers, timeout)
+
+    with patch.object(fdp, "get", side_effect=state_unreachable), caplog.at_level(logging.WARNING):
         fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
 
     updated = fdp_output.fdpclient.datasets[URIRef("http://fdp.example.com/dataset/1")]
     assert Literal("Updated title") in set(updated.objects(None, DCTERMS.title))
     assert "Could not check if http://fdp.example.com/dataset/1 is published in the FDP" in caplog.text
+
+
+def test_rerun_does_not_update_dataset_that_cannot_be_read(fdp_output, default_ega_dataset, ega_config, caplog):
+    """Updating a dataset without its links to its distributions in the FDP would remove them, so it is skipped."""
+    fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
+    default_ega_dataset["title"] = "Updated title"
+
+    unreachable = patch.object(fdp_output.fdpclient, "get", side_effect=requests.ConnectionError("timeout"))
+    with unreachable, caplog.at_level(logging.WARNING):
+        fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
+
+    not_updated = fdp_output.fdpclient.datasets[URIRef("http://fdp.example.com/dataset/1")]
+    assert Literal("Updated title") not in set(not_updated.objects(None, DCTERMS.title))
+    assert "Error pushing dataset https://ega-archive.org/datasets/EGAD00001005083 to FDP: timeout" in caplog.text

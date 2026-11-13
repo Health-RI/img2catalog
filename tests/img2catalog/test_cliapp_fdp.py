@@ -86,6 +86,8 @@ def assert_fdp_consistent(fdp):
     assert set(fdp.states.values()) == {"PUBLISHED"}
     for catalog in fdp.of_type("catalog"):
         assert fdp.records[catalog].value(catalog, DCTERMS.isPartOf) == FDP_ROOT
+        # A catalog only links to datasets in the FDP, not to e.g. XNAT project URLs
+        assert set(fdp.records[catalog].objects(catalog, DCAT.dataset)) <= set(fdp.of_type("dataset"))
     for child_type, link in (("dataset", DCAT.dataset), ("distribution", DCAT.distribution)):
         for child in fdp.of_type(child_type):
             parent = fdp.records[child].value(child, DCTERMS.isPartOf)
@@ -123,15 +125,31 @@ def test_ega_pushes_catalog_datasets_distributions_and_contact_points(fdp, defau
     }
 
 
+def test_ega_pushes_into_given_catalog_without_changing_it(fdp, default_ega_dataset, isolated_cli_runner):
+    """A catalog given with -c may be maintained otherwise, so by default it is not updated with the mapped Catalog."""
+    catalog = existing_catalog(fdp, datasets=2)
+    args = ["-c", str(EXAMPLES / "ega" / "example_config.toml"), "ega", "-a", "EGAD00001005083", "map-ega-hriv2"]
+
+    with patch("img2catalog.cli_app.fetch_ega_datasets", return_value=[default_ega_dataset]):
+        run(isolated_cli_runner, [*args, *FDP_ARGS, "-c", str(catalog)])
+        run(isolated_cli_runner, [*args, *FDP_ARGS, "-c", str(catalog)])
+
+    assert list(fdp.of_type("catalog")) == [catalog]
+    assert fdp.records[catalog].value(catalog, DCTERMS.title) == Literal("Existing catalog")
+    assert len(list(fdp.records[catalog].objects(catalog, DCAT.dataset))) == 3
+    assert_fdp_consistent(fdp)
+
+
 def test_ega_updates_given_catalog_and_keeps_its_other_datasets(fdp, default_ega_dataset, isolated_cli_runner):
     # Arrange: a catalog in the FDP with two datasets not from this push
     catalog = existing_catalog(fdp, datasets=2)
     args = ["-c", str(EXAMPLES / "ega" / "example_config.toml"), "ega", "-a", "EGAD00001005083", "map-ega-hriv2"]
+    fdp_args = [*FDP_ARGS, "-c", str(catalog), "--update-catalog"]
 
     # Act
     with patch("img2catalog.cli_app.fetch_ega_datasets", return_value=[default_ega_dataset]):
-        run(isolated_cli_runner, args + FDP_ARGS + ["-c", str(catalog)])
-        run(isolated_cli_runner, args + FDP_ARGS + ["-c", str(catalog)])
+        run(isolated_cli_runner, args + fdp_args)
+        run(isolated_cli_runner, args + fdp_args)
 
     # Assert: the given catalog is updated with the mapped Catalog, and still lists its other datasets
     assert list(fdp.of_type("catalog")) == [catalog]
@@ -221,4 +239,67 @@ def test_xnat_pushes_catalog_and_datasets_with_contact_points(fdp, isolated_cli_
     assert fdp.records[catalogs[0]].value(catalogs[0], DCTERMS.title) == Literal("Example XNAT catalog")
     assert_contact_point(fdp, catalogs[0])
     assert_contact_point(fdp, datasets[0])
+    assert_fdp_consistent(fdp)
+
+
+def test_ega_skips_distributions_of_dataset_that_failed(fdp, default_ega_dataset, isolated_cli_runner, caplog):
+    args = ["-c", str(EXAMPLES / "ega" / "example_config.toml"), "ega", "-a", "EGAD00001005083", "map-ega-hriv2"]
+    create_record = fdp.create_and_publish
+
+    def refuse_datasets(resource_type, metadata):
+        if resource_type == "dataset":
+            raise ValueError("400 Bad Request")
+        return create_record(resource_type, metadata)
+
+    ega = patch("img2catalog.cli_app.fetch_ega_datasets", return_value=[default_ega_dataset])
+    with ega, patch.object(fdp, "create_and_publish", side_effect=refuse_datasets):
+        run(isolated_cli_runner, args + FDP_ARGS)
+
+    assert list(fdp.of_type("dataset")) == []
+    assert list(fdp.of_type("distribution")) == []
+    assert "as its Dataset was not pushed to the FDP" in caplog.text
+
+
+def test_push_without_catalog_and_sparql_warns_about_new_catalogs(
+    fdp, default_ega_dataset, isolated_cli_runner, caplog
+):
+    args = ["-c", str(EXAMPLES / "ega" / "example_config.toml"), "ega", "-a", "EGAD00001005083", "map-ega-hriv2"]
+    fdp_args = ["fdp", "--fdp", FDP_URL, "-u", "user", "-p", "password"]
+
+    with patch("img2catalog.cli_app.fetch_ega_datasets", return_value=[default_ega_dataset]):
+        run(isolated_cli_runner, args + fdp_args)
+
+    assert "a new catalog with new datasets is created on every push" in caplog.text
+
+
+def test_xnat_removed_distribution_link_stays_removed(fdp, isolated_cli_runner):
+    """Only links to children in the FDP are kept on an update, so a link removed in XNAT is removed in the FDP."""
+    args = ["-c", str(EXAMPLES / "xnat" / "example-config.toml"), "xnat", "--server", "https://xnat.example.com"]
+    link = URIRef("https://xnat.example.com/data/projects/test_img2catalog")
+    with_link = xnat_metadata()
+    with_link["dataset"][0]["distribution"] = [str(link)]
+
+    with patch("xnat.connect", return_value=MagicMock()):
+        with patch("img2catalog.cli_app.XNATInput.get_metadata", return_value=with_link):
+            run(isolated_cli_runner, [*args, "map-xnat-hriv2", *FDP_ARGS])
+        dataset = next(iter(fdp.of_type("dataset")))
+        assert (dataset, DCAT.distribution, link) in fdp.records[dataset]
+        with patch("img2catalog.cli_app.XNATInput.get_metadata", side_effect=xnat_metadata):
+            run(isolated_cli_runner, [*args, "map-xnat-hriv2", *FDP_ARGS])
+
+    assert (dataset, DCAT.distribution, link) not in fdp.records[dataset]
+
+
+def test_xnat_pushes_into_given_catalog_without_changing_it(fdp, isolated_cli_runner):
+    catalog = existing_catalog(fdp)
+    args = ["-c", str(EXAMPLES / "xnat" / "example-config.toml"), "xnat", "--server", "https://xnat.example.com"]
+
+    xnat_server = patch("xnat.connect", return_value=MagicMock())
+    xnat_projects = patch("img2catalog.cli_app.XNATInput.get_metadata", side_effect=xnat_metadata)
+    with xnat_server, xnat_projects:
+        run(isolated_cli_runner, [*args, "map-xnat-hriv2", *FDP_ARGS, "-c", str(catalog)])
+
+    assert list(fdp.of_type("catalog")) == [catalog]
+    assert fdp.records[catalog].value(catalog, DCTERMS.title) == Literal("Existing catalog")
+    assert len(fdp.of_type("dataset")) == 1
     assert_fdp_consistent(fdp)

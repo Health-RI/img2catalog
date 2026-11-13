@@ -11,13 +11,16 @@ from sempyro import LiteralField
 logger = logging.getLogger(__name__)
 
 FDP_O = Namespace("https://w3id.org/fdp/fdp-o#")
+LDP = Namespace("http://www.w3.org/ns/ldp#")
 
 # URIs that img2catalog gives to mapped objects before they get a URI in the FDP
 INTERNAL_URI_PREFIX = "http://img2catalog.internal/"
 
-# The FDP links a parent record to its children (e.g. a Catalog to its Datasets) when a child is pushed. Updating the
-# parent replaces its metadata, which removes these links, so they are kept when updating a record.
+# The FDP links a parent record to its children (e.g. a Catalog to its Datasets) when a child is pushed, and lists them
+# with ldp:contains. Updating the parent replaces its metadata, which removes these links, so they are kept when
+# updating a record. The FDP also adds the themes of the Datasets of a Catalog to it as dcat:themeTaxonomy.
 CHILD_LINKS = {"catalog": DCAT.dataset, "dataset": DCAT.distribution}
+FDP_MANAGED = {"catalog": [DCAT.themeTaxonomy]}
 
 
 def remove_internal_distribution_links(graph: Graph, dataset_uri: URIRef) -> None:
@@ -60,10 +63,13 @@ class FDPOutput:
     fdp_password: str
         Password for the FDP to push to
     catalog_uri: Union[str, None]
-        URI of the catalog in the FDP to push to. When the mapping has a Catalog, this catalog is updated with it;
-        without it, the Catalog is found in the FDP by its title, or created.
+        URI of an existing catalog in the FDP to push the Datasets to. Without it, the mapped Catalog is found in the
+        FDP by its title, or created.
     sparql: Union[str, None]
         URL to the SparQL endpoint
+    update_catalog: bool
+        Update the catalog given with catalog_uri with the mapped Catalog. Off by default, as that replaces the
+        metadata of an existing catalog.
 
     """
 
@@ -75,9 +81,11 @@ class FDPOutput:
         fdp_password: str,
         catalog_uri: Union[str, None] = None,
         sparql: Union[str, None] = None,
+        update_catalog: bool = False,
     ):
         self.config = config
         self.fdp = fdp
+        self.update_catalog = update_catalog
 
         self.fdpclient = FDPClient(self.fdp, fdp_username, fdp_password)
 
@@ -99,7 +107,7 @@ class FDPOutput:
 
         A record already in the FDP is updated instead of added again, so rerunning a push keeps the FDP up to date: a
         Dataset is found by its identifier within the Catalog, a Distribution by its format within its Dataset, and a
-        Catalog by its title (unless its URI is given). This needs the SPARQL endpoint of the FDP.
+        Catalog by its title (unless an existing catalog is given). This needs the SPARQL endpoint of the FDP.
 
         Parameters
         ----------
@@ -130,11 +138,27 @@ class FDPOutput:
             self.push_distribution(distribution, dataset_uri)
 
     def push_catalog(self, catalogs: List[Dict]) -> URIRef:
-        """Push the mapped Catalog, and return the URI of the catalog in the FDP to push the Datasets to."""
+        """Push the mapped Catalog, and return the URI of the catalog in the FDP to push the Datasets to.
+
+        An existing catalog given with its URI is only updated with the mapped Catalog when update_catalog is set, so
+        the metadata of a catalog maintained otherwise is not replaced. Without a given catalog, the mapped Catalog is
+        found by its title and updated, or created.
+        """
         if not catalogs:
             if not self.catalog_uri:
                 raise ValueError("FDP Error: No catalog URI set to push to")
             return self.catalog_uri
+        if self.catalog_uri and not self.update_catalog:
+            logger.info(
+                "Pushing into catalog %s without updating it with the mapped Catalog (use --update-catalog for that)",
+                self.catalog_uri,
+            )
+            return self.catalog_uri
+        if not self.catalog_uri and not self.sparqlclient:
+            logger.warning(
+                "No catalog and no SPARQL endpoint given: the existing catalog cannot be found, so a new catalog with "
+                "new datasets is created on every push. Give the catalog with -c or the SPARQL endpoint with -s"
+            )
         if len(catalogs) > 1:
             logger.warning("Only the first of %d Catalogs is pushed to the FDP", len(catalogs))
 
@@ -146,16 +170,16 @@ class FDPOutput:
         graph.add((catalog["uri"], DCTERMS.isPartOf, root))
 
         title = str(next(iter(graph.objects(catalog["uri"], DCTERMS.title)), ""))
+        fdp_uri = self.catalog_uri
         try:
-            fdp_uri = self.catalog_uri or self.find_catalog(title, root)
+            fdp_uri = fdp_uri or self.find_catalog(title, root)
             return self.push_record("catalog", graph, catalog["uri"], fdp_uri)
         except Exception as e:
-            if not self.catalog_uri:
+            if not fdp_uri:
                 raise ValueError(f"FDP Error: Could not push catalog {title!r} to the FDP: {e}") from e
-            logger.warning(
-                "Error updating catalog %s in the FDP, pushing the datasets into it: %s", self.catalog_uri, e
-            )
-            return self.catalog_uri
+            # The catalog exists, so the datasets can still be pushed into it
+            logger.warning("Error updating catalog %s in the FDP, pushing the datasets into it: %s", fdp_uri, e)
+            return URIRef(fdp_uri)
 
     def push_dataset(self, dataset: Dict, catalog_uri: URIRef) -> Optional[URIRef]:
         """Push a Dataset into the catalog in the FDP, and return its URI in the FDP (None when it failed)."""
@@ -205,33 +229,40 @@ class FDPOutput:
 
         fdp_uri = URIRef(fdp_uri)
         rewrite_graph_subject(graph, subject, fdp_uri)
-        self.keep_child_links(record_type, fdp_uri, graph)
+        self.keep_fdp_managed_links(record_type, fdp_uri, graph)
         self.fdpclient.update_serialized(fdp_uri, graph)
         logger.info("Updated %s %s in the FDP", record_type, fdp_uri)
         # An updated record keeps its state in the FDP
         self.publish_if_draft(fdp_uri)
         return fdp_uri
 
-    def keep_child_links(self, record_type: str, fdp_uri: URIRef, graph: Graph) -> None:
-        """Add the links of an existing record to its children in the FDP to the graph it is updated with.
+    def keep_fdp_managed_links(self, record_type: str, fdp_uri: URIRef, graph: Graph) -> None:
+        """Add the links the FDP manages for an existing record to the graph it is updated with.
 
         Otherwise the update removes them, and e.g. the Datasets of a Catalog that are not pushed again would no
-        longer be listed in it.
+        longer be listed in it. Only links to the children the FDP holds for the record (ldp:contains) are kept, so a
+        link that was removed from the mapped metadata, e.g. an external distribution URL, stays removed.
+
+        When the record cannot be read, an error is raised instead of updating it, as the update would remove the links.
         """
         predicate = CHILD_LINKS.get(record_type)
-        if predicate is None:
+        managed = FDP_MANAGED.get(record_type, [])
+        if predicate is None and not managed:
             return
-        try:
-            response = self.fdpclient.session.get(
-                str(fdp_uri), headers={"Accept": "text/turtle"}, timeout=self.fdpclient.timeout
-            )
-            response.raise_for_status()
-            existing = Graph().parse(data=response.text, format="turtle")
-        except Exception as e:
-            logger.warning("Could not read the links of %s %s to its children in the FDP: %s", record_type, fdp_uri, e)
-            return
-        for child in existing.objects(fdp_uri, predicate):
-            graph.add((fdp_uri, predicate, child))
+        response = self.fdpclient.session.get(
+            str(fdp_uri), headers={"Accept": "text/turtle"}, timeout=self.fdpclient.timeout
+        )
+        response.raise_for_status()
+        existing = Graph().parse(data=response.text, format="turtle")
+
+        if predicate is not None:
+            children = set(existing.objects(None, LDP.contains))
+            for child in existing.objects(fdp_uri, predicate):
+                if child in children:
+                    graph.add((fdp_uri, predicate, child))
+        for managed_predicate in managed:
+            for value in existing.objects(fdp_uri, managed_predicate):
+                graph.add((fdp_uri, managed_predicate, value))
 
     def publish_if_draft(self, fdp_uri: URIRef) -> None:
         """Publish an existing record in the FDP when it is still a draft.
