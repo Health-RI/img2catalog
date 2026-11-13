@@ -11,7 +11,7 @@ from rdflib import DCAT, DCTERMS, RDF, Graph, Literal, URIRef
 from sempyro import LiteralField
 
 from img2catalog.mappings.ega import map_ega_to_healthri_dcat_dataset
-from img2catalog.outputs.fdp import FDPOutput, get_identifier_value
+from img2catalog.outputs.fdp import FDPOutput, get_identifier_value, remove_internal_distribution_links
 
 CATALOG_URI = URIRef("http://fdp.example.com/catalog/ega")
 DATASET_URI = URIRef("http://img2catalog.internal/dataset/EGAD00001005083")
@@ -76,7 +76,9 @@ def fdp_output(config):
 
 
 def _mapped_objects(ega_dataset, config):
-    dataset = map_ega_to_healthri_dcat_dataset(ega_dataset, config)
+    """Map an EGA dataset like the CLI does, linking it to its Distribution by an internal URI."""
+    distribution_uri = URIRef(f"http://img2catalog.internal/distribution/{ega_dataset['accession_id']}/BIN")
+    dataset = map_ega_to_healthri_dcat_dataset(ega_dataset, config, [distribution_uri])
     return {"dataset": [{"uri": DATASET_URI, "model_object": dataset}]}
 
 
@@ -109,6 +111,8 @@ def test_rerun_updates_ega_dataset_in_fdp(fdp_output, default_ega_dataset, ega_c
     updated = fdp_output.fdpclient.datasets[URIRef("http://fdp.example.com/dataset/1")]
     assert set(updated.objects(URIRef("http://fdp.example.com/dataset/1"), DCTERMS.title)) == {Literal("Updated title")}
     assert (URIRef("http://fdp.example.com/dataset/1"), DCTERMS.isPartOf, CATALOG_URI) in updated
+    # No link to the Distribution, which is not pushed, and no internal URI is left in the FDP
+    assert not any("img2catalog.internal" in str(term) for triple in updated for term in triple)
     # The FDP is queried with the plain EGA identifier, not the representation of the identifier object
     assert (
         'dcterms:identifier "https://ega-archive.org/datasets/EGAD00001005083"'
@@ -152,5 +156,18 @@ def test_rerun_with_duplicates_in_fdp_warns_with_identifier(fdp_output, default_
     assert len(fdp_output.fdpclient.datasets) == 2
     assert (
         "Error pushing dataset https://ega-archive.org/datasets/EGAD00001005083 to FDP: "
-        "More than one result for SPARQL query"
+        "More than one result for SPARQL query. Remove the duplicate datasets"
     ) in caplog.text
+
+
+def test_remove_internal_distribution_links_keeps_actual_distributions():
+    """Distributions with an actual URI, e.g. entered in an XNAT custom form, are still linked."""
+    graph = Graph()
+    actual_distribution = URIRef("https://example.com/distribution/1")
+    internal_distribution = URIRef("http://img2catalog.internal/distribution/EGAD00001005083/BIN")
+    graph.add((DATASET_URI, DCAT.distribution, actual_distribution))
+    graph.add((DATASET_URI, DCAT.distribution, internal_distribution))
+
+    remove_internal_distribution_links(graph, DATASET_URI)
+
+    assert set(graph.objects(DATASET_URI, DCAT.distribution)) == {actual_distribution}
