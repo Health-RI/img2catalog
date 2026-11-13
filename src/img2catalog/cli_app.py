@@ -28,6 +28,7 @@ from img2catalog.inputs.csv_reader import filter_by_unique_individuals, read_csv
 from img2catalog.inputs.ega import fetch_ega_datasets
 from img2catalog.inputs.xnat import XNATInput
 from img2catalog.mappings.ega import (
+    MissingEGAValueError,
     map_ega_to_healthri_dcat_catalog,
     map_ega_to_healthri_dcat_dataset,
     map_ega_to_healthri_dcat_distributions,
@@ -399,15 +400,25 @@ def mapping_ega_healthriv2(ctx: click.Context):
         accession_id = ega_dataset["accession_id"]
         dataset_uri = URIRef(f"http://img2catalog.internal/dataset/{accession_id}")
 
-        # One Distribution per file format, identified by the format code (e.g. BIN, TXT)
-        distribution_uris = []
-        for distribution in map_ega_to_healthri_dcat_distributions(ega_dataset, config):
-            format_code = str(distribution.format).rsplit("/", 1)[-1]
-            distribution_uri = URIRef(f"http://img2catalog.internal/distribution/{accession_id}/{format_code}")
-            distribution_uris.append(distribution_uri)
-            distributions.append({"uri": distribution_uri, "model_object": distribution, "dataset_uri": dataset_uri})
+        try:
+            ega_distributions = map_ega_to_healthri_dcat_distributions(ega_dataset, config)
 
-        dataset = map_ega_to_healthri_dcat_dataset(ega_dataset, config, distribution_uris)
+            # One Distribution per file format, identified by the format code (e.g. BIN, TXT)
+            distribution_base_uri = f"http://img2catalog.internal/distribution/{accession_id}/"
+            distribution_uris = [
+                URIRef(distribution_base_uri + str(distribution.format).rsplit("/", 1)[-1])
+                for distribution in ega_distributions
+            ]
+            dataset = map_ega_to_healthri_dcat_dataset(ega_dataset, config, distribution_uris)
+        except MissingEGAValueError as e:
+            # A dataset missing mandatory metadata in EGA is skipped, so the other datasets are still mapped
+            logger.warning("Skipping EGA dataset %s: %s", accession_id, e.args[0])
+            continue
+
+        distributions.extend(
+            {"uri": distribution_uri, "model_object": distribution, "dataset_uri": dataset_uri}
+            for distribution_uri, distribution in zip(distribution_uris, ega_distributions)
+        )
         datasets.append({"uri": dataset_uri, "model_object": dataset})
 
     mapped_objects = {"dataset": datasets, "distribution": distributions}
