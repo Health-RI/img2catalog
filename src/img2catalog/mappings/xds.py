@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from typing import Dict
 
@@ -50,6 +51,17 @@ def format_title(data) -> str:
     return f"{institute} - {modality} - {formatted_date_range}"
 
 
+def format_identifier(identifier_base: str, title: str) -> str:
+    """Build a dataset identifier from the configured base and the dataset title.
+
+    Each row of an XDS export is a separate dataset (institute, modality and period), so each needs its own
+    identifier, which stays the same when the export is processed again. The FDP output finds the dataset to update by
+    this identifier.
+    """
+    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    return f"{identifier_base.rstrip('/')}/{slug}"
+
+
 def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
     dataset_config = config.get("dataset")
     publisher_config = dataset_config["publisher"]
@@ -79,7 +91,7 @@ def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
 
     return HRIDataset(
         # MANDATORY DCAT FIELDS
-        identifier=LiteralField(value=dataset_config["identifier"]),
+        identifier=LiteralField(value=format_identifier(dataset_config["identifier"], dataset_formatted_title)),
         title=[LiteralField(value=dataset_formatted_title)],
         description=[LiteralField(value=dataset_config["description"])],
         publisher=publisher,

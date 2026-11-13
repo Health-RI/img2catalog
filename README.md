@@ -82,6 +82,22 @@ the metadata stored in your FDP. To do so, supply the SPARQL endpoint as an argu
 img2catalog xnat --server https://xnat.health-ri.nl map-xnat-hriv2 fdp --fdp "https://fdp.healthdata.nl" -u "albert.einstein@example.com" -p "password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d" -s "https://sparql-acc.healthdata.nl/repositories/fdp"
 ```
 
+#### Updating EGA datasets
+EGA datasets are pushed the same way; only the Datasets are pushed, into the existing Catalog given with `-c`. With
+the SPARQL endpoint of the same FDP supplied, rerunning the same command updates the EGA datasets already in the
+Catalog instead of adding them again, so the FDP stays up to date with EGA:
+
+```sh
+img2catalog -c config.toml ega -a EGAD00001005083 -a EGAD00001005084 map-ega-hriv2 fdp --fdp "https://fdp-acc.healthdata.nl" -u "albert.einstein@example.com" -p "password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d" -s "https://sparql-acc.healthdata.nl/repositories/fdp"
+```
+
+A dataset is matched on its identifier, the EGA archive URL (e.g. `https://ega-archive.org/datasets/EGAD00001005083`),
+within the Catalog, so use the same Catalog URI on every run. Datasets pushed by an earlier version of `img2catalog`,
+with another identifier, are not matched; remove those from the FDP once. If the Catalog holds more than one dataset
+with the same identifier, that dataset is skipped with a warning until the duplicates are removed. A dataset of which
+the EGA metadata cannot be fetched completely is skipped, so that it does not replace the dataset in the FDP with
+incomplete metadata.
+
 ### Configuration XNAT
 
 A number of configuration options are available through the command line interface (CLI). To get an overview of these
