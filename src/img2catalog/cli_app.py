@@ -233,19 +233,27 @@ def output_rdf(ctx: click.Context, output: click.Path, format: str):
 @click.option("-u", "--username", envvar=FDP_USER_ENV, type=str, required=True, help="Username of FDP to push to")
 @click.option("-p", "--password", envvar=FDP_PASS_ENV, type=str, required=True, help="Password of FDP to push to")
 @click.option(
-    "-c", "--catalog", default=None, type=URIRef, help="Catalog URI where datasets will be placed in", required=True
+    "-c",
+    "--catalog",
+    default=None,
+    type=URIRef,
+    help=(
+        "URI of the catalog in the FDP where datasets will be placed in. When the mapping has a Catalog (EGA, XNAT), "
+        "this catalog is updated with it; when not given, that Catalog is found in the FDP by its title, or created. "
+        "Required when the mapping has no Catalog (XDS), unless set as 'catalog' in the [fdp] configuration."
+    ),
 )
 @click.option(
     "-s",
     "--sparql",
     envvar=SPARQL_ENV,
     type=URIRef,
-    help=" URL of SPARQL endpoint of FDP, used for querying which dataset to update",
+    help=" URL of SPARQL endpoint of FDP, used for querying which records to update",
 )
 @mapping_xnat_healthriv2.command(name="fdp")
 @click.pass_context
 def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catalog: URIRef, sparql: str):
-    """Push metadata to a FAIR Data Point (FDP)."""
+    """Push metadata to a FAIR Data Point (FDP): the Catalog, Datasets and Distributions."""
     config = ctx.obj["config"]
     mapped_objects = ctx.obj["mapped_objects"]
 

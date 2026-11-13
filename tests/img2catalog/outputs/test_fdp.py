@@ -7,9 +7,9 @@ from rdflib import DCTERMS, URIRef
 from img2catalog.outputs.fdp import FDPOutput
 
 
-@patch("img2catalog.outputs.fdp.add_or_update_dataset")
+@patch.object(FDPOutput, "push_record", return_value=URIRef("http://fdp.example.com/dataset/1"))
 @patch.object(FDPClient, "__init__", return_value=None)
-def test_xnat_to_fdp_push(mock_fdp_client, mock_add_or_update_dataset, mock_dataset, config, empty_graph):
+def test_xnat_to_fdp_push(mock_fdp_client, mock_push_record, mock_dataset, config, empty_graph):
     """Tests of XNAT to RDF pushing happens even when errors happen"""
     # FIXME: Figure out what the goal is of this test
 
@@ -32,15 +32,15 @@ def test_xnat_to_fdp_push(mock_fdp_client, mock_add_or_update_dataset, mock_data
         URIRef("http://example.com/dataset"),
         DCTERMS.isPartOf,
         URIRef("http://example.com/catalog"),
-    ) in mock_add_or_update_dataset.call_args.args[0], "FDP catalog reference missing"
-    mock_add_or_update_dataset.assert_called_once()
+    ) in mock_push_record.call_args.args[1], "FDP catalog reference missing"
+    mock_push_record.assert_called_once()
 
 
-@patch("img2catalog.outputs.fdp.add_or_update_dataset")
+@patch.object(FDPOutput, "push_record")
 @patch.object(FDPClient, "__init__", return_value=None)
-def test_xnat_to_fdp_push_error(mock_fdp_client, mock_add_or_update_dataset, mock_dataset, config, empty_graph):
-    # FIXME: Figure out what the goal is of this test also
-    mock_add_or_update_dataset.side_effect = [ValueError, None]
+def test_xnat_to_fdp_push_error(mock_fdp_client, mock_push_record, mock_dataset, config, empty_graph):
+    """An error pushing one dataset does not stop pushing the others"""
+    mock_push_record.side_effect = [ValueError, URIRef("http://fdp.example.com/dataset/2")]
 
     mapped_objects = {
         "catalog": [],
@@ -59,12 +59,12 @@ def test_xnat_to_fdp_push_error(mock_fdp_client, mock_add_or_update_dataset, moc
     )
     fdp_output.push_to_fdp(mapped_objects)
 
-    assert mock_add_or_update_dataset.call_count == 2
+    assert mock_push_record.call_count == 2
     assert (
         URIRef("http://example.com/dataset2"),
         DCTERMS.isPartOf,
         URIRef("http://example.com/catalog"),
-    ) in mock_add_or_update_dataset.call_args_list[1].args[0], "FDP catalog reference missing"
+    ) in mock_push_record.call_args_list[1].args[1], "FDP catalog reference missing"
 
 
 @patch.object(FDPClient, "__init__", return_value=None)
@@ -74,6 +74,11 @@ def test_fdp_catalog_uri_from_config(mock_fdp_client, config):
 
 
 @patch.object(FDPClient, "__init__", return_value=None)
-def test_fdp_no_catalog_uri(mock_fdp_client):
+def test_fdp_no_catalog_uri(mock_fdp_client, mock_dataset):
+    """Without a catalog URI and without a Catalog in the mapping, there is no catalog to push the datasets to"""
+    fdp_output = FDPOutput({}, fdp="http://localhost", fdp_username=None, fdp_password=None)
+
     with pytest.raises(ValueError, match="No catalog URI set to push to"):
-        _ = FDPOutput({}, fdp="http://localhost", fdp_username=None, fdp_password=None)
+        fdp_output.push_to_fdp(
+            {"dataset": [{"uri": URIRef("http://example.com/dataset"), "model_object": mock_dataset}]}
+        )
