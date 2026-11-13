@@ -27,7 +27,11 @@ from img2catalog.inputs.config import ConfigInput
 from img2catalog.inputs.csv_reader import filter_by_unique_individuals, read_csv
 from img2catalog.inputs.ega import fetch_ega_datasets
 from img2catalog.inputs.xnat import XNATInput
-from img2catalog.mappings.ega import map_ega_to_healthri_dcat_dataset
+from img2catalog.mappings.ega import (
+    map_ega_to_healthri_dcat_catalog,
+    map_ega_to_healthri_dcat_dataset,
+    map_ega_to_healthri_dcat_distributions,
+)
 from img2catalog.mappings.xds import map_xds_to_healthri_dcat_dataset
 from img2catalog.mappings.xnat import map_xnat_to_healthriv2
 from img2catalog.outputs.fdp import FDPOutput
@@ -390,16 +394,32 @@ def mapping_ega_healthriv2(ctx: click.Context):
     unmapped_objects = ctx.obj["unmapped_objects"]
 
     datasets = []
+    distributions = []
     for ega_dataset in unmapped_objects["dataset"]:
-        dataset = map_ega_to_healthri_dcat_dataset(ega_dataset, config)
-        datasets.append(
-            {
-                "uri": URIRef(f"http://img2catalog.internal/dataset/{ega_dataset['accession_id']}"),
-                "model_object": dataset,
-            }
-        )
+        accession_id = ega_dataset["accession_id"]
+        dataset_uri = URIRef(f"http://img2catalog.internal/dataset/{accession_id}")
 
-    ctx.obj["mapped_objects"] = {"dataset": datasets}
+        # One Distribution per file format, identified by the format code (e.g. BIN, TXT)
+        distribution_uris = []
+        for distribution in map_ega_to_healthri_dcat_distributions(ega_dataset, config):
+            format_code = str(distribution.format).rsplit("/", 1)[-1]
+            distribution_uri = URIRef(f"http://img2catalog.internal/distribution/{accession_id}/{format_code}")
+            distribution_uris.append(distribution_uri)
+            distributions.append({"uri": distribution_uri, "model_object": distribution, "dataset_uri": dataset_uri})
+
+        dataset = map_ega_to_healthri_dcat_dataset(ega_dataset, config, distribution_uris)
+        datasets.append({"uri": dataset_uri, "model_object": dataset})
+
+    mapped_objects = {"dataset": datasets, "distribution": distributions}
+
+    # A Catalog grouping the EGA datasets is optional, as EGA has no equivalent of it
+    if "catalog" in config:
+        catalog = map_ega_to_healthri_dcat_catalog(config, [dataset["uri"] for dataset in datasets])
+        mapped_objects["catalog"] = [
+            {"uri": URIRef("http://img2catalog.internal/catalog/ega"), "model_object": catalog}
+        ]
+
+    ctx.obj["mapped_objects"] = mapped_objects
 
 
 input_ega.add_command(mapping_ega_healthriv2)

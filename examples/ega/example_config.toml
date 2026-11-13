@@ -4,8 +4,12 @@ title = "Example Imaging Dataset Title"
 description = "This is imaging data description"
 theme = ["http://publications.europa.eu/resource/authority/data-theme/HEAL"]
 keyword = ["list", "of", "key", "words"]
-access_rights = "http://publications.europa.eu/resource/authority/access-right/PUBLIC"
-applicable_legislation = ["http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC"]
+access_rights = "http://publications.europa.eu/resource/authority/access-right/NON_PUBLIC"
+applicable_legislation = ["http://data.europa.eu/eli/reg/2025/327/oj"]
+type = ["http://publications.europa.eu/resource/authority/dataset-type/STATISTICAL"]
+personal_data = ["https://w3id.org/dpv/pd#DNACode"]
+language = ["http://publications.europa.eu/resource/authority/language/ENG"]
+spatial = ["http://publications.europa.eu/resource/authority/country/NLD"]
 
 [dataset.publisher]
 name = ["Example publisher list"]
@@ -14,5 +18,18 @@ mbox = "mailto:publisher@example.com"
 homepage = "http://www.example.com"
 
 [dataset.contact_point]
+formatted_name = "Example Data Management office"
+# Fallback for datasets without a DAC main contact email in EGA
+email = "mailto:datamanager@example.com"
+
+[distribution]
+license = "http://definities.geostandaarden.nl/DCAT-AP-NL/id/waarde/licentieValue/niet-open"
+language = ["http://publications.europa.eu/resource/authority/language/ENG"]
+
+[catalog]
+title = "Example EGA catalog"
+description = "This is an example EGA catalog description"
+
+[catalog.contact_point]
 formatted_name = "Example Data Management office"
 email = "mailto:datamanager@example.com"
