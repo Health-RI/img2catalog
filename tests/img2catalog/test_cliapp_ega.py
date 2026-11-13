@@ -1,4 +1,5 @@
 import copy
+import logging
 import pathlib
 import re
 from unittest.mock import patch
@@ -155,3 +156,41 @@ def test_ega_cli_needs_no_distribution_config_without_files(
     assert result.exit_code == 0, result.output
     graph = Graph().parse("output.ttl")
     assert not list(graph.subjects(RDF.type, DCAT.Distribution))
+
+
+@patch("img2catalog.cli_app.fetch_ega_datasets")
+def test_ega_cli_skips_dataset_with_empty_mandatory_value(
+    fetch_ega_datasets, default_ega_dataset, isolated_cli_runner, caplog
+):
+    """A dataset without a title in EGA is skipped, while the other datasets are still mapped."""
+    # Arrange
+    untitled_dataset = {**default_ega_dataset, "accession_id": "EGAD00010000500", "title": None}
+    fetch_ega_datasets.return_value = [default_ega_dataset, untitled_dataset]
+
+    # Act
+    with caplog.at_level(logging.WARNING):
+        result = isolated_cli_runner.invoke(
+            cli_click,
+            [
+                "-c",
+                str(EGA_EXAMPLE_CONFIG),
+                "ega",
+                "-a",
+                "EGAD00001005083",
+                "-a",
+                "EGAD00010000500",
+                "map-ega-hriv2",
+                "rdf",
+                "-o",
+                "output.ttl",
+            ],
+        )
+
+    # Assert
+    assert result.exit_code == 0, result.output
+    graph = Graph().parse("output.ttl")
+    assert set(graph.subjects(RDF.type, DCAT.Dataset)) == {DATASET_URI}
+    # The Distribution of the skipped dataset is left out too
+    assert set(graph.subjects(RDF.type, DCAT.Distribution)) == {BIN_DISTRIBUTION_URI}
+    assert set(graph.objects(CATALOG_URI, DCAT.dataset)) == {DATASET_URI}
+    assert "Skipping EGA dataset EGAD00010000500: EGA dataset EGAD00010000500 has no title" in caplog.text
