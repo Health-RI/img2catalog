@@ -19,7 +19,6 @@ from img2catalog.mappings.ega import (
     get_keyword,
     get_qualified_attribution,
     get_release_date,
-    get_title,
     map_ega_to_healthri_dcat_catalog,
     map_ega_to_healthri_dcat_dataset,
     map_ega_to_healthri_dcat_distributions,
@@ -117,14 +116,27 @@ def test_get_keyword_handles_null_technologies(default_ega_dataset):
     assert get_keyword(default_ega_dataset) == []
 
 
-@pytest.mark.parametrize("get_field", [get_title, get_description])
 @pytest.mark.parametrize("value", ["", "   ", None])
-def test_mandatory_text_raises_when_empty(default_ega_dataset, get_field, value):
-    default_ega_dataset["title"] = value
+def test_mandatory_description_raises_when_empty(default_ega_dataset, value):
     default_ega_dataset["description"] = value
 
-    with pytest.raises(MissingEGAValueError, match="has no"):
-        get_field(default_ega_dataset)
+    with pytest.raises(MissingEGAValueError, match="has no description"):
+        get_description(default_ega_dataset)
+
+
+@pytest.mark.parametrize("value", ["", "   ", None])
+def test_empty_title_falls_back_to_accession_id(default_ega_dataset, ega_config, value, caplog):
+    """EGA has datasets with an empty title (e.g. EGAD00000000002); they get their accession ID as title."""
+    default_ega_dataset["title"] = value
+
+    with caplog.at_level(logging.WARNING):
+        dataset = map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
+        distributions = map_ega_to_healthri_dcat_distributions(default_ega_dataset, ega_config)
+
+    assert [title.value for title in dataset.title] == ["EGAD00001005083"]
+    assert [title.value for title in distributions[0].title] == ["EGAD00001005083"]
+    # Logged once for the dataset, not again for each of its distributions
+    assert caplog.text.count("EGA dataset EGAD00001005083 has no title, its accession ID is used as title") == 1
 
 
 def test_get_release_date_returns_none_when_blank(empty_ega_dataset):

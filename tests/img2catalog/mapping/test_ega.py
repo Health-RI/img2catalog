@@ -36,9 +36,9 @@ def test_get_title_returns_title(default_ega_dataset):
     assert result == "300-Obese cohort gut microbiome data"
 
 
-def test_get_title_raises_on_missing_field(missing_ega_dataset):
-    with pytest.raises(KeyError):
-        get_title(missing_ega_dataset)
+def test_get_title_falls_back_to_accession_id(missing_ega_dataset):
+    """EGA has datasets without a title; the title is mandatory, so the accession ID is used."""
+    assert get_title(missing_ega_dataset) == "EGAD00001005083"
 
 
 def test_get_description_returns_description(default_ega_dataset):

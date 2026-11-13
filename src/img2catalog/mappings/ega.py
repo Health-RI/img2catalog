@@ -144,7 +144,11 @@ def get_identifier(ega_dataset: Dict) -> str:
 
 
 def get_title(ega_dataset: Dict) -> str:
-    return _required_text(ega_dataset, "title")
+    """Return the title of an EGA dataset, or its accession ID when it has no title.
+
+    EGA has datasets without a title (e.g. EGAD00000000002); as the title is mandatory, the accession ID is used.
+    """
+    return _text(ega_dataset.get("title")) or _required_text(ega_dataset, "accession_id")
 
 
 def get_description(ega_dataset: Dict) -> str:
@@ -345,6 +349,9 @@ def map_ega_to_healthri_dcat_dataset(
 
     Fields without content, in EGA or in the configuration, are left out instead of being mapped as empty values.
     """
+    if _text(ega_dataset.get("title")) is None:
+        logger.warning("EGA dataset %s has no title, its accession ID is used as title", get_title(ega_dataset))
+
     dataset_config = config["dataset"]
     contact_point_config = dataset_config["contact_point"]
 
