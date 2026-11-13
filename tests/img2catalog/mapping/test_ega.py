@@ -206,7 +206,7 @@ def test_map_ega_to_healthri_dcat_dataset_returns_model(default_ega_dataset, ega
     assert result.description[0].value == default_ega_dataset["description"]
     assert result.release_date == datetime.fromisoformat(default_ega_dataset["released_date"])
     # HRIDataset uses `use_enum_values=True`, so enum fields are stored as their raw URIRef value.
-    assert result.access_rights == AccessRights.public.value
+    assert result.access_rights == AccessRights.non_public.value
     assert result.number_of_records == 297
     keyword_values = {keyword.value for keyword in result.keyword}
     assert "Illumina HiSeq 2000" in keyword_values
