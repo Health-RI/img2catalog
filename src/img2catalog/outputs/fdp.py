@@ -4,10 +4,24 @@ from typing import Dict, List, Optional, Union
 from fairclient.fdpclient import FDPClient
 from fairclient.sparqlclient import FDPSPARQLClient
 from fairclient.utils import add_or_update_dataset
-from rdflib import DCTERMS, URIRef
+from rdflib import DCAT, DCTERMS, Graph, URIRef
 from sempyro import LiteralField
 
 logger = logging.getLogger(__name__)
+
+# URIs that img2catalog gives to mapped objects before they get a URI in the FDP
+INTERNAL_URI_PREFIX = "http://img2catalog.internal/"
+
+
+def remove_internal_distribution_links(graph: Graph, dataset_uri: URIRef) -> None:
+    """Remove the links of a Dataset to Distributions that only have an internal img2catalog URI.
+
+    Distributions are not pushed to the FDP (yet), so these links would not resolve in the FDP. Links to
+    Distributions with an actual URI are kept.
+    """
+    for distribution in list(graph.objects(dataset_uri, DCAT.distribution)):
+        if str(distribution).startswith(INTERNAL_URI_PREFIX):
+            graph.remove((dataset_uri, DCAT.distribution, distribution))
 
 
 def get_identifier_value(identifier: Union[str, LiteralField, None]) -> Optional[str]:
@@ -89,10 +103,18 @@ class FDPOutput:
 
             # This is FDP specific: Dataset points back to the Catalog
             graph.add((dataset["uri"], DCTERMS.isPartOf, self.catalog_uri))
+            remove_internal_distribution_links(graph, dataset["uri"])
             identifier = get_identifier_value(dataset["model_object"].identifier)
             logger.debug("Going to push %s to FDP", dataset["model_object"].title)
             try:
                 add_or_update_dataset(graph, self.fdpclient, identifier, self.catalog_uri, self.sparqlclient)
+            except ValueError as e:
+                # The FDP catalog holds more than one dataset with this identifier, e.g. from pushes without SPARQL
+                logger.warning(
+                    "Error pushing dataset %s to FDP: %s. Remove the duplicate datasets with this identifier from the "
+                    "FDP catalog to update it again",
+                    identifier,
+                    e,
+                )
             except Exception as e:
-                # E.g. when the catalog holds more than one dataset with this identifier, from earlier pushes
                 logger.warning("Error pushing dataset %s to FDP: %s", identifier, e)
