@@ -13,9 +13,10 @@ from unittest.mock import Mock
 import requests
 from fairclient.sparqlclient import FDPSPARQLClient
 from fairclient.utils import rewrite_graph_subject
-from rdflib import DCAT, DCTERMS, RDF, Graph, URIRef
+from rdflib import DCAT, DCTERMS, RDF, Graph, Namespace, URIRef
 
 FDP_URL = "http://fdp.example.com"
+LDP = Namespace("http://www.w3.org/ns/ldp#")
 FDP_ROOT = URIRef(FDP_URL)
 RECORD_CLASSES = {"catalog": DCAT.Catalog, "dataset": DCAT.Dataset, "distribution": DCAT.Distribution}
 PARENT_LINKS = {"dataset": DCAT.dataset, "distribution": DCAT.distribution}
@@ -85,7 +86,13 @@ class FakeFDP:
             return Mock(raise_for_status=Mock(), text=root.serialize(format="turtle"))
         if URIRef(url) not in self.records:
             raise requests.HTTPError(f"404 Not Found: {url}")
-        return Mock(raise_for_status=Mock(), text=self.records[URIRef(url)].serialize(format="turtle"))
+        # Like the FDP, list the children of the record in a container (e.g. <.../dataset/> ldp:contains <child>)
+        response = Graph() + self.records[URIRef(url)]
+        for child, child_graph in self.records.items():
+            if child_graph.value(child, DCTERMS.isPartOf) == URIRef(url):
+                container = URIRef(f"{FDP_URL}/{self.record_types[child]}/")
+                response.add((container, LDP.contains, child))
+        return Mock(raise_for_status=Mock(), text=response.serialize(format="turtle"))
 
     def graph(self):
         """All metadata in the FDP, like its triple store."""
