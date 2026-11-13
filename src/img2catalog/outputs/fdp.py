@@ -1,12 +1,23 @@
 import logging
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 from fairclient.fdpclient import FDPClient
 from fairclient.sparqlclient import FDPSPARQLClient
 from fairclient.utils import add_or_update_dataset
 from rdflib import DCTERMS, URIRef
+from sempyro import LiteralField
 
 logger = logging.getLogger(__name__)
+
+
+def get_identifier_value(identifier: Union[str, LiteralField, None]) -> Optional[str]:
+    """Return the text of a Dataset identifier, which is matched to the identifiers of the datasets in the FDP.
+
+    A mapping can set the identifier as text or as a LiteralField (e.g. EGA); the FDP is queried with the text.
+    """
+    if isinstance(identifier, LiteralField):
+        return identifier.value
+    return identifier
 
 
 class FDPOutput:
@@ -58,22 +69,30 @@ class FDPOutput:
     def push_to_fdp(self, input_obj: Dict[str, List[Dict]]) -> None:
         """Push Datasets to a FAIR Data Point
 
+        A Dataset already in the FDP catalog, with the same identifier, is updated instead of added again, so
+        rerunning a push keeps the datasets in the FDP up to date. This needs the SPARQL endpoint of the FDP.
+
         Parameters
         ----------
         input_obj: Dict[str, List[Dict]]
             Dictionary with a list of Health-RI concept objects per concept type
 
         """
+        if not self.sparqlclient:
+            logger.warning(
+                "No SPARQL endpoint set: existing datasets in the FDP cannot be found, so every push adds them again"
+            )
+
         dataset_obj = input_obj["dataset"]
         for dataset in dataset_obj:
             graph = dataset["model_object"].to_graph(dataset["uri"])
 
             # This is FDP specific: Dataset points back to the Catalog
             graph.add((dataset["uri"], DCTERMS.isPartOf, self.catalog_uri))
+            identifier = get_identifier_value(dataset["model_object"].identifier)
             logger.debug("Going to push %s to FDP", dataset["model_object"].title)
             try:
-                add_or_update_dataset(
-                    graph, self.fdpclient, dataset["model_object"].identifier, self.catalog_uri, self.sparqlclient
-                )
+                add_or_update_dataset(graph, self.fdpclient, identifier, self.catalog_uri, self.sparqlclient)
             except Exception as e:
-                logger.warning("Error pushing dataset to FDP: %s", e)
+                # E.g. when the catalog holds more than one dataset with this identifier, from earlier pushes
+                logger.warning("Error pushing dataset %s to FDP: %s", identifier, e)
