@@ -162,9 +162,9 @@ def test_ega_cli_needs_no_distribution_config_without_files(
 def test_ega_cli_skips_dataset_with_empty_mandatory_value(
     fetch_ega_datasets, default_ega_dataset, isolated_cli_runner, caplog
 ):
-    """A dataset without a title in EGA is skipped, while the other datasets are still mapped."""
+    """A dataset without a description in EGA is skipped, while the other datasets are still mapped."""
     # Arrange
-    untitled_dataset = {**default_ega_dataset, "accession_id": "EGAD00010000500", "title": None}
+    untitled_dataset = {**default_ega_dataset, "accession_id": "EGAD00010000500", "description": None}
     fetch_ega_datasets.return_value = [default_ega_dataset, untitled_dataset]
 
     # Act
@@ -193,4 +193,4 @@ def test_ega_cli_skips_dataset_with_empty_mandatory_value(
     # The Distribution of the skipped dataset is left out too
     assert set(graph.subjects(RDF.type, DCAT.Distribution)) == {BIN_DISTRIBUTION_URI}
     assert set(graph.objects(CATALOG_URI, DCAT.dataset)) == {DATASET_URI}
-    assert "Skipping EGA dataset EGAD00010000500: EGA dataset EGAD00010000500 has no title" in caplog.text
+    assert "Skipping EGA dataset EGAD00010000500: EGA dataset EGAD00010000500 has no description" in caplog.text
