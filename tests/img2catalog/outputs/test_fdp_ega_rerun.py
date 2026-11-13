@@ -8,12 +8,13 @@ import pytest
 import requests
 from fairclient.fdpclient import FDPClient
 from fairclient.sparqlclient import FDPSPARQLClient
-from fairclient.utils import rewrite_graph_subject
-from rdflib import DCAT, DCTERMS, RDF, Graph, Literal, URIRef
+from rdflib import DCAT, DCTERMS, Graph, Literal, URIRef
 from sempyro import LiteralField
 
 from img2catalog.mappings.ega import map_ega_to_healthri_dcat_dataset
 from img2catalog.outputs.fdp import FDPOutput, FDPPushError, get_identifier_value, remove_internal_distribution_links
+
+from .fake_fdp import FakeSPARQLEndpoint, connect_fake_fdp
 
 CATALOG_URI = URIRef("http://fdp.example.com/catalog/ega")
 DATASET_URI = URIRef("http://img2catalog.internal/dataset/EGAD00001005083")
@@ -25,81 +26,13 @@ pytestmark = [
 ]
 
 
-class FakeFDP:
-    """In-memory FDP that creates, updates and publishes datasets like the FDP API used by fairclient.
-
-    It follows the state rules of the reference FDP (v1.16.2): a created record is a DRAFT until it is published,
-    updating a record keeps its state, and publishing a record that is already published is refused (HTTP 400).
-    """
-
-    timeout = 60
-
-    def __init__(self):
-        self.datasets = {}
-        self.states = {}
-        self.publish_fails = False
-        self.session = self
-
-    def create_and_publish(self, _resource_type, metadata):
-        fdp_uri = URIRef(f"http://fdp.example.com/dataset/{len(self.datasets) + 1}")
-        stored = Graph() + metadata
-        rewrite_graph_subject(stored, stored.value(predicate=RDF.type, object=DCAT.Dataset, any=False), fdp_uri)
-        self.datasets[fdp_uri] = stored
-        self.states[fdp_uri] = "DRAFT"
-        self.publish_record(fdp_uri)
-        return fdp_uri
-
-    def update_serialized(self, resource_uri, metadata):
-        assert URIRef(resource_uri) in self.datasets, "Updated a dataset that does not exist in the FDP"
-        self.datasets[URIRef(resource_uri)] = Graph() + metadata
-        return object()  # fairclient returns the requests.Response of the update
-
-    def publish_record(self, record_url):
-        if self.publish_fails:
-            raise requests.ConnectionError("FDP not reachable")
-        if self.states[URIRef(record_url)] == "PUBLISHED":
-            raise requests.HTTPError("400 Bad Request: Metadata is already published")
-        self.states[URIRef(record_url)] = "PUBLISHED"
-
-    def get(self, url, headers, timeout):  # requests.Session.get of the logged in fairclient session
-        assert url.endswith("/meta")
-        assert headers == {"Accept": "application/json"}
-        assert timeout
-        state = self.states[URIRef(url[: -len("/meta")])]
-        return Mock(raise_for_status=Mock(), json=Mock(return_value={"state": {"current": state, "children": {}}}))
-
-
-class FakeSPARQLEndpoint:
-    """SPARQL endpoint of the FakeFDP, which runs the actual SPARQL query of fairclient on its datasets."""
-
-    def __init__(self, fdp):
-        self.fdp = fdp
-        self.queries = []
-
-    def setQuery(self, query):  # noqa: N802 - SPARQLWrapper API
-        self.queries.append(query)
-
-    def queryAndConvert(self):  # noqa: N802 - SPARQLWrapper API
-        store = Graph()
-        for graph in self.fdp.datasets.values():
-            store += graph
-        rows = store.query(self.queries[-1])
-        return {
-            "results": {
-                "bindings": [{"subject": {"type": "uri", "value": str(row.subject)}} for row in rows],
-            }
-        }
-
-
 @pytest.fixture
 def fdp_output(config):
     with patch.object(FDPClient, "__init__", return_value=None):
         fdp_output = FDPOutput(
             config, fdp="http://fdp.example.com", fdp_username="user", fdp_password="pass", catalog_uri=CATALOG_URI
         )
-    fdp_output.fdpclient = FakeFDP()
-    fdp_output.sparqlclient = FDPSPARQLClient("http://fdp.example.com/sparql")
-    fdp_output.sparqlclient.sparql = FakeSPARQLEndpoint(fdp_output.fdpclient)
+    connect_fake_fdp(fdp_output)
     return fdp_output
 
 
@@ -244,7 +177,7 @@ def test_rerun_publishes_dataset_that_stayed_draft(fdp_output, default_ega_datas
 
     # Assert
     assert fdp_output.fdpclient.states == {URIRef("http://fdp.example.com/dataset/1"): "PUBLISHED"}
-    assert "Publishing dataset http://fdp.example.com/dataset/1, which was still a draft" in caplog.text
+    assert "Publishing http://fdp.example.com/dataset/1, which was still a draft" in caplog.text
 
 
 def test_rerun_updates_dataset_when_state_cannot_be_checked(fdp_output, default_ega_dataset, ega_config, caplog):
@@ -259,7 +192,7 @@ def test_rerun_updates_dataset_when_state_cannot_be_checked(fdp_output, default_
     # The update itself went through, but the push is reported as failed, as the dataset may have stayed a draft
     updated = fdp_output.fdpclient.datasets[URIRef("http://fdp.example.com/dataset/1")]
     assert Literal("Updated title") in set(updated.objects(None, DCTERMS.title))
-    assert "Could not check if dataset http://fdp.example.com/dataset/1 is published in the FDP" in caplog.text
+    assert "Could not check if http://fdp.example.com/dataset/1 is published in the FDP" in caplog.text
 
 
 def test_failed_push_without_duplicates_gets_no_duplicate_hint(fdp_output, default_ega_dataset, ega_config, caplog):
@@ -311,6 +244,6 @@ def test_rerun_reports_failure_when_state_check_is_refused(fdp_output, default_e
         fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
 
     assert (
-        "Could not check if dataset http://fdp.example.com/dataset/1 is published in the FDP: 403 Forbidden"
+        "Could not check if http://fdp.example.com/dataset/1 is published in the FDP: 403 Forbidden"
         in caplog.text
     )
