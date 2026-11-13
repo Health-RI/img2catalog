@@ -29,6 +29,14 @@ def fetch_ega_files(dataset_id: str, api_url: str) -> List[Dict]:
     return response.json()
 
 
+def fetch_ega_studies(dataset_id: str, api_url: str) -> List[Dict]:
+    """Fetch the studies an EGA dataset belongs to, which hold the PubMed IDs of its publications."""
+    response = requests.get(f"{api_url}/datasets/{dataset_id}/studies", timeout=30)
+    response.raise_for_status()
+
+    return response.json()
+
+
 def fetch_ega_datasets(dataset_ids: List[str], api_url: str) -> List[Dict]:
     datasets = []
     for dataset_id in dataset_ids:
@@ -49,6 +57,12 @@ def fetch_ega_datasets(dataset_ids: List[str], api_url: str) -> List[Dict]:
         except requests.RequestException as e:
             logger.warning("Error fetching files for EGA dataset %s: %s", dataset_id, e)
             dataset["files"] = []
+
+        try:
+            dataset["studies"] = fetch_ega_studies(dataset_id, api_url)
+        except requests.RequestException as e:
+            logger.warning("Error fetching studies for EGA dataset %s: %s", dataset_id, e)
+            dataset["studies"] = []
 
         datasets.append(dataset)
 

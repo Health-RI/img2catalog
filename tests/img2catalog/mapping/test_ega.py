@@ -7,10 +7,12 @@ from sempyro.dcat import AccessRights
 from sempyro.hri_dcat import DatasetStatus, HRICatalog, HRIDataset
 
 from img2catalog.mappings.ega import (
+    get_contact_email,
     get_contact_page,
     get_description,
     get_file_type,
     get_identifier,
+    get_is_referenced_by,
     get_keyword,
     get_number_of_records,
     get_qualified_attribution,
@@ -136,13 +138,48 @@ def test_get_qualified_attribution_returns_empty_without_dacs(missing_ega_datase
     assert result == []
 
 
+def test_get_contact_email_returns_main_dac_contact(default_ega_dataset):
+    assert get_contact_email(default_ega_dataset) == "mailto:dac@example.com"
+
+
+def test_get_contact_email_skips_non_main_contacts(default_ega_dataset):
+    default_ega_dataset["dacs"][0]["contacts"][0]["is_main"] = False
+
+    assert get_contact_email(default_ega_dataset) is None
+
+
+def test_get_contact_email_returns_none_without_dacs(missing_ega_dataset):
+    assert get_contact_email(missing_ega_dataset) is None
+
+
+def test_get_is_referenced_by_builds_pubmed_urls(default_ega_dataset):
+    default_ega_dataset["studies"].append({"accession_id": "EGAS2", "pubmed_ids": ["32526207", 37000000]})
+
+    assert get_is_referenced_by(default_ega_dataset) == [
+        "https://pubmed.ncbi.nlm.nih.gov/32526207/",
+        "https://pubmed.ncbi.nlm.nih.gov/37000000/",
+    ]
+
+
+def test_get_is_referenced_by_handles_studies_without_publications(default_ega_dataset, missing_ega_dataset):
+    default_ega_dataset["studies"][0]["pubmed_ids"] = None
+
+    assert get_is_referenced_by(default_ega_dataset) == []
+    assert get_is_referenced_by(missing_ega_dataset) == []
+
+
 @pytest.mark.parametrize(
     ("extension", "expected"),
     [
         ("bam", "http://publications.europa.eu/resource/authority/file-type/BIN"),
         ("cram", "http://publications.europa.eu/resource/authority/file-type/BIN"),
+        ("vcf.gz", "http://publications.europa.eu/resource/authority/file-type/BIN"),
         ("vcf", "http://publications.europa.eu/resource/authority/file-type/TXT"),
         ("SAM", "http://publications.europa.eu/resource/authority/file-type/TXT"),
+        ("fastq", "http://publications.europa.eu/resource/authority/file-type/TXT"),
+        ("fasta", "http://publications.europa.eu/resource/authority/file-type/TXT"),
+        ("bed", "http://publications.europa.eu/resource/authority/file-type/TXT"),
+        ("gff", "http://publications.europa.eu/resource/authority/file-type/TXT"),
         (None, "http://publications.europa.eu/resource/authority/file-type/BIN"),
     ],
 )
@@ -226,7 +263,7 @@ def test_map_ega_to_healthri_dcat_dataset_maps_publisher_and_contact_point(defau
     assert str(result.publisher.homepage) == publisher_config["homepage"] + "/"
 
     contact_point_config = ega_config["dataset"]["contact_point"]
-    assert str(result.contact_point.hasEmail) == contact_point_config["email"]
+    assert str(result.contact_point.hasEmail) == "mailto:dac@example.com"
     assert result.contact_point.formatted_name == contact_point_config["formatted_name"]
     assert result.contact_point.contact_page == [AnyHttpUrl("https://ega-archive.org/dacs/EGAC00001001143")]
 
@@ -240,6 +277,8 @@ def test_map_ega_to_healthri_dcat_dataset_without_dacs_has_no_contact_page(defau
     result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
 
     assert result.contact_point.contact_page is None
+    # Without a DAC contact, the configured email is used
+    assert str(result.contact_point.hasEmail) == ega_config["dataset"]["contact_point"]["email"]
     assert result.qualified_attribution is None
 
 
@@ -264,7 +303,15 @@ def test_map_ega_to_healthri_dcat_dataset_maps_qualified_attribution(default_ega
     assert result.qualified_attribution[0].agent.identifier.value == "https://ega-archive.org/dacs/EGAC00001001143"
 
 
+def test_map_ega_to_healthri_dcat_dataset_maps_ega_publications(default_ega_dataset, ega_config):
+    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
+
+    assert result.is_referenced_by == [AnyHttpUrl("https://pubmed.ncbi.nlm.nih.gov/32526207/")]
+
+
 def test_map_ega_to_healthri_dcat_dataset_leaves_optional_fields_empty(default_ega_dataset, ega_config):
+    del default_ega_dataset["studies"]
+
     result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
 
     assert result.type is None
@@ -274,6 +321,7 @@ def test_map_ega_to_healthri_dcat_dataset_leaves_optional_fields_empty(default_e
     assert result.status is None
     assert result.minimum_typical_age is None
     assert result.population_coverage is None
+    assert result.is_referenced_by is None
     assert result.publisher.publisher_type is None
 
 
@@ -313,7 +361,11 @@ def test_map_ega_to_healthri_dcat_dataset_maps_optional_config_fields(default_eg
     assert result.legal_basis == [AnyHttpUrl(url) for url in dataset_config["legal_basis"]]
     assert result.purpose == [AnyHttpUrl(url) for url in dataset_config["purpose"]]
     assert result.code_values == [AnyHttpUrl(url) for url in dataset_config["code_values"]]
-    assert result.is_referenced_by == [AnyHttpUrl(url) for url in dataset_config["is_referenced_by"]]
+    # Publications from the EGA studies come first, followed by the configured ones
+    assert result.is_referenced_by == [
+        AnyHttpUrl("https://pubmed.ncbi.nlm.nih.gov/32526207/"),
+        *[AnyHttpUrl(url) for url in dataset_config["is_referenced_by"]],
+    ]
     assert result.status == DatasetStatus.completed.value
     assert result.minimum_typical_age == 55
     assert result.number_of_unique_individuals == 377

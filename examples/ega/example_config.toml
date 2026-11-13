@@ -9,6 +9,7 @@ applicable_legislation = ["http://data.europa.eu/eli/reg/2025/327/oj"]
 type = ["http://publications.europa.eu/resource/authority/dataset-type/STATISTICAL"]
 personal_data = ["https://w3id.org/dpv/pd#DNACode"]
 language = ["http://publications.europa.eu/resource/authority/language/ENG"]
+spatial = ["http://publications.europa.eu/resource/authority/country/NLD"]
 
 [dataset.publisher]
 name = ["Example publisher list"]
@@ -18,6 +19,7 @@ homepage = "http://www.example.com"
 
 [dataset.contact_point]
 formatted_name = "Example Data Management office"
+# Fallback for datasets without a DAC main contact email in EGA
 email = "mailto:datamanager@example.com"
 
 [distribution]
