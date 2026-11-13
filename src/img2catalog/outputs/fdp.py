@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Union
 from fairclient.fdpclient import FDPClient
 from fairclient.sparqlclient import FDPSPARQLClient
 from fairclient.utils import add_or_update_dataset
-from rdflib import DCAT, DCTERMS, Graph, URIRef
+from rdflib import DCAT, DCTERMS, RDF, Graph, URIRef
 from sempyro import LiteralField
 
 logger = logging.getLogger(__name__)
@@ -80,6 +80,26 @@ class FDPOutput:
         if isinstance(self.catalog_uri, str):
             self.catalog_uri = URIRef(self.catalog_uri)
 
+    def publish_if_draft(self, fdp_uri: URIRef) -> None:
+        """Publish an existing record in the FDP when it is still a draft.
+
+        Updating a record keeps its state, and the FDP refuses to publish a record that is already published. A record
+        stays a draft when publishing it failed when it was created; without publishing it, it would never be shown.
+        """
+        try:
+            response = self.fdpclient.session.get(
+                f"{fdp_uri}/meta", headers={"Accept": "application/json"}, timeout=self.fdpclient.timeout
+            )
+            response.raise_for_status()
+            state = (response.json().get("state") or {}).get("current")
+        except Exception as e:
+            logger.warning("Could not check if dataset %s is published in the FDP: %s", fdp_uri, e)
+            return
+
+        if state == "DRAFT":
+            logger.info("Publishing dataset %s, which was still a draft in the FDP", fdp_uri)
+            self.fdpclient.publish_record(fdp_uri)
+
     def push_to_fdp(self, input_obj: Dict[str, List[Dict]]) -> None:
         """Push Datasets to a FAIR Data Point
 
@@ -107,7 +127,11 @@ class FDPOutput:
             identifier = get_identifier_value(dataset["model_object"].identifier)
             logger.debug("Going to push %s to FDP", dataset["model_object"].title)
             try:
-                add_or_update_dataset(graph, self.fdpclient, identifier, self.catalog_uri, self.sparqlclient)
+                result = add_or_update_dataset(graph, self.fdpclient, identifier, self.catalog_uri, self.sparqlclient)
+                # A created dataset is published by fairclient (it returns its URI); an updated one keeps its state.
+                # The updated graph has the subject of the existing dataset in the FDP.
+                if not isinstance(result, URIRef):
+                    self.publish_if_draft(graph.value(predicate=RDF.type, object=DCAT.Dataset, any=False))
             except ValueError as e:
                 # The FDP catalog holds more than one dataset with this identifier, e.g. from pushes without SPARQL
                 logger.warning(
