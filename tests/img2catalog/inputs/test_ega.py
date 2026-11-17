@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 import requests
 
@@ -108,55 +110,44 @@ def test_fetch_ega_datasets_skips_failed_dataset(requests_mock, default_ega_data
     assert result == [{**default_ega_dataset, "dacs": dacs, "files": files, "studies": studies}]
 
 
-def test_fetch_ega_datasets_keeps_dataset_when_dacs_fail(requests_mock, default_ega_dataset, caplog):
+@pytest.mark.parametrize(
+    ("failing_resource", "label"),
+    [("dacs", "DACs"), ("files", "files"), ("studies", "studies")],
+)
+def test_fetch_ega_datasets_skips_dataset_when_a_sub_resource_fails(
+    requests_mock, default_ega_dataset, caplog, failing_resource, label
+):
+    """A dataset without its DACs, files or studies would be a degraded record, so it is left out entirely."""
     # Arrange
-    default_ega_dataset.pop("dacs")
-    files = default_ega_dataset.pop("files")
+    sub_resources = {key: default_ega_dataset.pop(key) for key in ("dacs", "files", "studies")}
     requests_mock.get(f"{API_URL}/datasets/EGAD00001005083", json=default_ega_dataset)
-    studies = default_ega_dataset.pop("studies")
-    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/dacs", status_code=500)
-    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/files", json=files)
-    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/studies", json=studies)
+    for key, value in sub_resources.items():
+        if key == failing_resource:
+            requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/{key}", status_code=500)
+        else:
+            requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/{key}", json=value)
 
     # Act
-    result = fetch_ega_datasets(["EGAD00001005083"], API_URL)
+    with caplog.at_level(logging.ERROR):
+        result = fetch_ega_datasets(["EGAD00001005083"], API_URL)
 
     # Assert
-    assert result == [{**default_ega_dataset, "dacs": [], "files": files, "studies": studies}]
-    assert "Error fetching DACs for EGA dataset EGAD00001005083" in caplog.text
+    assert result == []
+    assert f"Error fetching {label} for EGA dataset EGAD00001005083, so it is left out" in caplog.text
 
 
-def test_fetch_ega_datasets_keeps_dataset_when_files_fail(requests_mock, default_ega_dataset, caplog):
+def test_fetch_ega_datasets_keeps_complete_datasets_next_to_a_failed_one(requests_mock, default_ega_dataset):
     # Arrange
-    dacs = default_ega_dataset.pop("dacs")
-    default_ega_dataset.pop("files")
+    sub_resources = {key: default_ega_dataset.pop(key) for key in ("dacs", "files", "studies")}
+    other_dataset = {**default_ega_dataset, "accession_id": "EGAD00001005084"}
     requests_mock.get(f"{API_URL}/datasets/EGAD00001005083", json=default_ega_dataset)
-    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/dacs", json=dacs)
-    studies = default_ega_dataset.pop("studies")
-    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/files", status_code=500)
-    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/studies", json=studies)
+    requests_mock.get(f"{API_URL}/datasets/EGAD00001005084", json=other_dataset)
+    for key, value in sub_resources.items():
+        requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/{key}", json=value)
+        requests_mock.get(f"{API_URL}/datasets/EGAD00001005084/{key}", status_code=500)
 
     # Act
-    result = fetch_ega_datasets(["EGAD00001005083"], API_URL)
+    result = fetch_ega_datasets(["EGAD00001005083", "EGAD00001005084"], API_URL)
 
     # Assert
-    assert result == [{**default_ega_dataset, "dacs": dacs, "files": [], "studies": studies}]
-    assert "Error fetching files for EGA dataset EGAD00001005083" in caplog.text
-
-
-def test_fetch_ega_datasets_keeps_dataset_when_studies_fail(requests_mock, default_ega_dataset, caplog):
-    # Arrange
-    dacs = default_ega_dataset.pop("dacs")
-    files = default_ega_dataset.pop("files")
-    default_ega_dataset.pop("studies")
-    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083", json=default_ega_dataset)
-    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/dacs", json=dacs)
-    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/files", json=files)
-    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/studies", status_code=500)
-
-    # Act
-    result = fetch_ega_datasets(["EGAD00001005083"], API_URL)
-
-    # Assert
-    assert result == [{**default_ega_dataset, "dacs": dacs, "files": files, "studies": []}]
-    assert "Error fetching studies for EGA dataset EGAD00001005083" in caplog.text
+    assert result == [{**default_ega_dataset, **sub_resources}]
