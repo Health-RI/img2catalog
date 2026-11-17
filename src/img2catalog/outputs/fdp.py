@@ -250,17 +250,13 @@ class FDPOutput:
                 found = self.sparqlclient.find_subject(identifier, catalog_uri)
                 fdp_uri = self.check_fdp_record_uri(found) if found else None
             return self.push_record("dataset", graph, dataset["uri"], fdp_uri)
-        except ValueError as e:
-            # The FDP catalog holds more than one dataset with this identifier, e.g. from pushes without SPARQL
-            logger.warning(
-                "Error pushing dataset %s to FDP: %s. Remove the duplicate datasets with this identifier from the "
-                "FDP catalog to update it again",
-                identifier,
-                e,
-            )
-            self._fail(f"dataset {identifier}: {e}")
         except Exception as e:
-            logger.warning("Error pushing dataset %s to FDP: %s", identifier, e)
+            hint = (
+                ". Remove the duplicate datasets with this identifier from the FDP catalog to update it again"
+                if is_duplicate_dataset_error(e)
+                else ""
+            )
+            logger.warning("Error pushing dataset %s to FDP: %s%s", identifier, e, hint)
             self._fail(f"dataset {identifier}: {e}")
         return None
 
