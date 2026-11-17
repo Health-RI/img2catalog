@@ -96,7 +96,12 @@ within the Catalog, so use the same Catalog URI on every run. Datasets pushed by
 with another identifier, are not matched; remove those from the FDP once. If the Catalog holds more than one dataset
 with the same identifier, that dataset is skipped with a warning until the duplicates are removed. A dataset of which
 the EGA metadata cannot be fetched completely is skipped, so that it does not replace the dataset in the FDP with
-incomplete metadata.
+incomplete metadata. When EGA answers Not Found for the DACs, files or studies of a dataset, the dataset has none of
+them; this is logged as a warning, as it would also be the result of EGA no longer serving them.
+
+When one or more datasets cannot be pushed to the FDP, the other datasets are still pushed, after which
+`img2catalog` exits with an error (exit code 1) that lists the datasets that failed. This also applies to pushes from
+XNAT and XDS. Check the exit code in scripts and schedulers to notice that the FDP is not up to date.
 
 ### Configuration XNAT
 
@@ -130,6 +135,17 @@ not useful for reuse are not submitted to the FDP. Configure the minimum in the 
 minimum_unique_individuals = 10
 ```
 If not set, no datasets are filtered out.
+
+Each row of the CSV file is a separate dataset (institute, modality and period). When pushing to the FDP, its
+identifier is the `identifier` of the `[dataset]` configuration, followed by a slug of the dataset title, e.g.
+`https://www.example.com/img-123/hospital-a-ct-2024`. Rerunning the push with the SPARQL endpoint supplied updates a
+dataset in the FDP when its identifier is the same, so:
+- Datasets pushed by an earlier version of `img2catalog`, which all had the configured identifier, are not matched.
+  Remove those from the FDP once, or the rerun adds all datasets again next to them.
+- The period is part of the title. When the period of a row changes, the row gets a new identifier and is added as a
+  new dataset; remove the old one from the FDP.
+- Rows with the same identifier, which differ only in characters that the identifier leaves out (like case and
+  punctuation), are refused with an error, as one would overwrite the other.
 
 
 
