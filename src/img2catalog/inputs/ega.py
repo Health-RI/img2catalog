@@ -19,7 +19,10 @@ def _fetch_ega_dataset_resource(dataset_id: str, api_url: str, resource: str) ->
     """Fetch related resources of an EGA dataset; Not Found means the dataset has none of them."""
     response = requests.get(f"{api_url}/datasets/{dataset_id}/{resource}", timeout=30)
     if response.status_code == HTTP_NOT_FOUND:
-        logger.debug("EGA dataset %s has no %s", dataset_id, resource)
+        # Not an error, but visible: if EGA stops serving a resource, every dataset would silently lose it
+        logger.warning(
+            "EGA dataset %s has no %s (Not Found: %s), so it is mapped without them", dataset_id, resource, response.url
+        )
         return []
     response.raise_for_status()
 
