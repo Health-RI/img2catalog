@@ -151,3 +151,27 @@ def test_fetch_ega_datasets_keeps_complete_datasets_next_to_a_failed_one(request
 
     # Assert
     assert result == [{**default_ega_dataset, **sub_resources}]
+
+
+@pytest.mark.parametrize("missing_resource", ["dacs", "files", "studies"])
+def test_fetch_ega_datasets_treats_not_found_sub_resource_as_none(
+    requests_mock, default_ega_dataset, caplog, missing_resource
+):
+    """EGA answers Not Found when a dataset has no DACs, files or studies, which is not an error, but is logged."""
+    # Arrange
+    sub_resources = {key: default_ega_dataset.pop(key) for key in ("dacs", "files", "studies")}
+    requests_mock.get(f"{API_URL}/datasets/EGAD00001005083", json=default_ega_dataset)
+    for key, value in sub_resources.items():
+        if key == missing_resource:
+            requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/{key}", status_code=404)
+        else:
+            requests_mock.get(f"{API_URL}/datasets/EGAD00001005083/{key}", json=value)
+
+    # Act
+    with caplog.at_level(logging.WARNING):
+        result = fetch_ega_datasets(["EGAD00001005083"], API_URL)
+
+    # Assert
+    assert result == [{**default_ega_dataset, **sub_resources, missing_resource: []}]
+    assert f"EGA dataset EGAD00001005083 has no {missing_resource}" in caplog.text
+    assert f"{API_URL}/datasets/EGAD00001005083/{missing_resource}" in caplog.text
