@@ -12,7 +12,7 @@ from rdflib import DCAT, DCTERMS, RDF, Graph, Literal, URIRef
 from sempyro import LiteralField
 
 from img2catalog.mappings.ega import map_ega_to_healthri_dcat_dataset
-from img2catalog.outputs.fdp import FDPOutput, get_identifier_value, remove_internal_distribution_links
+from img2catalog.outputs.fdp import FDPOutput, FDPPushError, get_identifier_value, remove_internal_distribution_links
 
 CATALOG_URI = URIRef("http://fdp.example.com/catalog/ega")
 DATASET_URI = URIRef("http://img2catalog.internal/dataset/EGAD00001005083")
@@ -177,8 +177,10 @@ def test_rerun_with_duplicates_in_fdp_warns_with_identifier(fdp_output, default_
     fdp_output.sparqlclient = FDPSPARQLClient("http://fdp.example.com/sparql")
     fdp_output.sparqlclient.sparql = FakeSPARQLEndpoint(fdp_output.fdpclient)
 
-    with caplog.at_level(logging.WARNING):
-        fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
+    mapped_objects = _mapped_objects(default_ega_dataset, ega_config)
+
+    with caplog.at_level(logging.WARNING), pytest.raises(FDPPushError, match="1 of 1 datasets could not be pushed"):
+        fdp_output.push_to_fdp(mapped_objects)
 
     assert len(fdp_output.fdpclient.datasets) == 2
     assert (
@@ -216,7 +218,9 @@ def test_rerun_publishes_dataset_that_stayed_draft(fdp_output, default_ega_datas
     """When publishing failed at creation, the dataset is a draft in the FDP, which a rerun publishes."""
     # Arrange
     fdp_output.fdpclient.publish_fails = True
-    fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
+    mapped_objects = _mapped_objects(default_ega_dataset, ega_config)
+    with pytest.raises(FDPPushError, match="could not be pushed"):
+        fdp_output.push_to_fdp(mapped_objects)
     assert fdp_output.fdpclient.states == {URIRef("http://fdp.example.com/dataset/1"): "DRAFT"}
     fdp_output.fdpclient.publish_fails = False
 
@@ -233,10 +237,12 @@ def test_rerun_updates_dataset_when_state_cannot_be_checked(fdp_output, default_
     fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
     default_ega_dataset["title"] = "Updated title"
 
+    mapped_objects = _mapped_objects(default_ega_dataset, ega_config)
     unreachable = patch.object(fdp_output.fdpclient, "get", side_effect=requests.ConnectionError("timeout"))
-    with unreachable, caplog.at_level(logging.WARNING):
-        fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
+    with unreachable, caplog.at_level(logging.WARNING), pytest.raises(FDPPushError, match="could not be pushed"):
+        fdp_output.push_to_fdp(mapped_objects)
 
+    # The update itself went through, but the push is reported as failed, as the dataset may have stayed a draft
     updated = fdp_output.fdpclient.datasets[URIRef("http://fdp.example.com/dataset/1")]
     assert Literal("Updated title") in set(updated.objects(None, DCTERMS.title))
     assert "Could not check if dataset http://fdp.example.com/dataset/1 is published in the FDP" in caplog.text

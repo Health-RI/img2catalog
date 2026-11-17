@@ -7,6 +7,7 @@ from unittest.mock import patch
 from rdflib import DCAT, RDF, Graph, URIRef
 
 from img2catalog.cli_app import cli_click
+from img2catalog.outputs.fdp import FDPPushError
 
 EGA_EXAMPLE_CONFIG = pathlib.Path(__file__).parents[2] / "examples" / "ega" / "example_config.toml"
 
@@ -47,6 +48,26 @@ def _run_map_ega_to_rdf(runner, config):
         cli_click,
         ["-c", str(config), "ega", "-a", "EGAD00001005083", "map-ega-hriv2", "rdf", "-o", "output.ttl"],
     )
+
+
+@patch("img2catalog.cli_app.FDPOutput")
+@patch("img2catalog.cli_app.fetch_ega_datasets")
+def test_ega_cli_fdp_push_exits_with_error_when_a_dataset_fails(
+    fetch_ega_datasets, fdp_output, default_ega_dataset, isolated_cli_runner
+):
+    """Scripts and schedulers must notice that the FDP is not up to date."""
+    # Arrange
+    fetch_ega_datasets.return_value = [default_ega_dataset]
+    fdp_output.return_value.push_to_fdp.side_effect = FDPPushError("1 of 1 datasets could not be pushed to the FDP: x")
+    args = ["-c", str(EGA_EXAMPLE_CONFIG), "ega", "-a", "EGAD00001005083", "map-ega-hriv2"]
+    fdp_args = ["fdp", "-f", "http://fdp.example.com", "-u", "user", "-p", "password", "-c", "http://fdp.example.com/c"]
+
+    # Act
+    result = isolated_cli_runner.invoke(cli_click, [*args, *fdp_args])
+
+    # Assert
+    assert result.exit_code == 1
+    assert "Error: 1 of 1 datasets could not be pushed to the FDP" in result.output
 
 
 @patch("img2catalog.cli_app.fetch_ega_datasets")
