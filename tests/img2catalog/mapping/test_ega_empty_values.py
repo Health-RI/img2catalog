@@ -302,6 +302,52 @@ def test_map_catalog_refuses_empty_mandatory_config(empty_values_config, key):
         map_ega_to_healthri_dcat_catalog(empty_values_config, [DATASET_URI])
 
 
+@pytest.mark.parametrize("key", ["mbox", "homepage"])
+def test_map_dataset_refuses_empty_mandatory_publisher_contact_config(default_ega_dataset, ega_config, key):
+    ega_config["dataset"]["publisher"][key] = " "
+
+    with pytest.raises(ValueError, match=f"'{key}' is mandatory, but empty"):
+        map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
+
+
+def test_map_dataset_refuses_empty_mandatory_access_rights_config(default_ega_dataset, ega_config):
+    ega_config["dataset"]["access_rights"] = ""
+
+    with pytest.raises(ValueError, match="'access_rights' is mandatory, but empty"):
+        map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
+
+
+def test_map_dataset_leaves_out_blank_themes(default_ega_dataset, ega_config):
+    theme = ega_config["dataset"]["theme"][0]
+    ega_config["dataset"]["theme"] = ["", theme, "  "]
+
+    result = map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
+
+    assert result.theme == [URIRef(theme)]
+
+
+def test_map_dataset_refuses_only_blank_themes(default_ega_dataset, ega_config):
+    ega_config["dataset"]["theme"] = ["", "  "]
+
+    with pytest.raises(ValueError, match="'theme' is mandatory, but empty"):
+        map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
+
+
+def test_map_dataset_refuses_a_list_as_contact_point_name(default_ega_dataset, ega_config):
+    """A name that is a list would silently be cut to its first value."""
+    ega_config["dataset"]["contact_point"]["formatted_name"] = ["Office X", "Office Y"]
+
+    with pytest.raises(TypeError, match="single text value"):
+        map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
+
+
+def test_map_catalog_refuses_a_list_as_contact_point_name(empty_values_config):
+    empty_values_config["catalog"]["contact_point"]["formatted_name"] = ["Office X", "Office Y"]
+
+    with pytest.raises(TypeError, match="single text value"):
+        map_ega_to_healthri_dcat_catalog(empty_values_config, [DATASET_URI])
+
+
 def _empty_values_in_graph(graph):
     """Find the values in a graph that are shown as having content while they are empty."""
     empty_values = []
