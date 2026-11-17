@@ -116,9 +116,9 @@ not replace the dataset in the FDP with incomplete metadata. When EGA answers No
 of a dataset, the dataset has none of them; this is logged as a warning, as it would also be the result of EGA no
 longer serving them.
 
-When one or more datasets cannot be pushed to the FDP, the other datasets are still pushed, after which
-`img2catalog` exits with an error (exit code 1) that lists the datasets that failed. This also applies to pushes from
-XNAT and XDS. Check the exit code in scripts and schedulers to notice that the FDP is not up to date.
+When one or more records (Catalog, Datasets or Distributions) cannot be pushed to the FDP, the other records are still
+pushed, after which `img2catalog` exits with an error (exit code 1) that lists the records that failed. This also
+applies to pushes from XNAT and XDS. Check the exit code in scripts and schedulers to notice that the FDP is not up to date.
 
 ### Configuration XNAT
 

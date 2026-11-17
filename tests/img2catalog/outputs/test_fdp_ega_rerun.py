@@ -276,7 +276,7 @@ def test_failed_push_without_duplicates_gets_no_duplicate_hint(fdp_output, defau
         side_effect=json.JSONDecodeError("Expecting value", "<html>", 0),
     )
 
-    with unreadable, caplog.at_level(logging.WARNING), pytest.raises(FDPPushError, match="1 of 1 datasets"):
+    with unreadable, caplog.at_level(logging.WARNING), pytest.raises(FDPPushError, match="1 record"):
         fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
 
     assert (
@@ -294,31 +294,32 @@ def test_rerun_reports_failure_when_publishing_a_draft_fails_again(fdp_output, d
         fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
 
     # Act
-    with caplog.at_level(logging.WARNING), pytest.raises(FDPPushError, match="1 of 1 datasets could not be pushed"):
+    with caplog.at_level(logging.WARNING), pytest.raises(FDPPushError, match="1 record"):
         fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
 
     # Assert: still the same dataset, and still a draft
     assert fdp_output.fdpclient.states == {URIRef("http://fdp.example.com/dataset/1"): "DRAFT"}
     assert (
-        "Error pushing dataset https://ega-archive.org/datasets/EGAD00001005083 to FDP: FDP not reachable"
+        "Updated dataset http://fdp.example.com/dataset/1, but it may not be published: FDP not reachable"
         in caplog.text
     )
 
 
 def test_rerun_reports_failure_when_state_check_is_refused(fdp_output, default_ega_dataset, ega_config, caplog):
     fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
+    fdp = fdp_output.fdpclient
+    get_record = fdp.get
     refused = Mock(raise_for_status=Mock(side_effect=requests.HTTPError("403 Forbidden")))
 
-    state_check_refused = patch.object(fdp_output.fdpclient, "get", return_value=refused)
-    with state_check_refused, caplog.at_level(logging.WARNING), pytest.raises(
-        FDPPushError, match="could not be pushed"
+    def state_refused(url, headers, timeout):
+        return refused if url.endswith("/meta") else get_record(url, headers, timeout)
+
+    with patch.object(fdp, "get", side_effect=state_refused), caplog.at_level(logging.WARNING), pytest.raises(
+        FDPPushError, match="publishing it failed"
     ):
         fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
 
-    assert (
-        "Could not check if http://fdp.example.com/dataset/1 is published in the FDP: 403 Forbidden"
-        in caplog.text
-    )
+    assert "Could not check if http://fdp.example.com/dataset/1 is published in the FDP: 403 Forbidden" in caplog.text
 
 
 def test_rerun_does_not_update_dataset_that_cannot_be_read(fdp_output, default_ega_dataset, ega_config, caplog):
