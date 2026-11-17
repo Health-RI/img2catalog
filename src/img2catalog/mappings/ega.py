@@ -100,6 +100,14 @@ def _required_config_literals(config: Dict, key: str) -> List[LiteralField]:
     return literals
 
 
+def _required_config_text(config: Dict, key: str) -> str:
+    """Return a mandatory config value that must be a single text; an empty value or a list is refused."""
+    value = _text(config[key])
+    if value is None:
+        raise ValueError(f"Configuration value '{key}' is mandatory, but empty")
+    return value
+
+
 def _without_empty(fields: Dict[str, Any]) -> Dict[str, Any]:
     """Leave out the fields without content."""
     return {field: value for field, value in fields.items() if not _is_empty(value)}
@@ -292,8 +300,8 @@ def get_publisher(publisher_config: Dict) -> HRIAgent:
     return HRIAgent(
         name=_required_config_literals(publisher_config, "name"),
         identifier=_required_config_literals(publisher_config, "identifier"),
-        mbox=publisher_config["mbox"],
-        homepage=publisher_config["homepage"],
+        mbox=_required_config_text(publisher_config, "mbox"),
+        homepage=_required_config_text(publisher_config, "homepage"),
         **publisher_kwargs,
     )
 
@@ -365,7 +373,10 @@ def map_ega_to_healthri_dcat_dataset(
     dataset_config = config["dataset"]
     contact_point_config = dataset_config["contact_point"]
 
-    dataset_themes = [DatasetTheme(URIRef(theme)) for theme in dataset_config["theme"]]
+    # Blank themes are left out; at least one is needed
+    dataset_themes = [DatasetTheme(theme) for theme in _to_urls(dataset_config["theme"])]
+    if not dataset_themes:
+        raise ValueError("Configuration value 'theme' is mandatory, but empty")
 
     dataset_keywords = get_keyword(ega_dataset)
     dataset_keywords.extend(_to_literals(dataset_config.get("keyword")))
@@ -382,7 +393,7 @@ def map_ega_to_healthri_dcat_dataset(
     # The DAC handles access requests, so its main contact's email is used; the configured email is a fallback
     contact_point = HRIVCard(
         hasEmail=get_contact_email(ega_dataset) or _text(contact_point_config.get("email")),
-        formatted_name=_required_config_literals(contact_point_config, "formatted_name")[0].value,
+        formatted_name=_required_config_text(contact_point_config, "formatted_name"),
         **contact_point_kwargs,
     )
 
@@ -392,7 +403,7 @@ def map_ega_to_healthri_dcat_dataset(
     # Properties in the order of the FSD mapping document. Values not present in EGA metadata are
     # supplied from the local node configuration; optional ones are left out when not configured.
     dataset_fields = {
-        "access_rights": AccessRights(URIRef(dataset_config["access_rights"])),
+        "access_rights": AccessRights(URIRef(_required_config_text(dataset_config, "access_rights"))),
         "applicable_legislation": dataset_applicable_legislation,
         "code_values": _optional(dataset_config, "code_values", _to_urls),
         # Contact point combines the DAC from EGA with the name from the local node configuration
@@ -441,7 +452,7 @@ def map_ega_to_healthri_dcat_catalog(config: Dict, dataset_uris: List[URIRef]) -
     catalog_fields = {
         "contact_point": HRIVCard(
             hasEmail=_text(contact_point_config["email"]),
-            formatted_name=_required_config_literals(contact_point_config, "formatted_name")[0].value,
+            formatted_name=_required_config_text(contact_point_config, "formatted_name"),
         ),
         "creator": [publisher],
         "description": _required_config_literals(catalog_config, "description"),

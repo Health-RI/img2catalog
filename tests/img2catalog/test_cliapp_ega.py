@@ -131,6 +131,29 @@ def test_ega_cli_needs_no_distribution_config_without_files(
 
 
 @patch("img2catalog.cli_app.fetch_ega_datasets")
+def test_ega_cli_leaves_catalog_out_when_every_dataset_is_skipped(
+    fetch_ega_datasets, default_ega_dataset, isolated_cli_runner, caplog
+):
+    """Datasets without a mandatory value are skipped; when that is all of them, the Catalog would have no datasets."""
+    # Arrange
+    fetch_ega_datasets.return_value = [{**default_ega_dataset, "description": None}]
+
+    # Act
+    with caplog.at_level(logging.WARNING):
+        result = isolated_cli_runner.invoke(
+            cli_click,
+            ["-c", str(EGA_EXAMPLE_CONFIG), "ega", "-a", "EGAD00001005083", "map-ega-hriv2", "rdf", "-o", "output.ttl"],
+        )
+
+    # Assert
+    assert result.exit_code == 0, result.output
+    graph = Graph().parse("output.ttl")
+    assert not list(graph.subjects(RDF.type, DCAT.Dataset))
+    assert not list(graph.subjects(RDF.type, DCAT.Catalog))
+    assert "No EGA datasets were mapped, so the Catalog is left out" in caplog.text
+
+
+@patch("img2catalog.cli_app.fetch_ega_datasets")
 def test_ega_cli_skips_dataset_with_empty_mandatory_value(
     fetch_ega_datasets, default_ega_dataset, isolated_cli_runner, caplog
 ):
