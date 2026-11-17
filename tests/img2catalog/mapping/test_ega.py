@@ -224,6 +224,9 @@ def test_map_ega_to_healthri_dcat_distributions_splits_per_format(default_ega_da
     result = map_ega_to_healthri_dcat_distributions(default_ega_dataset, ega_config)
 
     # Assert
+    # Check the list, not a dict: a dict would hide two distributions for the same format
+    assert len(result) == 2
+    assert len({str(distribution.format) for distribution in result}) == 2
     sizes_per_format = {str(distribution.format): distribution.byte_size.value for distribution in result}
     assert sizes_per_format == {
         "http://publications.europa.eu/resource/authority/file-type/BIN": "3000",
