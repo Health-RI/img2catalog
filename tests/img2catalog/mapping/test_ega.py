@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 import pytest
@@ -124,6 +125,15 @@ def test_get_qualified_attribution_uses_configured_role(default_ega_dataset):
     assert str(result[0].role) == role
 
 
+def test_get_qualified_attribution_leaves_out_null_names(default_ega_dataset):
+    """EGA can return a null first name, which must not end up in the name as the text "None"."""
+    default_ega_dataset["dacs"][0]["contacts"][0]["first_name"] = None
+
+    result = get_qualified_attribution(default_ega_dataset, {})
+
+    assert [name.value for name in result[0].agent.name] == ["Doe"]
+
+
 def test_get_qualified_attribution_skips_non_main_contacts(default_ega_dataset):
     default_ega_dataset["dacs"][0]["contacts"][0]["is_main"] = False
 
@@ -219,6 +229,15 @@ def test_map_ega_to_healthri_dcat_distributions_splits_per_format(default_ega_da
         "http://publications.europa.eu/resource/authority/file-type/BIN": "3000",
         "http://publications.europa.eu/resource/authority/file-type/TXT": "500",
     }
+
+
+def test_map_ega_to_healthri_dcat_distributions_left_out_without_distribution_section(default_ega_dataset, caplog):
+    """Without a [distribution] section in the configuration, the datasets are still mapped, without Distributions."""
+    with caplog.at_level(logging.WARNING):
+        result = map_ega_to_healthri_dcat_distributions(default_ega_dataset, {})
+
+    assert result == []
+    assert "no [distribution] section" in caplog.text
 
 
 def test_map_ega_to_healthri_dcat_distributions_returns_empty_without_files(missing_ega_dataset):

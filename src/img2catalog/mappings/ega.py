@@ -153,8 +153,10 @@ def get_qualified_attribution(ega_dataset: Dict, dataset_config: Dict) -> List[A
             agent_kwargs["mbox"] = [f"mailto:{contact['email']}"]
 
         dac_page = f"{EGA_DAC_URL}{contact['dac']['accession_id']}"
+        # EGA can return null names, which .get() would pass on as None
+        full_name = f"{contact.get('first_name') or ''} {contact.get('surname') or ''}".strip()
         agent = Agent(
-            name=[LiteralField(value=f"{contact.get('first_name', '')} {contact.get('surname', '')}".strip())],
+            name=[LiteralField(value=full_name)],
             identifier=LiteralField(value=dac_page),
             homepage=dac_page,
             **agent_kwargs,
@@ -200,7 +202,14 @@ def map_ega_to_healthri_dcat_distributions(ega_dataset: Dict, config: Dict) -> L
     if not files_per_type:
         return []
 
-    distribution_config = config["distribution"]
+    distribution_config = config.get("distribution")
+    if distribution_config is None:
+        logger.warning(
+            "EGA dataset %s has files, but the configuration has no [distribution] section: its Distributions are "
+            "left out",
+            ega_dataset.get("accession_id"),
+        )
+        return []
     dataset_page = get_identifier(ega_dataset)
 
     distributions = []
