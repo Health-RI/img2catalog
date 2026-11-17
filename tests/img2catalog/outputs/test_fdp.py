@@ -4,7 +4,7 @@ import pytest
 from fairclient.fdpclient import FDPClient
 from rdflib import DCTERMS, URIRef
 
-from img2catalog.outputs.fdp import FDPOutput
+from img2catalog.outputs.fdp import FDPOutput, FDPPushError
 
 
 @patch.object(FDPOutput, "push_record", return_value=URIRef("http://fdp.example.com/dataset/1"))
@@ -57,7 +57,9 @@ def test_xnat_to_fdp_push_error(mock_fdp_client, mock_push_record, mock_dataset,
         fdp_password=None,
         catalog_uri=URIRef("http://example.com/catalog"),
     )
-    fdp_output.push_to_fdp(mapped_objects)
+    # The other dataset is still pushed, and the failed one makes the push fail afterwards
+    with pytest.raises(FDPPushError, match="1 record"):
+        fdp_output.push_to_fdp(mapped_objects)
 
     assert mock_push_record.call_count == 2
     assert (
