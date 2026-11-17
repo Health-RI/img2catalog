@@ -173,6 +173,9 @@ tests = ["tests", "*/img2catalog/tests"]
 exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
 
 [tool.pytest.ini_options]
+# Collecting doctests from src/ (--doctest-modules in CI) imports cli_app before the tests do, after which coverage
+# no longer measures it (and the modules it imports). Doctests only need to be collected from the tests.
+testpaths = ["tests"]
 markers = [
     "integration: Runs integration tests."
 ]

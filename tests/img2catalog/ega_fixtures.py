@@ -66,7 +66,7 @@ def ega_config(default_config):
 
 @pytest.fixture
 def missing_ega_dataset():
-    """An EGA dataset description missing mandatory fields (title, description)."""
+    """An EGA dataset description missing its mandatory description; a missing title falls back to the accession ID."""
     return {
         "accession_id": "EGAD00001005083",
     }
