@@ -7,6 +7,7 @@ import click
 import xnat
 from click_option_group import MutuallyExclusiveOptionGroup, optgroup
 from rdflib import URIRef
+from sempyro.hri_dcat import HRICatalog
 from xnat import XNATSession
 
 from img2catalog import log
@@ -434,15 +435,14 @@ def _map_ega_dataset(ega_dataset: Dict, config: Dict) -> Optional[Tuple[Dict, Li
     return {"uri": dataset_uri, "model_object": dataset}, distributions
 
 
-def _map_ega_catalog(config: Dict, dataset_uris: List[URIRef]) -> Dict:
+def _map_ega_catalog(config: Dict, dataset_uris: List[URIRef]) -> HRICatalog:
     """Map the Catalog grouping the EGA datasets. It only uses the configuration, so any error is a usage error."""
     try:
-        catalog = map_ega_to_healthri_dcat_catalog(config, dataset_uris)
+        return map_ega_to_healthri_dcat_catalog(config, dataset_uris)
     except KeyError as e:
         raise click.UsageError(f"The configuration has no {e}") from e
     except (TypeError, ValueError) as e:
         raise click.UsageError(str(e)) from e
-    return {"uri": URIRef("http://img2catalog.internal/catalog/ega"), "model_object": catalog}
 
 
 @click.group("map-ega-hriv2")
@@ -467,7 +467,10 @@ def mapping_ega_healthriv2(ctx: click.Context):
 
     # A Catalog grouping the EGA datasets is optional, as EGA has no equivalent of it
     if "catalog" in config:
-        mapped_objects["catalog"] = [_map_ega_catalog(config, [dataset["uri"] for dataset in datasets])]
+        catalog = _map_ega_catalog(config, [dataset["uri"] for dataset in datasets])
+        mapped_objects["catalog"] = [
+            {"uri": URIRef("http://img2catalog.internal/catalog/ega"), "model_object": catalog}
+        ]
 
     ctx.obj["mapped_objects"] = mapped_objects
 
