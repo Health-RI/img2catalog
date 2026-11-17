@@ -148,15 +148,28 @@ def test_rerun_updates_ega_dataset_in_fdp(fdp_output, default_ega_dataset, ega_c
 
 
 def test_rerun_keeps_datasets_apart(fdp_output, default_ega_dataset, ega_config):
-    other_dataset = {**default_ega_dataset, "accession_id": "EGAD00001005084"}
-    mapped_objects = _mapped_objects(default_ega_dataset, ega_config)
-    mapped_objects["dataset"] += _mapped_objects(other_dataset, ega_config)["dataset"]
-    mapped_objects["dataset"][1]["uri"] = URIRef("http://img2catalog.internal/dataset/EGAD00001005084")
 
-    fdp_output.push_to_fdp(mapped_objects)
-    fdp_output.push_to_fdp(mapped_objects)
+    def mapped_objects(title, other_title):
+        dataset = {**default_ega_dataset, "title": title}
+        other_dataset = {**default_ega_dataset, "accession_id": "EGAD00001005084", "title": other_title}
+        objects = _mapped_objects(dataset, ega_config)
+        objects["dataset"] += _mapped_objects(other_dataset, ega_config)["dataset"]
+        objects["dataset"][1]["uri"] = URIRef("http://img2catalog.internal/dataset/EGAD00001005084")
+        return objects
 
-    assert len(fdp_output.fdpclient.datasets) == 2
+    def titles():
+        """Title of each FDP dataset, by the FDP URI of the dataset."""
+        return {uri: str(graph.value(uri, DCTERMS.title)) for uri, graph in fdp_output.fdpclient.datasets.items()}
+
+    # Act: push, change both datasets, and push again
+    fdp_output.push_to_fdp(mapped_objects("First", "Second"))
+    assert sorted(titles().values()) == ["First", "Second"]
+    first_uris = set(fdp_output.fdpclient.datasets)
+    fdp_output.push_to_fdp(mapped_objects("First updated", "Second updated"))
+
+    # Assert: each dataset was found and updated by itself, and none was added
+    assert set(fdp_output.fdpclient.datasets) == first_uris
+    assert sorted(titles().values()) == ["First updated", "Second updated"]
 
 
 def test_push_without_sparql_warns_that_datasets_are_not_updated(fdp_output, default_ega_dataset, ega_config, caplog):
