@@ -429,8 +429,10 @@ def mapping_ega_healthriv2(ctx: click.Context):
 
     mapped_objects = {"dataset": datasets, "distribution": distributions}
 
-    # A Catalog grouping the EGA datasets is optional, as EGA has no equivalent of it
-    if "catalog" in config:
+    # A Catalog grouping the EGA datasets is optional, as EGA has no equivalent of it. It needs at least one dataset.
+    if "catalog" in config and not datasets:
+        logger.warning("No EGA datasets were mapped, so the Catalog is left out")
+    elif "catalog" in config:
         catalog = map_ega_to_healthri_dcat_catalog(config, [dataset["uri"] for dataset in datasets])
         mapped_objects["catalog"] = [
             {"uri": URIRef("http://img2catalog.internal/catalog/ega"), "model_object": catalog}
