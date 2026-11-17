@@ -7,9 +7,12 @@ import pytest
 from rdflib import RDF, BNode, Literal, URIRef
 
 from img2catalog.mappings.ega import (
+    EGAConfigError,
     MissingEGAValueError,
     _is_empty,
     _text,
+    _to_urls,
+    get_accession_id,
     get_byte_size,
     get_contact_email,
     get_contact_name,
@@ -32,7 +35,7 @@ CATALOG_URI = URIRef("http://img2catalog.internal/catalog/ega")
 
 @pytest.fixture
 def empty_ega_dataset(default_ega_dataset):
-    """An EGA dataset in which every optional value is empty, null or blank."""
+    """An EGA dataset with empty, null and blank optional values, next to values that have content and must survive."""
     default_ega_dataset.update(
         {
             "technologies": ["Illumina HiSeq 2000", "", "   ", None],
@@ -337,14 +340,14 @@ def test_map_dataset_refuses_a_list_as_contact_point_name(default_ega_dataset, e
     """A name that is a list would silently be cut to its first value."""
     ega_config["dataset"]["contact_point"]["formatted_name"] = ["Office X", "Office Y"]
 
-    with pytest.raises(TypeError, match="single text value"):
+    with pytest.raises(EGAConfigError, match="'formatted_name' is invalid: Expected a single text value"):
         map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
 
 
 def test_map_catalog_refuses_a_list_as_contact_point_name(empty_values_config):
     empty_values_config["catalog"]["contact_point"]["formatted_name"] = ["Office X", "Office Y"]
 
-    with pytest.raises(TypeError, match="single text value"):
+    with pytest.raises(EGAConfigError, match="'formatted_name' is invalid: Expected a single text value"):
         map_ega_to_healthri_dcat_catalog(empty_values_config, [DATASET_URI])
 
 
@@ -387,3 +390,42 @@ def test_rdf_output_has_no_empty_values(empty_ega_dataset, empty_values_config):
     # Assert
     assert _empty_values_in_graph(rdf_output.graph) == []
     assert len(rdf_output.graph) > 0
+
+
+def test_get_byte_size_treats_unparsable_size_as_unknown(caplog):
+    with caplog.at_level(logging.WARNING):
+        result = get_byte_size([{"filesize": "abc"}, {"filesize": "1000"}])
+
+    assert result.value == "1000"
+    assert "Size of 1 of 2 files is unknown" in caplog.text
+
+
+@pytest.mark.parametrize("value", [None, "", "  "])
+def test_accession_id_is_mandatory(default_ega_dataset, value):
+    default_ega_dataset["accession_id"] = value
+
+    with pytest.raises(MissingEGAValueError, match="has no accession_id"):
+        get_accession_id(default_ega_dataset)
+
+
+def test_single_text_counts_as_a_list_of_one():
+    """A text where a list is expected must not be cut into one value per character."""
+    assert _to_urls("http://example.com/a") == [URIRef("http://example.com/a")]
+
+
+def test_map_dataset_refuses_missing_contact_email(default_ega_dataset, ega_config):
+    """Without a DAC email, the configured email is the only one, so it cannot be empty."""
+    for dac in default_ega_dataset["dacs"]:
+        for contact in dac["contacts"]:
+            contact["email"] = None
+    ega_config["dataset"]["contact_point"]["email"] = " "
+
+    with pytest.raises(EGAConfigError, match="'email' is mandatory, but empty"):
+        map_ega_to_healthri_dcat_dataset(default_ega_dataset, ega_config)
+
+
+def test_map_catalog_refuses_empty_contact_email(empty_values_config):
+    empty_values_config["catalog"]["contact_point"]["email"] = ""
+
+    with pytest.raises(EGAConfigError, match="'email' is mandatory, but empty"):
+        map_ega_to_healthri_dcat_catalog(empty_values_config, [DATASET_URI])

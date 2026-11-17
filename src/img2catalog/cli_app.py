@@ -1,6 +1,7 @@
 import logging
 import uuid
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 import click
 import xnat
@@ -28,7 +29,9 @@ from img2catalog.inputs.csv_reader import filter_by_unique_individuals, read_csv
 from img2catalog.inputs.ega import fetch_ega_datasets
 from img2catalog.inputs.xnat import XNATInput
 from img2catalog.mappings.ega import (
+    EGAConfigError,
     MissingEGAValueError,
+    get_accession_id,
     get_distribution_code,
     map_ega_to_healthri_dcat_catalog,
     map_ega_to_healthri_dcat_dataset,
@@ -390,6 +393,58 @@ def input_ega(ctx: click.Context, dataset_ids: tuple, api_url: str):
 cli_click.add_command(input_ega)
 
 
+def _map_ega_dataset(ega_dataset: Dict, config: Dict) -> Optional[Tuple[Dict, List[Dict]]]:
+    """Map an EGA dataset and its Distributions, or return None when the dataset is skipped.
+
+    A dataset that cannot be mapped because of its own metadata is skipped with a warning, so the other datasets are
+    still mapped. An invalid configuration applies to every dataset, so it fails the run instead.
+    """
+    try:
+        accession_id = get_accession_id(ega_dataset)
+    except MissingEGAValueError as e:
+        logger.warning("Skipping an EGA dataset: %s", e.args[0])
+        return None
+    dataset_uri = URIRef(f"http://img2catalog.internal/dataset/{accession_id}")
+
+    try:
+        ega_distributions = map_ega_to_healthri_dcat_distributions(ega_dataset, config)
+
+        # One Distribution per file format, identified by the format code and compression (e.g. BIN, TXT-gzip)
+        distribution_base_uri = f"http://img2catalog.internal/distribution/{accession_id}/"
+        distribution_uris = [
+            URIRef(distribution_base_uri + get_distribution_code(distribution)) for distribution in ega_distributions
+        ]
+        dataset = map_ega_to_healthri_dcat_dataset(ega_dataset, config, distribution_uris)
+    except MissingEGAValueError as e:
+        logger.warning("Skipping EGA dataset %s: %s", accession_id, e.args[0])
+        return None
+    except EGAConfigError as e:
+        raise click.UsageError(str(e)) from e
+    except KeyError as e:
+        raise click.UsageError(f"The configuration has no {e}") from e
+    except (TypeError, ValueError) as e:
+        # Metadata of this dataset that cannot be mapped, e.g. a list instead of a text, or a value the model refuses
+        logger.warning("Skipping EGA dataset %s: %s", accession_id, e)
+        return None
+
+    distributions = [
+        {"uri": distribution_uri, "model_object": distribution, "dataset_uri": dataset_uri}
+        for distribution_uri, distribution in zip(distribution_uris, ega_distributions)
+    ]
+    return {"uri": dataset_uri, "model_object": dataset}, distributions
+
+
+def _map_ega_catalog(config: Dict, dataset_uris: List[URIRef]) -> Dict:
+    """Map the Catalog grouping the EGA datasets. It only uses the configuration, so any error is a usage error."""
+    try:
+        catalog = map_ega_to_healthri_dcat_catalog(config, dataset_uris)
+    except KeyError as e:
+        raise click.UsageError(f"The configuration has no {e}") from e
+    except (TypeError, ValueError) as e:
+        raise click.UsageError(str(e)) from e
+    return {"uri": URIRef("http://img2catalog.internal/catalog/ega"), "model_object": catalog}
+
+
 @click.group("map-ega-hriv2")
 @click.pass_context
 def mapping_ega_healthriv2(ctx: click.Context):
@@ -400,43 +455,19 @@ def mapping_ega_healthriv2(ctx: click.Context):
     datasets = []
     distributions = []
     for ega_dataset in unmapped_objects["dataset"]:
-        accession_id = ega_dataset["accession_id"]
-        dataset_uri = URIRef(f"http://img2catalog.internal/dataset/{accession_id}")
+        mapped = _map_ega_dataset(ega_dataset, config)
+        if mapped is not None:
+            datasets.append(mapped[0])
+            distributions.extend(mapped[1])
 
-        try:
-            ega_distributions = map_ega_to_healthri_dcat_distributions(ega_dataset, config)
-
-            # One Distribution per file format, identified by the format code and compression (e.g. BIN, TXT-gzip)
-            distribution_base_uri = f"http://img2catalog.internal/distribution/{accession_id}/"
-            distribution_uris = [
-                URIRef(distribution_base_uri + get_distribution_code(distribution))
-                for distribution in ega_distributions
-            ]
-            dataset = map_ega_to_healthri_dcat_dataset(ega_dataset, config, distribution_uris)
-        except MissingEGAValueError as e:
-            # A dataset missing mandatory metadata in EGA is skipped, so the other datasets are still mapped
-            logger.warning("Skipping EGA dataset %s: %s", accession_id, e.args[0])
-            continue
-        except ValueError as e:
-            # An invalid configuration applies to every dataset, so it is not skipped
-            raise click.UsageError(str(e)) from e
-
-        distributions.extend(
-            {"uri": distribution_uri, "model_object": distribution, "dataset_uri": dataset_uri}
-            for distribution_uri, distribution in zip(distribution_uris, ega_distributions)
-        )
-        datasets.append({"uri": dataset_uri, "model_object": dataset})
+    if not datasets:
+        raise click.ClickException("None of the EGA datasets could be mapped, see the warnings above")
 
     mapped_objects = {"dataset": datasets, "distribution": distributions}
 
-    # A Catalog grouping the EGA datasets is optional, as EGA has no equivalent of it. It needs at least one dataset.
-    if "catalog" in config and not datasets:
-        logger.warning("No EGA datasets were mapped, so the Catalog is left out")
-    elif "catalog" in config:
-        catalog = map_ega_to_healthri_dcat_catalog(config, [dataset["uri"] for dataset in datasets])
-        mapped_objects["catalog"] = [
-            {"uri": URIRef("http://img2catalog.internal/catalog/ega"), "model_object": catalog}
-        ]
+    # A Catalog grouping the EGA datasets is optional, as EGA has no equivalent of it
+    if "catalog" in config:
+        mapped_objects["catalog"] = [_map_ega_catalog(config, [dataset["uri"] for dataset in datasets])]
 
     ctx.obj["mapped_objects"] = mapped_objects
 

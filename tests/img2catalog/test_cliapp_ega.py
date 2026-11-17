@@ -33,6 +33,15 @@ def _config_without(tmp_path, *sections):
     return config
 
 
+def _config_with(tmp_path, old, new):
+    """Write a copy of the EGA example config in which the first occurrence of a line is replaced."""
+    text = EGA_EXAMPLE_CONFIG.read_text()
+    assert old in text
+    config = tmp_path / "config.toml"
+    config.write_text(text.replace(old, new, 1))
+    return config
+
+
 def _run_map_ega_to_rdf(runner, config):
     return runner.invoke(
         cli_click,
@@ -159,26 +168,22 @@ def test_ega_cli_needs_no_distribution_config_without_files(
 
 
 @patch("img2catalog.cli_app.fetch_ega_datasets")
-def test_ega_cli_leaves_catalog_out_when_every_dataset_is_skipped(
+def test_ega_cli_fails_when_every_dataset_is_skipped(
     fetch_ega_datasets, default_ega_dataset, isolated_cli_runner, caplog
 ):
-    """Datasets without a mandatory value are skipped; when that is all of them, the Catalog would have no datasets."""
+    """A run that maps nothing must not look like a success, as with a run that fetched nothing."""
     # Arrange
     fetch_ega_datasets.return_value = [{**default_ega_dataset, "description": None}]
 
     # Act
     with caplog.at_level(logging.WARNING):
-        result = isolated_cli_runner.invoke(
-            cli_click,
-            ["-c", str(EGA_EXAMPLE_CONFIG), "ega", "-a", "EGAD00001005083", "map-ega-hriv2", "rdf", "-o", "output.ttl"],
-        )
+        result = _run_map_ega_to_rdf(isolated_cli_runner, EGA_EXAMPLE_CONFIG)
 
     # Assert
-    assert result.exit_code == 0, result.output
-    graph = Graph().parse("output.ttl")
-    assert not list(graph.subjects(RDF.type, DCAT.Dataset))
-    assert not list(graph.subjects(RDF.type, DCAT.Catalog))
-    assert "No EGA datasets were mapped, so the Catalog is left out" in caplog.text
+    assert result.exit_code != 0
+    assert "None of the EGA datasets could be mapped" in result.output
+    assert "Skipping EGA dataset EGAD00001005083: EGA dataset EGAD00001005083 has no description" in caplog.text
+    assert not pathlib.Path("output.ttl").exists()
 
 
 @patch("img2catalog.cli_app.fetch_ega_datasets")
@@ -187,8 +192,8 @@ def test_ega_cli_skips_dataset_with_empty_mandatory_value(
 ):
     """A dataset without a description in EGA is skipped, while the other datasets are still mapped."""
     # Arrange
-    untitled_dataset = {**default_ega_dataset, "accession_id": "EGAD00010000500", "description": None}
-    fetch_ega_datasets.return_value = [default_ega_dataset, untitled_dataset]
+    undescribed_dataset = {**default_ega_dataset, "accession_id": "EGAD00010000500", "description": None}
+    fetch_ega_datasets.return_value = [default_ega_dataset, undescribed_dataset]
 
     # Act
     with caplog.at_level(logging.WARNING):
@@ -217,3 +222,117 @@ def test_ega_cli_skips_dataset_with_empty_mandatory_value(
     assert set(graph.subjects(RDF.type, DCAT.Distribution)) == {BIN_DISTRIBUTION_URI}
     assert set(graph.objects(CATALOG_URI, DCAT.dataset)) == {DATASET_URI}
     assert "Skipping EGA dataset EGAD00010000500: EGA dataset EGAD00010000500 has no description" in caplog.text
+
+
+@patch("img2catalog.cli_app.fetch_ega_datasets")
+def test_ega_cli_fails_on_empty_mandatory_config_after_a_skipped_dataset(
+    fetch_ega_datasets, default_ega_dataset, isolated_cli_runner, tmp_path
+):
+    """A skipped dataset must not hide a configuration error, which applies to every dataset."""
+    # Arrange
+    skipped_dataset = {**default_ega_dataset, "accession_id": "EGAD00010000500", "description": None}
+    fetch_ega_datasets.return_value = [skipped_dataset, default_ega_dataset]
+    config = _config_with(
+        tmp_path,
+        'theme = ["http://publications.europa.eu/resource/authority/data-theme/HEAL"]',
+        'theme = [""]',
+    )
+
+    # Act
+    result = _run_map_ega_to_rdf(isolated_cli_runner, config)
+
+    # Assert
+    assert result.exit_code == 2
+    assert "Configuration value 'theme' is mandatory, but empty" in result.output
+    assert not pathlib.Path("output.ttl").exists()
+
+
+@patch("img2catalog.cli_app.fetch_ega_datasets")
+def test_ega_cli_fails_on_empty_mandatory_catalog_config(
+    fetch_ega_datasets, default_ega_dataset, isolated_cli_runner, tmp_path
+):
+    # Arrange
+    fetch_ega_datasets.return_value = [default_ega_dataset]
+    config = _config_with(tmp_path, 'title = "Example EGA catalog"', 'title = ""')
+
+    # Act
+    result = _run_map_ega_to_rdf(isolated_cli_runner, config)
+
+    # Assert
+    assert result.exit_code == 2
+    assert "Configuration value 'title' is mandatory, but empty" in result.output
+    assert not pathlib.Path("output.ttl").exists()
+
+
+@patch("img2catalog.cli_app.fetch_ega_datasets")
+def test_ega_cli_fails_on_missing_config_key(fetch_ega_datasets, default_ega_dataset, isolated_cli_runner, tmp_path):
+    # Arrange
+    fetch_ega_datasets.return_value = [default_ega_dataset]
+    config = _config_with(tmp_path, 'access_rights = "', 'unused_access_rights = "')
+
+    # Act
+    result = _run_map_ega_to_rdf(isolated_cli_runner, config)
+
+    # Assert
+    assert result.exit_code == 2
+    assert "The configuration has no 'access_rights'" in result.output
+
+
+@patch("img2catalog.cli_app.fetch_ega_datasets")
+def test_ega_cli_skips_dataset_with_unmappable_metadata(
+    fetch_ega_datasets, default_ega_dataset, isolated_cli_runner, caplog
+):
+    """A list where EGA should have a text only skips that dataset, instead of aborting the run."""
+    # Arrange
+    listed_dataset = {**default_ega_dataset, "accession_id": "EGAD00010000500", "title": ["a", "b"]}
+    fetch_ega_datasets.return_value = [listed_dataset, default_ega_dataset]
+
+    # Act
+    with caplog.at_level(logging.WARNING):
+        result = _run_map_ega_to_rdf(isolated_cli_runner, EGA_EXAMPLE_CONFIG)
+
+    # Assert
+    assert result.exit_code == 0, result.output
+    graph = Graph().parse("output.ttl")
+    assert set(graph.subjects(RDF.type, DCAT.Dataset)) == {DATASET_URI}
+    assert "Skipping EGA dataset EGAD00010000500: Expected a single text value" in caplog.text
+
+
+@patch("img2catalog.cli_app.fetch_ega_datasets")
+def test_ega_cli_skips_dataset_without_accession_id(
+    fetch_ega_datasets, default_ega_dataset, isolated_cli_runner, caplog
+):
+    """Without an accession ID, datasets would get the same URI, so such a dataset is skipped."""
+    # Arrange
+    fetch_ega_datasets.return_value = [{**default_ega_dataset, "accession_id": None}, default_ega_dataset]
+
+    # Act
+    with caplog.at_level(logging.WARNING):
+        result = _run_map_ega_to_rdf(isolated_cli_runner, EGA_EXAMPLE_CONFIG)
+
+    # Assert
+    assert result.exit_code == 0, result.output
+    graph = Graph().parse("output.ttl")
+    assert set(graph.subjects(RDF.type, DCAT.Dataset)) == {DATASET_URI}
+    assert "Skipping an EGA dataset: EGA dataset None has no accession_id" in caplog.text
+
+
+@patch("img2catalog.cli_app.fetch_ega_datasets")
+def test_ega_cli_keeps_dataset_with_unparsable_file_size_and_links_remaining_distributions(
+    fetch_ega_datasets, default_ega_dataset, isolated_cli_runner
+):
+    """The BIN files have no usable size, so only the TXT Distribution is kept, and the dataset links exactly that."""
+    # Arrange
+    for ega_file in default_ega_dataset["files"]:
+        ega_file["filesize"] = "abc"
+    default_ega_dataset["files"].append({"accession_id": "EGAF00000000003", "filesize": 500, "extension": "vcf"})
+    fetch_ega_datasets.return_value = [default_ega_dataset]
+
+    # Act
+    result = _run_map_ega_to_rdf(isolated_cli_runner, EGA_EXAMPLE_CONFIG)
+
+    # Assert
+    assert result.exit_code == 0, result.output
+    graph = Graph().parse("output.ttl")
+    assert set(graph.subjects(RDF.type, DCAT.Distribution)) == {TXT_DISTRIBUTION_URI}
+    assert set(graph.objects(DATASET_URI, DCAT.distribution)) == {TXT_DISTRIBUTION_URI}
