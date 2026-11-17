@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import Dict
+from typing import Dict, List
 
 from pandas import Series
 from pydantic import AnyHttpUrl
@@ -60,6 +60,23 @@ def format_identifier(identifier_base: str, title: str) -> str:
     """
     slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
     return f"{identifier_base.rstrip('/')}/{slug}"
+
+
+def ensure_unique_identifiers(datasets: List[HRIDataset]) -> None:
+    """Refuse datasets that get the same identifier, as the FDP would take them for one dataset.
+
+    The identifier is made from the title, so titles that only differ in characters that are left out of the
+    identifier (like punctuation and case), or rows that are repeated, would overwrite each other in the FDP.
+    """
+    titles_per_identifier: Dict[str, str] = {}
+    for dataset in datasets:
+        identifier, title = dataset.identifier.value, dataset.title[0].value
+        if identifier in titles_per_identifier:
+            raise ValueError(
+                f"The XDS rows '{titles_per_identifier[identifier]}' and '{title}' get the same dataset identifier "
+                f"'{identifier}', so one would overwrite the other. Make their institute, modality or period differ."
+            )
+        titles_per_identifier[identifier] = title
 
 
 def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:

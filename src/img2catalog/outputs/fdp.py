@@ -13,6 +13,10 @@ logger = logging.getLogger(__name__)
 INTERNAL_URI_PREFIX = "http://img2catalog.internal/"
 
 
+class FDPPushError(RuntimeError):
+    """Pushing one or more records to the FDP failed, after all records were tried."""
+
+
 def remove_internal_distribution_links(graph: Graph, dataset_uri: URIRef) -> None:
     """Remove the links of a Dataset to Distributions that only have an internal img2catalog URI.
 
@@ -93,8 +97,8 @@ class FDPOutput:
             response.raise_for_status()
             state = (response.json().get("state") or {}).get("current")
         except Exception as e:
-            logger.warning("Could not check if dataset %s is published in the FDP: %s", fdp_uri, e)
-            return
+            # The dataset is updated, but may stay a draft that is not shown, so the push is reported as failed
+            raise FDPPushError(f"Could not check if dataset {fdp_uri} is published in the FDP: {e}") from e
 
         if state == "DRAFT":
             logger.info("Publishing dataset %s, which was still a draft in the FDP", fdp_uri)
@@ -118,6 +122,7 @@ class FDPOutput:
             )
 
         dataset_obj = input_obj["dataset"]
+        failed = []
         for dataset in dataset_obj:
             graph = dataset["model_object"].to_graph(dataset["uri"])
 
@@ -140,5 +145,12 @@ class FDPOutput:
                     identifier,
                     e,
                 )
+                failed.append(str(identifier or dataset["uri"]))
             except Exception as e:
                 logger.warning("Error pushing dataset %s to FDP: %s", identifier, e)
+                failed.append(str(identifier or dataset["uri"]))
+
+        if failed:
+            raise FDPPushError(
+                f"{len(failed)} of {len(dataset_obj)} datasets could not be pushed to the FDP: {', '.join(failed)}"
+            )

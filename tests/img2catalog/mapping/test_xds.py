@@ -3,6 +3,7 @@ from sempyro.hri_dcat import HRIDataset
 from sempyro.time import PeriodOfTime
 
 from img2catalog.mappings.xds import (
+    ensure_unique_identifiers,
     format_date,
     format_identifier,
     format_temporal_coverage,
@@ -109,6 +110,27 @@ def test_map_xds_to_healthri_dcat_dataset_raises_on_missing_field(missing_csv_da
 )
 def test_format_identifier(identifier_base, title, expected):
     assert format_identifier(identifier_base, title) == expected
+
+
+def test_ensure_unique_identifiers_refuses_titles_that_give_the_same_identifier(default_csv_data, default_config):
+    """Titles that only differ in punctuation or case get the same identifier, so one would overwrite the other."""
+    other_row = default_csv_data.copy()
+    other_row["instituteName"] = "AMSTERDAM  hospital!"
+    datasets = [map_xds_to_healthri_dcat_dataset(row, default_config) for row in (default_csv_data, other_row)]
+
+    with pytest.raises(ValueError, match="same dataset identifier") as error:
+        ensure_unique_identifiers(datasets)
+
+    assert "Amsterdam Hospital - CT - 2026" in str(error.value)
+    assert "AMSTERDAM  hospital! - CT - 2026" in str(error.value)
+
+
+def test_ensure_unique_identifiers_accepts_different_rows(default_csv_data, default_config):
+    other_row = default_csv_data.copy()
+    other_row["modality"] = "MR"
+    datasets = [map_xds_to_healthri_dcat_dataset(row, default_config) for row in (default_csv_data, other_row)]
+
+    ensure_unique_identifiers(datasets)
 
 
 def test_map_xds_gives_each_row_its_own_identifier(default_csv_data, default_config):
