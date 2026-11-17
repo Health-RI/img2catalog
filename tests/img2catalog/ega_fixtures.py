@@ -20,7 +20,48 @@ def default_ega_dataset():
         "released_date": "2001-01-01T00:00:00+01:00",
         "is_deprecated": False,
         "policy_accession_id": "EGAP00001001117",
+        "dacs": [
+            {
+                "accession_id": "EGAC00001001143",
+                "title": "300-OB cohort",
+                "description": None,
+                "url": None,
+                "is_released": True,
+                "released_date": "2019-02-28T12:25:33+01:00",
+                "is_deprecated": False,
+                "contacts": [
+                    {
+                        "email": "dac@example.com",
+                        "is_main": True,
+                        "surname": "Doe",
+                        "first_name": "John",
+                        "institution_name": "Example Institute",
+                    }
+                ],
+            }
+        ],
+        "files": [
+            {"accession_id": "EGAF00000000001", "filesize": 1000, "extension": "bam"},
+            {"accession_id": "EGAF00000000002", "filesize": 2000, "extension": "bam"},
+        ],
+        "studies": [
+            {
+                "accession_id": "EGAS00001003508",
+                "title": "300-Obese: clinical cohort of obese individuals, Nijmegen, the Netherlands",
+                "pubmed_ids": ["32526207"],
+            }
+        ],
     }
+
+
+@pytest.fixture
+def ega_config(default_config):
+    """The default configuration extended with the EGA distribution settings."""
+    default_config["distribution"] = {
+        "license": "http://definities.geostandaarden.nl/DCAT-AP-NL/id/waarde/licentieValue/niet-open",
+        "language": ["http://publications.europa.eu/resource/authority/language/ENG"],
+    }
+    return default_config
 
 
 @pytest.fixture
