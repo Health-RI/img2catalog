@@ -1,6 +1,7 @@
 import pathlib
 from unittest.mock import ANY, MagicMock, Mock, patch
 
+import pandas as pd
 import pytest
 from rdflib import URIRef
 
@@ -351,6 +352,62 @@ def test_xds_cli(mock_fdp_client, mock_fdp_output, isolated_cli_runner, xds_csv_
     )
 
     mock_fdp_output.assert_called_once()
+
+
+def _write_xds_csv(path, institutes):
+    """Write an XDS CSV export with a CT row, for the period of 2024, per institute."""
+    rows = len(institutes)
+    pd.DataFrame(
+        {
+            "instituteName": institutes,
+            "numberOfUniqueIndividuals": [5041] * rows,
+            "numberOfRecords": [11052] * rows,
+            "minTypicalAge": [16] * rows,
+            "maxTypicalAge": [89] * rows,
+            "temporalCoverage": ["01-01-2024 to 31-12-2024"] * rows,
+            "modality": ["CT"] * rows,
+            "exportDate": ["2025-11-14"] * rows,
+        }
+    ).to_csv(path, index=False)
+    return str(path)
+
+
+def _run_xds_to_fdp(runner, csv_path):
+    config_path = str(pathlib.Path(__file__).parent / "examples" / "xds" / "example-config.toml")
+    return runner.invoke(
+        cli_click,
+        [
+            *("--config", config_path, "xds", "--input", csv_path, "map-xds", "fdp"),
+            *("--fdp", "http://fdp.example.com", "-u", "test", "-p", "more_test", "-c", "http://catalog.example.com"),
+        ],
+    )
+
+
+@patch("img2catalog.cli_app.FDPOutput")
+def test_xds_cli_refuses_rows_with_the_same_identifier(mock_fdp_output, isolated_cli_runner, tmp_path):
+    """Rows that get the same identifier would overwrite each other in the FDP, so the run stops before the push."""
+    csv_path = _write_xds_csv(tmp_path / "clash.csv", ["Hospital A", "HOSPITAL a!"])
+
+    result = _run_xds_to_fdp(isolated_cli_runner, csv_path)
+
+    assert result.exit_code == 1
+    assert "get the same dataset identifier" in result.output
+    mock_fdp_output.assert_not_called()
+
+
+@patch("img2catalog.cli_app.FDPOutput")
+def test_xds_cli_gives_each_row_its_own_identifier(mock_fdp_output, isolated_cli_runner, tmp_path):
+    csv_path = _write_xds_csv(tmp_path / "distinct.csv", ["Hospital A", "Hospital B"])
+
+    result = _run_xds_to_fdp(isolated_cli_runner, csv_path)
+
+    assert result.exit_code == 0, result.output
+    pushed = mock_fdp_output.return_value.push_to_fdp.call_args.args[0]["dataset"]
+    identifiers = [dataset["model_object"].identifier.value for dataset in pushed]
+    assert identifiers == [
+        "https://www.example.com/img-123/hospital-a-ct-2024",
+        "https://www.example.com/img-123/hospital-b-ct-2024",
+    ]
 
 
 @patch("xnat.connect")
