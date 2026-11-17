@@ -13,6 +13,10 @@ logger = logging.getLogger(__name__)
 INTERNAL_URI_PREFIX = "http://img2catalog.internal/"
 
 
+# Raised by fairclient when the FDP catalog holds more than one dataset with the identifier that is looked up
+DUPLICATE_DATASET_MESSAGE = "More than one result"
+
+
 class FDPPushError(RuntimeError):
     """Pushing one or more records to the FDP failed, after all records were tried."""
 
@@ -26,6 +30,15 @@ def remove_internal_distribution_links(graph: Graph, dataset_uri: URIRef) -> Non
     for distribution in graph.objects(dataset_uri, DCAT.distribution):
         if str(distribution).startswith(INTERNAL_URI_PREFIX):
             graph.remove((dataset_uri, DCAT.distribution, distribution))
+
+
+def is_duplicate_dataset_error(error: Exception) -> bool:
+    """Whether fairclient refused to update a dataset because the FDP catalog holds more than one with its identifier.
+
+    Other ValueErrors can come out of the same call (e.g. a SPARQL endpoint that does not answer with JSON), which
+    are not solved by removing datasets from the FDP.
+    """
+    return isinstance(error, ValueError) and DUPLICATE_DATASET_MESSAGE in str(error)
 
 
 def get_identifier_value(identifier: Union[str, LiteralField, None]) -> Optional[str]:
@@ -137,17 +150,13 @@ class FDPOutput:
                 # The updated graph has the subject of the existing dataset in the FDP.
                 if not isinstance(result, URIRef):
                     self.publish_if_draft(graph.value(predicate=RDF.type, object=DCAT.Dataset, any=False))
-            except ValueError as e:
-                # The FDP catalog holds more than one dataset with this identifier, e.g. from pushes without SPARQL
-                logger.warning(
-                    "Error pushing dataset %s to FDP: %s. Remove the duplicate datasets with this identifier from the "
-                    "FDP catalog to update it again",
-                    identifier,
-                    e,
-                )
-                failed.append(str(identifier or dataset["uri"]))
             except Exception as e:
-                logger.warning("Error pushing dataset %s to FDP: %s", identifier, e)
+                hint = (
+                    ". Remove the duplicate datasets with this identifier from the FDP catalog to update it again"
+                    if is_duplicate_dataset_error(e)
+                    else ""
+                )
+                logger.warning("Error pushing dataset %s to FDP: %s%s", identifier, e, hint)
                 failed.append(str(identifier or dataset["uri"]))
 
         if failed:

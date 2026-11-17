@@ -1,5 +1,6 @@
 """Rerunning the EGA to FDP push updates the datasets in the FDP, instead of adding them again."""
 
+import json
 import logging
 from unittest.mock import Mock, patch
 
@@ -259,3 +260,57 @@ def test_rerun_updates_dataset_when_state_cannot_be_checked(fdp_output, default_
     updated = fdp_output.fdpclient.datasets[URIRef("http://fdp.example.com/dataset/1")]
     assert Literal("Updated title") in set(updated.objects(None, DCTERMS.title))
     assert "Could not check if dataset http://fdp.example.com/dataset/1 is published in the FDP" in caplog.text
+
+
+def test_failed_push_without_duplicates_gets_no_duplicate_hint(fdp_output, default_ega_dataset, ega_config, caplog):
+    """A ValueError that is not about duplicates, like a SPARQL endpoint answering with a web page, is not solved by
+    removing datasets from the FDP, so the log does not say so."""
+    unreadable = patch.object(
+        fdp_output.sparqlclient.sparql,
+        "queryAndConvert",
+        side_effect=json.JSONDecodeError("Expecting value", "<html>", 0),
+    )
+
+    with unreadable, caplog.at_level(logging.WARNING), pytest.raises(FDPPushError, match="1 of 1 datasets"):
+        fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
+
+    assert (
+        "Error pushing dataset https://ega-archive.org/datasets/EGAD00001005083 to FDP: Expecting value" in caplog.text
+    )
+    assert "Remove the duplicate datasets" not in caplog.text
+    assert fdp_output.fdpclient.datasets == {}
+
+
+def test_rerun_reports_failure_when_publishing_a_draft_fails_again(fdp_output, default_ega_dataset, ega_config, caplog):
+    """When the FDP is still unreachable at the rerun, the dataset stays a draft and the push is reported as failed."""
+    # Arrange: the dataset was created, but not published
+    fdp_output.fdpclient.publish_fails = True
+    with pytest.raises(FDPPushError):
+        fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
+
+    # Act
+    with caplog.at_level(logging.WARNING), pytest.raises(FDPPushError, match="1 of 1 datasets could not be pushed"):
+        fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
+
+    # Assert: still the same dataset, and still a draft
+    assert fdp_output.fdpclient.states == {URIRef("http://fdp.example.com/dataset/1"): "DRAFT"}
+    assert (
+        "Error pushing dataset https://ega-archive.org/datasets/EGAD00001005083 to FDP: FDP not reachable"
+        in caplog.text
+    )
+
+
+def test_rerun_reports_failure_when_state_check_is_refused(fdp_output, default_ega_dataset, ega_config, caplog):
+    fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
+    refused = Mock(raise_for_status=Mock(side_effect=requests.HTTPError("403 Forbidden")))
+
+    state_check_refused = patch.object(fdp_output.fdpclient, "get", return_value=refused)
+    with state_check_refused, caplog.at_level(logging.WARNING), pytest.raises(
+        FDPPushError, match="could not be pushed"
+    ):
+        fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
+
+    assert (
+        "Could not check if dataset http://fdp.example.com/dataset/1 is published in the FDP: 403 Forbidden"
+        in caplog.text
+    )
