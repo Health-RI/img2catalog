@@ -67,6 +67,10 @@ class MissingEGAValueError(KeyError):
     """A mandatory value of an EGA dataset is missing or empty, so the dataset cannot be mapped."""
 
 
+class EGAConfigError(ValueError):
+    """A mandatory value of the configuration is empty or invalid, which applies to every dataset."""
+
+
 def _text(value: Any) -> Optional[str]:
     """Return a single text or number as stripped text, or None when it is empty.
 
@@ -79,8 +83,10 @@ def _text(value: Any) -> Optional[str]:
     return str(value).strip()
 
 
-def _non_empty(values: Optional[List[Any]]) -> List[Any]:
-    """Return the values of a list that have content."""
+def _non_empty(values: Optional[Union[List[Any], str]]) -> List[Any]:
+    """Return the values of a list that have content; a single text counts as a list of one."""
+    if isinstance(values, str):
+        values = [values]
     return [value for value in values or [] if not _is_empty(value)]
 
 
@@ -94,17 +100,23 @@ def _required_config_literals(config: Dict, key: str) -> List[LiteralField]:
     An empty mandatory value is refused with a clear error, instead of silently leaving the field out.
     """
     value = config[key]
-    literals = _to_literals(value if isinstance(value, list) else [value])
+    try:
+        literals = _to_literals(value if isinstance(value, list) else [value])
+    except TypeError as e:
+        raise EGAConfigError(f"Configuration value '{key}' is invalid: {e}") from e
     if not literals:
-        raise ValueError(f"Configuration value '{key}' is mandatory, but empty")
+        raise EGAConfigError(f"Configuration value '{key}' is mandatory, but empty")
     return literals
 
 
 def _required_config_text(config: Dict, key: str) -> str:
     """Return a mandatory config value that must be a single text; an empty value or a list is refused."""
-    value = _text(config[key])
+    try:
+        value = _text(config[key])
+    except TypeError as e:
+        raise EGAConfigError(f"Configuration value '{key}' is invalid: {e}") from e
     if value is None:
-        raise ValueError(f"Configuration value '{key}' is mandatory, but empty")
+        raise EGAConfigError(f"Configuration value '{key}' is mandatory, but empty")
     return value
 
 
@@ -149,9 +161,14 @@ def _dac_page(dac: Dict) -> Optional[str]:
     return f"{EGA_DAC_URL}{accession_id}" if accession_id else None
 
 
+def get_accession_id(ega_dataset: Dict) -> str:
+    """Return the accession ID of an EGA dataset, which identifies it; a blank one counts as missing."""
+    return _required_text(ega_dataset, "accession_id")
+
+
 def get_identifier(ega_dataset: Dict) -> str:
     """Build the EGA archive URL for an EGA dataset's accession_id."""
-    return f"{EGA_DATASET_URL}{ega_dataset['accession_id']}"
+    return f"{EGA_DATASET_URL}{get_accession_id(ega_dataset)}"
 
 
 def get_title(ega_dataset: Dict) -> str:
@@ -203,7 +220,7 @@ def get_main_contacts(ega_dataset: Dict) -> List[Dict]:
 
 
 def get_contact_email(ega_dataset: Dict) -> Optional[str]:
-    """Return the email of the first DAC main contact, which handles the access requests of the dataset."""
+    """Return the email of the first DAC main contact that has one; the DAC handles the dataset's access requests."""
     for contact in get_main_contacts(ega_dataset):
         email = _text(contact.get("email"))
         if email:
@@ -271,13 +288,22 @@ def get_file_type(ega_file: Dict) -> str:
     return FILE_TYPE_TEXT if extension in TEXT_FILE_EXTENSIONS else FILE_TYPE_BINARY
 
 
+def _to_int(value: Any) -> Optional[int]:
+    """Convert a number or numeric text to an integer, or return None when it is empty or not a whole number."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def get_byte_size(ega_files: List[Dict], description: str = "files") -> Optional[LiteralField]:
     """Sum the known sizes of the files, or return None when no file size is known.
 
-    Unknown sizes are not counted as 0 bytes, so a size of 0 is never shown for files of unknown size. When only
+    Blank and unparsable sizes are unknown. Unknown sizes are not counted as 0 bytes, so a size of 0 is never
+    shown for files of unknown size. When only
     some sizes are known, their sum is a lower bound of the actual size, which is logged as a warning.
     """
-    file_sizes = [int(ega_file["filesize"]) for ega_file in ega_files if not _is_empty(ega_file.get("filesize"))]
+    file_sizes = [size for size in (_to_int(ega_file.get("filesize")) for ega_file in ega_files) if size is not None]
     if not file_sizes:
         return None
     if len(file_sizes) < len(ega_files):
@@ -312,7 +338,7 @@ def map_ega_to_healthri_dcat_distributions(ega_dataset: Dict, config: Dict) -> L
     The files together form the Distribution of the dataset, so individual files are not mapped to separate
     Distributions. Only when the data is available in multiple formats, a Distribution is made per format.
 
-    Raises ValueError when there are files, but the configuration has no [distribution] section.
+    Raises EGAConfigError when there are files, but the configuration has no [distribution] section.
     """
     files_per_type: Dict[str, List[Dict]] = {}
     for ega_file in ega_dataset.get("files") or []:
@@ -323,22 +349,23 @@ def map_ega_to_healthri_dcat_distributions(ega_dataset: Dict, config: Dict) -> L
 
     distribution_config = config.get("distribution")
     if distribution_config is None:
-        raise ValueError(
+        raise EGAConfigError(
             f"EGA dataset {ega_dataset.get('accession_id')} has files, but the configuration has no [distribution] "
             "section"
         )
+    accession_id = get_accession_id(ega_dataset)
     dataset_page = get_identifier(ega_dataset)
 
     distributions = []
     for file_type, ega_files in files_per_type.items():
         # The byte size is mandatory, so a Distribution without any known file size is left out
         format_code = file_type.rsplit("/", 1)[-1]
-        byte_size = get_byte_size(ega_files, f"{format_code} files of EGA dataset {ega_dataset['accession_id']}")
+        byte_size = get_byte_size(ega_files, f"{format_code} files of EGA dataset {accession_id}")
         if byte_size is None:
             logger.warning(
                 "Skipping %s Distribution of EGA dataset %s: no file size is known",
                 format_code,
-                ega_dataset["accession_id"],
+                accession_id,
             )
             continue
 
@@ -366,6 +393,11 @@ def map_ega_to_healthri_dcat_dataset(
     """Map an EGA dataset to a Dataset, referring to its Distributions (mapped separately) by URI.
 
     Fields without content, in EGA or in the configuration, are left out instead of being mapped as empty values.
+    Mandatory fields are refused instead:
+    - MissingEGAValueError for a mandatory EGA value (description, accession ID), so the dataset can be skipped;
+    - EGAConfigError for an empty or invalid mandatory configuration value (theme, access rights, publisher, contact
+      point), which applies to every dataset;
+    - TypeError when EGA has a list or dict where a single text is expected.
     """
     if _text(ega_dataset.get("title")) is None:
         logger.warning("EGA dataset %s has no title, its accession ID is used as title", get_title(ega_dataset))
@@ -376,7 +408,7 @@ def map_ega_to_healthri_dcat_dataset(
     # Blank themes are left out; at least one is needed
     dataset_themes = [DatasetTheme(theme) for theme in _to_urls(dataset_config["theme"])]
     if not dataset_themes:
-        raise ValueError("Configuration value 'theme' is mandatory, but empty")
+        raise EGAConfigError("Configuration value 'theme' is mandatory, but empty")
 
     dataset_keywords = get_keyword(ega_dataset)
     dataset_keywords.extend(_to_literals(dataset_config.get("keyword")))
@@ -392,7 +424,7 @@ def map_ega_to_healthri_dcat_dataset(
 
     # The DAC handles access requests, so its main contact's email is used; the configured email is a fallback
     contact_point = HRIVCard(
-        hasEmail=get_contact_email(ega_dataset) or _text(contact_point_config.get("email")),
+        hasEmail=get_contact_email(ega_dataset) or _required_config_text(contact_point_config, "email"),
         formatted_name=_required_config_text(contact_point_config, "formatted_name"),
         **contact_point_kwargs,
     )
@@ -451,7 +483,7 @@ def map_ega_to_healthri_dcat_catalog(config: Dict, dataset_uris: List[URIRef]) -
     # Properties in the order of the FSD mapping document
     catalog_fields = {
         "contact_point": HRIVCard(
-            hasEmail=_text(contact_point_config["email"]),
+            hasEmail=_required_config_text(contact_point_config, "email"),
             formatted_name=_required_config_text(contact_point_config, "formatted_name"),
         ),
         "creator": [publisher],
@@ -463,5 +495,5 @@ def map_ega_to_healthri_dcat_catalog(config: Dict, dataset_uris: List[URIRef]) -
         "title": _required_config_literals(catalog_config, "title"),
     }
 
-    # The datasets are mandatory for a Catalog, so they are passed even when there are none
+    # The datasets are mandatory for a Catalog, so the caller must not map a Catalog without datasets
     return HRICatalog(dataset=dataset_uris, **_without_empty(catalog_fields))
