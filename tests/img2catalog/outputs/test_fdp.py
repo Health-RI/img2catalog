@@ -4,7 +4,7 @@ import pytest
 from fairclient.fdpclient import FDPClient
 from rdflib import DCTERMS, URIRef
 
-from img2catalog.outputs.fdp import FDPOutput
+from img2catalog.outputs.fdp import FDPOutput, FDPPushError
 
 
 @patch("img2catalog.outputs.fdp.add_or_update_dataset")
@@ -12,6 +12,7 @@ from img2catalog.outputs.fdp import FDPOutput
 def test_xnat_to_fdp_push(mock_fdp_client, mock_add_or_update_dataset, mock_dataset, config, empty_graph):
     """Tests of XNAT to RDF pushing happens even when errors happen"""
     # FIXME: Figure out what the goal is of this test
+    mock_add_or_update_dataset.return_value = URIRef("http://fdp.example.com/dataset/1")
 
     mapped_objects = {
         "catalog": [],
@@ -40,7 +41,7 @@ def test_xnat_to_fdp_push(mock_fdp_client, mock_add_or_update_dataset, mock_data
 @patch.object(FDPClient, "__init__", return_value=None)
 def test_xnat_to_fdp_push_error(mock_fdp_client, mock_add_or_update_dataset, mock_dataset, config, empty_graph):
     # FIXME: Figure out what the goal is of this test also
-    mock_add_or_update_dataset.side_effect = [ValueError, None]
+    mock_add_or_update_dataset.side_effect = [ValueError, URIRef("http://fdp.example.com/dataset/2")]
 
     mapped_objects = {
         "catalog": [],
@@ -57,7 +58,8 @@ def test_xnat_to_fdp_push_error(mock_fdp_client, mock_add_or_update_dataset, moc
         fdp_password=None,
         catalog_uri=URIRef("http://example.com/catalog"),
     )
-    fdp_output.push_to_fdp(mapped_objects)
+    with pytest.raises(FDPPushError, match="1 of 2 datasets could not be pushed"):
+        fdp_output.push_to_fdp(mapped_objects)
 
     assert mock_add_or_update_dataset.call_count == 2
     assert (

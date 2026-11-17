@@ -1,5 +1,6 @@
+import re
 from datetime import datetime
-from typing import Dict
+from typing import Dict, List
 
 from pandas import Series
 from pydantic import AnyHttpUrl
@@ -50,6 +51,34 @@ def format_title(data) -> str:
     return f"{institute} - {modality} - {formatted_date_range}"
 
 
+def format_identifier(identifier_base: str, title: str) -> str:
+    """Build a dataset identifier from the configured base and the dataset title.
+
+    Each row of an XDS export is a separate dataset (institute, modality and period), so each needs its own
+    identifier, which stays the same when the export is processed again. The FDP output finds the dataset to update by
+    this identifier.
+    """
+    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    return f"{identifier_base.rstrip('/')}/{slug}"
+
+
+def ensure_unique_identifiers(datasets: List[HRIDataset]) -> None:
+    """Refuse datasets that get the same identifier, as the FDP would take them for one dataset.
+
+    The identifier is made from the title, so titles that only differ in characters that are left out of the
+    identifier (like punctuation and case), or rows that are repeated, would overwrite each other in the FDP.
+    """
+    titles_per_identifier: Dict[str, str] = {}
+    for dataset in datasets:
+        identifier, title = dataset.identifier.value, dataset.title[0].value
+        if identifier in titles_per_identifier:
+            raise ValueError(
+                f"The XDS rows '{titles_per_identifier[identifier]}' and '{title}' get the same dataset identifier "
+                f"'{identifier}', so one would overwrite the other. Make their institute, modality or period differ."
+            )
+        titles_per_identifier[identifier] = title
+
+
 def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
     dataset_config = config.get("dataset")
     publisher_config = dataset_config["publisher"]
@@ -79,7 +108,7 @@ def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
 
     return HRIDataset(
         # MANDATORY DCAT FIELDS
-        identifier=LiteralField(value=dataset_config["identifier"]),
+        identifier=LiteralField(value=format_identifier(dataset_config["identifier"], dataset_formatted_title)),
         title=[LiteralField(value=dataset_formatted_title)],
         description=[LiteralField(value=dataset_config["description"])],
         publisher=publisher,
