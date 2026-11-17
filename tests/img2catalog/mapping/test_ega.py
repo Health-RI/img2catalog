@@ -1,4 +1,5 @@
-from datetime import date, datetime
+import logging
+from datetime import date, datetime, timezone
 
 import pytest
 from pydantic import AnyHttpUrl, ValidationError
@@ -77,13 +78,31 @@ def test_get_release_date_returns_none_when_missing(missing_ega_dataset):
     assert result is None
 
 
-def test_get_release_date_passes_through_unparseable_value(default_ega_dataset, caplog):
-    default_ega_dataset["released_date"] = "not-a-date"
+def test_get_release_date_parses_utc_suffix(default_ega_dataset):
+    """A trailing "Z" is not parsed by fromisoformat before Python 3.11, so it has to be handled explicitly."""
+    default_ega_dataset["released_date"] = "2019-02-28T12:25:33Z"
 
     result = get_release_date(default_ega_dataset)
 
-    assert result == "not-a-date"
-    assert "Could not parse EGA release date" in caplog.text
+    assert result == datetime(2019, 2, 28, 12, 25, 33, tzinfo=timezone.utc)
+
+
+def test_get_release_date_leaves_out_unparseable_value(default_ega_dataset, caplog):
+    default_ega_dataset["released_date"] = "not-a-date"
+
+    with caplog.at_level(logging.ERROR):
+        result = get_release_date(default_ega_dataset)
+
+    assert result is None
+    assert "Could not parse EGA release date 'not-a-date', so it is left out" in caplog.text
+
+
+def test_map_ega_to_healthri_dcat_distributions_leaves_out_unparseable_release_date(default_ega_dataset, ega_config):
+    default_ega_dataset["released_date"] = "not-a-date"
+
+    result = map_ega_to_healthri_dcat_distributions(default_ega_dataset, ega_config)
+
+    assert all(distribution.release_date is None for distribution in result)
 
 
 def test_get_keyword_maps_technologies(default_ega_dataset):

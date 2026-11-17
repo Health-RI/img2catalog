@@ -92,10 +92,10 @@ def get_release_date(ega_dataset: Dict) -> Optional[datetime]:
         return None
 
     try:
-        return datetime.fromisoformat(released_date)
+        return _to_datetime(released_date)
     except ValueError:
-        logger.error("Could not parse EGA release date %r", released_date)
-        return released_date
+        logger.error("Could not parse EGA release date %r, so it is left out", released_date)
+        return None
 
 
 def get_keyword(ega_dataset: Dict) -> List[LiteralField]:
