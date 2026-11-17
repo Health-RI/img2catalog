@@ -77,8 +77,7 @@ def test_fdp_catalog_uri_from_config(mock_fdp_client, config):
 def test_fdp_no_catalog_uri(mock_fdp_client, mock_dataset):
     """Without a catalog URI and without a Catalog in the mapping, there is no catalog to push the datasets to"""
     fdp_output = FDPOutput({}, fdp="http://localhost", fdp_username=None, fdp_password=None)
+    mapped_objects = {"dataset": [{"uri": URIRef("http://example.com/dataset"), "model_object": mock_dataset}]}
 
     with pytest.raises(ValueError, match="No catalog URI set to push to"):
-        fdp_output.push_to_fdp(
-            {"dataset": [{"uri": URIRef("http://example.com/dataset"), "model_object": mock_dataset}]}
-        )
+        fdp_output.push_to_fdp(mapped_objects)
