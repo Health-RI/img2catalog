@@ -55,6 +55,44 @@ def test_ega_cli_fails_when_no_dataset_could_be_fetched(fetch_ega_datasets, isol
 
 
 @patch("img2catalog.cli_app.fetch_ega_datasets")
+def test_ega_cli_links_dataset_distributions_and_catalog(fetch_ega_datasets, isolated_cli_runner, default_ega_dataset):
+    """Files in two formats give a Distribution each, linked from the dataset, which the Catalog links in turn."""
+    # Arrange
+    default_ega_dataset["files"].append({"accession_id": "EGAF00000000003", "filesize": 500, "extension": "vcf"})
+    fetch_ega_datasets.return_value = [default_ega_dataset]
+
+    # Act
+    result = _run_map_ega_to_rdf(isolated_cli_runner, EGA_EXAMPLE_CONFIG)
+
+    # Assert
+    assert result.exit_code == 0, result.output
+    graph = Graph().parse("output.ttl")
+    assert set(graph.objects(DATASET_URI, DCAT.distribution)) == {BIN_DISTRIBUTION_URI, TXT_DISTRIBUTION_URI}
+    for distribution_uri in (BIN_DISTRIBUTION_URI, TXT_DISTRIBUTION_URI):
+        assert (distribution_uri, RDF.type, DCAT.Distribution) in graph
+    assert set(graph.subjects(RDF.type, DCAT.Catalog)) == {CATALOG_URI}
+    assert set(graph.objects(CATALOG_URI, DCAT.dataset)) == {DATASET_URI}
+
+
+@patch("img2catalog.cli_app.fetch_ega_datasets")
+def test_ega_cli_leaves_catalog_out_without_catalog_config(
+    fetch_ega_datasets, isolated_cli_runner, default_ega_dataset, tmp_path
+):
+    # Arrange
+    fetch_ega_datasets.return_value = [default_ega_dataset]
+    config = _config_without(tmp_path, "catalog")
+
+    # Act
+    result = _run_map_ega_to_rdf(isolated_cli_runner, config)
+
+    # Assert
+    assert result.exit_code == 0, result.output
+    graph = Graph().parse("output.ttl")
+    assert not list(graph.subjects(RDF.type, DCAT.Catalog))
+    assert (DATASET_URI, RDF.type, DCAT.Dataset) in graph
+
+
+@patch("img2catalog.cli_app.fetch_ega_datasets")
 def test_ega_cli_fails_on_files_without_distribution_config(
     fetch_ega_datasets, isolated_cli_runner, default_ega_dataset, tmp_path
 ):
