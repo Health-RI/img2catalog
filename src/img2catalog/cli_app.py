@@ -403,7 +403,11 @@ def mapping_ega_healthriv2(ctx: click.Context):
 
         # One Distribution per file format, identified by the format code (e.g. BIN, TXT)
         distribution_uris = []
-        for distribution in map_ega_to_healthri_dcat_distributions(ega_dataset, config):
+        try:
+            ega_distributions = map_ega_to_healthri_dcat_distributions(ega_dataset, config)
+        except ValueError as e:
+            raise click.UsageError(str(e)) from e
+        for distribution in ega_distributions:
             format_code = str(distribution.format).rsplit("/", 1)[-1]
             distribution_uri = URIRef(f"http://img2catalog.internal/distribution/{accession_id}/{format_code}")
             distribution_uris.append(distribution_uri)

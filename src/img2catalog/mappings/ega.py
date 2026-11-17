@@ -197,6 +197,8 @@ def map_ega_to_healthri_dcat_distributions(ega_dataset: Dict, config: Dict) -> L
 
     The files together form the Distribution of the dataset, so individual files are not mapped to separate
     Distributions. Only when the data is available in multiple formats, a Distribution is made per format.
+
+    Raises ValueError when there are files, but the configuration has no [distribution] section.
     """
     files_per_type: Dict[str, List[Dict]] = {}
     for ega_file in ega_dataset.get("files", []):
@@ -207,12 +209,10 @@ def map_ega_to_healthri_dcat_distributions(ega_dataset: Dict, config: Dict) -> L
 
     distribution_config = config.get("distribution")
     if distribution_config is None:
-        logger.warning(
-            "EGA dataset %s has files, but the configuration has no [distribution] section: its Distributions are "
-            "left out",
-            ega_dataset.get("accession_id"),
+        raise ValueError(
+            f"EGA dataset {ega_dataset.get('accession_id')} has files, but the configuration has no [distribution] "
+            "section"
         )
-        return []
     dataset_page = get_identifier(ega_dataset)
 
     distributions = []

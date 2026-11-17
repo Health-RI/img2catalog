@@ -1,4 +1,3 @@
-import logging
 from datetime import date, datetime
 
 import pytest
@@ -234,13 +233,14 @@ def test_map_ega_to_healthri_dcat_distributions_splits_per_format(default_ega_da
     }
 
 
-def test_map_ega_to_healthri_dcat_distributions_left_out_without_distribution_section(default_ega_dataset, caplog):
-    """Without a [distribution] section in the configuration, the datasets are still mapped, without Distributions."""
-    with caplog.at_level(logging.WARNING):
-        result = map_ega_to_healthri_dcat_distributions(default_ega_dataset, {})
+def test_map_ega_to_healthri_dcat_distributions_raises_without_distribution_section(default_ega_dataset):
+    """Files without a [distribution] section is a misconfiguration, which must not silently drop the Distributions."""
+    with pytest.raises(ValueError, match=r"EGAD00001005083 has files, but .* no \[distribution\] section"):
+        map_ega_to_healthri_dcat_distributions(default_ega_dataset, {})
 
-    assert result == []
-    assert "no [distribution] section" in caplog.text
+
+def test_map_ega_to_healthri_dcat_distributions_needs_no_distribution_section_without_files(missing_ega_dataset):
+    assert map_ega_to_healthri_dcat_distributions(missing_ega_dataset, {}) == []
 
 
 def test_map_ega_to_healthri_dcat_distributions_returns_empty_without_files(missing_ega_dataset):
