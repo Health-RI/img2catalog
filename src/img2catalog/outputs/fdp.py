@@ -19,7 +19,7 @@ def remove_internal_distribution_links(graph: Graph, dataset_uri: URIRef) -> Non
     Distributions are not pushed to the FDP (yet), so these links would not resolve in the FDP. Links to
     Distributions with an actual URI are kept.
     """
-    for distribution in list(graph.objects(dataset_uri, DCAT.distribution)):
+    for distribution in graph.objects(dataset_uri, DCAT.distribution):
         if str(distribution).startswith(INTERNAL_URI_PREFIX):
             graph.remove((dataset_uri, DCAT.distribution, distribution))
 
