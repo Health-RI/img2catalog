@@ -160,22 +160,21 @@ def test_ega_updates_given_catalog_and_keeps_its_other_datasets(fdp, default_ega
     assert_fdp_consistent(fdp)
 
 
-def test_xds_pushes_example_datasets_with_contact_points(fdp, isolated_cli_runner):
+def test_xds_pushes_example_datasets_with_contact_points(fdp, isolated_cli_runner, tmp_path):
     # Arrange: XDS has no Catalog, so its datasets go into a given catalog
     catalog = existing_catalog(fdp)
-    args = [
-        "-c",
-        str(EXAMPLES / "xds" / "example_config.toml"),
-        "xds",
-        "--input",
-        str(EXAMPLES / "xds" / "input_example.csv"),
-        "map-xds",
-    ]
+    example_csv = EXAMPLES / "xds" / "input_example.csv"
+    changed_csv = tmp_path / "changed.csv"
+    # The same rows, but the first dataset (Hospital A, CT, 2024) now has another number of records
+    changed_csv.write_text(example_csv.read_text().replace(",11052,", ",12345,"))
 
-    # Act
-    run(isolated_cli_runner, args + FDP_ARGS + ["-c", str(catalog)])
+    def args(csv):
+        return ["-c", str(EXAMPLES / "xds" / "example_config.toml"), "xds", "--input", str(csv), "map-xds"]
+
+    # Act: push, change a number in the CSV, and push again
+    run(isolated_cli_runner, args(example_csv) + FDP_ARGS + ["-c", str(catalog)])
     first = dict(fdp.records)
-    run(isolated_cli_runner, args + FDP_ARGS + ["-c", str(catalog)])
+    run(isolated_cli_runner, args(changed_csv) + FDP_ARGS + ["-c", str(catalog)])
 
     # Assert: one Dataset per row of the example CSV, updated on the rerun
     datasets = list(fdp.of_type("dataset"))
@@ -191,6 +190,8 @@ def test_xds_pushes_example_datasets_with_contact_points(fdp, isolated_cli_runne
     }
     for dataset in datasets:
         assert_contact_point(fdp, dataset)
+    numbers = [str(o) for d in datasets for o in fdp.records[d].objects(d, None) if str(o) in ("11052", "12345")]
+    assert numbers == ["12345"], "the rerun did not update the dataset with the changed number of records"
     assert_fdp_consistent(fdp)
 
 
@@ -206,12 +207,12 @@ def test_xds_without_catalog_fails(fdp, isolated_cli_runner):
     assert fdp.records == {}
 
 
-def xnat_metadata():
+def xnat_metadata(description="In this project, we test xnat and dcat and make sure a description appears."):
     """Metadata as XNATInput gathers it from the XNAT server, for one project."""
     project_uri = "https://xnat.example.com/data/archive/projects/test_img2catalog"
     dataset = {
         "title": ["Basic test project to test the img2catalog"],
-        "description": ["In this project, we test xnat and dcat and make sure a description appears."],
+        "description": [description],
         "creator": [{"name": ["prof. Albus Dumbledore"]}],
         "keyword": ["demo", "test"],
         "identifier": project_uri,
@@ -227,7 +228,9 @@ def test_xnat_pushes_catalog_and_datasets_with_contact_points(fdp, isolated_cli_
 
     # Act
     xnat_server = patch("xnat.connect", return_value=MagicMock())
-    xnat_projects = patch("img2catalog.cli_app.XNATInput.get_metadata", side_effect=xnat_metadata)
+    # The project description changes between the two runs
+    metadata = [xnat_metadata(), xnat_metadata("Updated description")]
+    xnat_projects = patch("img2catalog.cli_app.XNATInput.get_metadata", side_effect=metadata)
     with xnat_server, xnat_projects:
         run(isolated_cli_runner, [*args, "map-xnat-hriv2", *FDP_ARGS])
         first = dict(fdp.records)
@@ -238,6 +241,7 @@ def test_xnat_pushes_catalog_and_datasets_with_contact_points(fdp, isolated_cli_
     assert (len(catalogs), len(datasets)) == (1, 1)
     assert set(fdp.records) == set(first)
     assert fdp.records[catalogs[0]].value(catalogs[0], DCTERMS.title) == Literal("Example XNAT catalog")
+    assert fdp.records[datasets[0]].value(datasets[0], DCTERMS.description) == Literal("Updated description")
     assert_contact_point(fdp, catalogs[0])
     assert_contact_point(fdp, datasets[0])
     assert_fdp_consistent(fdp)
