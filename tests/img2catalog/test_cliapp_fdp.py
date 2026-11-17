@@ -9,6 +9,7 @@ import pathlib
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 from fairclient.sparqlclient import FDPSPARQLClient
 from rdflib import DCAT, DCTERMS, RDF, BNode, Graph, Literal, Namespace, URIRef
 
@@ -253,11 +254,59 @@ def test_ega_skips_distributions_of_dataset_that_failed(fdp, default_ega_dataset
 
     ega = patch("img2catalog.cli_app.fetch_ega_datasets", return_value=[default_ega_dataset])
     with ega, patch.object(fdp, "create_and_publish", side_effect=refuse_datasets):
-        run(isolated_cli_runner, args + FDP_ARGS)
+        result = isolated_cli_runner.invoke(cli_click, args + FDP_ARGS)
 
+    # The failed push is reported, so that scripts notice that the FDP is not up to date
+    assert result.exit_code == 1
+    assert "1 record(s) could not be pushed to the FDP: dataset" in result.output
     assert list(fdp.of_type("dataset")) == []
     assert list(fdp.of_type("distribution")) == []
     assert "as its Dataset was not pushed to the FDP" in caplog.text
+
+
+def test_ega_reports_failed_distribution_but_pushes_the_rest(fdp, default_ega_dataset, isolated_cli_runner):
+    args = ["-c", str(EXAMPLES / "ega" / "example_config.toml"), "ega", "-a", "EGAD00001005083", "map-ega-hriv2"]
+    create_record = fdp.create_and_publish
+
+    def refuse_distributions(resource_type, metadata):
+        if resource_type == "distribution":
+            raise ValueError("400 Bad Request")
+        return create_record(resource_type, metadata)
+
+    ega = patch("img2catalog.cli_app.fetch_ega_datasets", return_value=[default_ega_dataset])
+    with ega, patch.object(fdp, "create_and_publish", side_effect=refuse_distributions):
+        result = isolated_cli_runner.invoke(cli_click, args + FDP_ARGS)
+
+    assert result.exit_code == 1
+    assert "1 record(s) could not be pushed to the FDP: distribution" in result.output
+    assert len(list(fdp.of_type("dataset"))) == 1
+    assert list(fdp.of_type("distribution")) == []
+
+
+def test_ega_pushes_distributions_when_publishing_updated_dataset_fails(fdp, default_ega_dataset, isolated_cli_runner):
+    """The dataset is updated, so its Distributions are still pushed into it; the push is reported as failed."""
+    # Arrange: pushed once, then a file of the dataset changed in EGA
+    args = ["-c", str(EXAMPLES / "ega" / "example_config.toml"), "ega", "-a", "EGAD00001005083", "map-ega-hriv2"]
+    with patch("img2catalog.cli_app.fetch_ega_datasets", return_value=[default_ega_dataset]):
+        run(isolated_cli_runner, args + FDP_ARGS)
+        get_record = fdp.get
+
+        def state_unreachable(url, headers, timeout):
+            if url.endswith("/meta"):
+                raise requests.ConnectionError("timeout")
+            return get_record(url, headers, timeout)
+
+        default_ega_dataset["files"][0]["filesize"] = 5000
+
+        # Act
+        with patch.object(fdp, "get", side_effect=state_unreachable):
+            result = isolated_cli_runner.invoke(cli_click, args + FDP_ARGS)
+
+    # Assert
+    assert result.exit_code == 1
+    assert "publishing it failed" in result.output
+    sizes = {str(size) for d in fdp.of_type("distribution") for size in fdp.records[d].objects(d, DCAT.byteSize)}
+    assert sizes == {"7000"}
 
 
 def test_push_without_catalog_and_sparql_warns_about_new_catalogs(

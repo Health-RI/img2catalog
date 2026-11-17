@@ -1,6 +1,7 @@
 import json
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
+from urllib.parse import urlsplit
 
 from fairclient.fdpclient import FDPClient
 from fairclient.sparqlclient import FDPSPARQLClient
@@ -29,6 +30,10 @@ DUPLICATE_DATASET_MESSAGE = "More than one result"
 
 class FDPPushError(RuntimeError):
     """Pushing one or more records to the FDP failed, after all records were tried."""
+
+
+class FDPRecordOriginError(RuntimeError):
+    """A record found with SPARQL is not on the FDP, so no authenticated request is sent to it."""
 
 
 def remove_internal_distribution_links(graph: Graph, dataset_uri: URIRef) -> None:
@@ -103,6 +108,9 @@ class FDPOutput:
         self.config = config
         self.fdp = fdp
         self.update_catalog = update_catalog
+        # The records that could not be pushed, which make the push fail after all records were tried
+        self.failures: List[str] = []
+        self._fdp_origins: Optional[Set[Tuple[str, str]]] = None
 
         self.fdpclient = FDPClient(self.fdp, fdp_username, fdp_password)
 
@@ -132,6 +140,7 @@ class FDPOutput:
             Dictionary with a list of Health-RI concept objects per concept type
 
         """
+        self.failures = []
         if not self.sparqlclient:
             logger.warning(
                 "No SPARQL endpoint set: existing records in the FDP cannot be found, so every push adds them again"
@@ -153,6 +162,32 @@ class FDPOutput:
                 )
                 continue
             self.push_distribution(distribution, dataset_uri)
+
+        if self.failures:
+            raise FDPPushError(
+                f"{len(self.failures)} record(s) could not be pushed to the FDP: {'; '.join(self.failures)}"
+            )
+
+    def _origin(self, uri: Union[str, URIRef]) -> Tuple[str, str]:
+        parts = urlsplit(str(uri))
+        return parts.scheme.lower(), parts.netloc.lower()
+
+    def check_fdp_record_uri(self, uri: Union[str, URIRef]) -> str:
+        """Return the URI of a record found with SPARQL, when it is on the FDP itself.
+
+        The FDP client sends its login token with every request, so a record URI from a SPARQL store that points
+        somewhere else (e.g. a forged result) must not be used. The FDP is known by the URL it is pushed to, and by the
+        URI it gives itself, which differ when the FDP runs behind another address.
+        """
+        if self._fdp_origins is None:
+            self._fdp_origins = {self._origin(self.fdp), self._origin(self.get_fdp_root())}
+        if self._origin(uri) not in self._fdp_origins:
+            raise FDPRecordOriginError(f"{uri} found with SPARQL is not a record of the FDP {self.fdp}")
+        return str(uri)
+
+    def _fail(self, message: str) -> None:
+        """Remember that a record could not be pushed, so the push is reported as failed after all records are tried."""
+        self.failures.append(message)
 
     def push_catalog(self, catalogs: List[Dict]) -> URIRef:
         """Push the mapped Catalog, and return the URI of the catalog in the FDP to push the Datasets to.
@@ -189,13 +224,16 @@ class FDPOutput:
         title = str(next(iter(graph.objects(catalog["uri"], DCTERMS.title)), ""))
         fdp_uri = self.catalog_uri
         try:
-            fdp_uri = fdp_uri or self.find_catalog(title, root)
+            if not fdp_uri:
+                found = self.find_catalog(title, root)
+                fdp_uri = self.check_fdp_record_uri(found) if found else None
             return self.push_record("catalog", graph, catalog["uri"], fdp_uri)
         except Exception as e:
             if not fdp_uri:
                 raise ValueError(f"FDP Error: Could not push catalog {title!r} to the FDP: {e}") from e
-            # The catalog exists, so the datasets can still be pushed into it
+            # The catalog exists, so the datasets can still be pushed into it, but its metadata is not up to date
             logger.warning("Error updating catalog %s in the FDP, pushing the datasets into it: %s", fdp_uri, e)
+            self._fail(f"catalog {fdp_uri}: {e}")
             return URIRef(fdp_uri)
 
     def push_dataset(self, dataset: Dict, catalog_uri: URIRef) -> Optional[URIRef]:
@@ -209,7 +247,8 @@ class FDPOutput:
         try:
             fdp_uri = None
             if self.sparqlclient and identifier:
-                fdp_uri = self.sparqlclient.find_subject(identifier, catalog_uri)
+                found = self.sparqlclient.find_subject(identifier, catalog_uri)
+                fdp_uri = self.check_fdp_record_uri(found) if found else None
             return self.push_record("dataset", graph, dataset["uri"], fdp_uri)
         except ValueError as e:
             # The FDP catalog holds more than one dataset with this identifier, e.g. from pushes without SPARQL
@@ -219,8 +258,10 @@ class FDPOutput:
                 identifier,
                 e,
             )
+            self._fail(f"dataset {identifier}: {e}")
         except Exception as e:
             logger.warning("Error pushing dataset %s to FDP: %s", identifier, e)
+            self._fail(f"dataset {identifier}: {e}")
         return None
 
     def push_distribution(self, distribution: Dict, dataset_uri: URIRef) -> Optional[URIRef]:
@@ -231,10 +272,12 @@ class FDPOutput:
         try:
             fdp_uri = None
             if self.sparqlclient and file_format:
-                fdp_uri = self.find_distribution(dataset_uri, URIRef(str(file_format)))
+                found = self.find_distribution(dataset_uri, URIRef(str(file_format)))
+                fdp_uri = self.check_fdp_record_uri(found) if found else None
             return self.push_record("distribution", graph, distribution["uri"], fdp_uri)
         except Exception as e:
             logger.warning("Error pushing distribution %s of dataset %s to FDP: %s", file_format, dataset_uri, e)
+            self._fail(f"distribution {file_format} of dataset {dataset_uri}: {e}")
         return None
 
     def push_record(self, record_type: str, graph: Graph, subject: URIRef, fdp_uri: Union[str, URIRef, None]) -> URIRef:
@@ -250,7 +293,13 @@ class FDPOutput:
         self.fdpclient.update_serialized(fdp_uri, graph)
         logger.info("Updated %s %s in the FDP", record_type, fdp_uri)
         # An updated record keeps its state in the FDP
-        self.publish_if_draft(fdp_uri)
+        try:
+            self.publish_if_draft(fdp_uri)
+        except Exception as e:
+            # The record is updated and exists in the FDP, so its children (the Distributions of a Dataset) can still
+            # be pushed into it; the push is reported as failed, as the record may not be published
+            logger.warning("Updated %s %s, but it may not be published: %s", record_type, fdp_uri, e)
+            self._fail(f"{record_type} {fdp_uri} was updated, but publishing it failed: {e}")
         return fdp_uri
 
     def keep_fdp_managed_links(self, record_type: str, fdp_uri: URIRef, graph: Graph) -> None:
@@ -294,8 +343,7 @@ class FDPOutput:
             response.raise_for_status()
             state = (response.json().get("state") or {}).get("current")
         except Exception as e:
-            logger.warning("Could not check if %s is published in the FDP: %s", fdp_uri, e)
-            return
+            raise FDPPushError(f"Could not check if {fdp_uri} is published in the FDP: {e}") from e
 
         if state == "DRAFT":
             logger.info("Publishing %s, which was still a draft in the FDP", fdp_uri)
