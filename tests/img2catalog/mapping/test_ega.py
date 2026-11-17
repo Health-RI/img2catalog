@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import date, datetime
 
 import pytest
 from pydantic import AnyHttpUrl, ValidationError
@@ -471,6 +471,15 @@ def test_map_ega_to_healthri_dcat_catalog_accepts_toml_datetime(ega_catalog_conf
     result = map_ega_to_healthri_dcat_catalog(ega_catalog_config, [])
 
     assert result.release_date == release_date
+
+
+def test_map_ega_to_healthri_dcat_catalog_accepts_toml_date(ega_catalog_config):
+    """A bare TOML date (release_date = 2019-06-10, without quotes) is parsed as a date, not as a datetime"""
+    ega_catalog_config["catalog"]["release_date"] = date(2019, 6, 10)
+
+    result = map_ega_to_healthri_dcat_catalog(ega_catalog_config, [])
+
+    assert result.release_date == datetime(2019, 6, 10)
 
 
 def test_map_ega_to_healthri_dcat_catalog_raises_without_catalog_config(ega_config):

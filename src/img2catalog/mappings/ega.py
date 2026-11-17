@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import date, datetime, time
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from rdflib import XSD, URIRef
@@ -52,10 +52,13 @@ def _to_urls(values: List[str]) -> List[URIRef]:
     return [URIRef(value) for value in values]
 
 
-def _to_datetime(value: Union[str, datetime]) -> datetime:
-    """Accept a TOML datetime or an ISO 8601 string; "Z" is only parsed by fromisoformat from Python 3.11."""
+def _to_datetime(value: Union[str, date, datetime]) -> datetime:
+    """Accept a TOML datetime or date, or an ISO 8601 string; "Z" is only parsed by fromisoformat from Python 3.11."""
     if isinstance(value, datetime):
         return value
+    if isinstance(value, date):
+        # A bare TOML date (2019-06-10) has no time of day, so it becomes midnight
+        return datetime.combine(value, time.min)
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
