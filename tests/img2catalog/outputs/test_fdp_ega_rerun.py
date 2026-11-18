@@ -8,12 +8,19 @@ import pytest
 import requests
 from fairclient.fdpclient import FDPClient
 from fairclient.sparqlclient import FDPSPARQLClient
-from fairclient.utils import rewrite_graph_subject
-from rdflib import DCAT, DCTERMS, RDF, Graph, Literal, URIRef
+from rdflib import DCAT, DCTERMS, Graph, Literal, URIRef
 from sempyro import LiteralField
 
 from img2catalog.mappings.ega import map_ega_to_healthri_dcat_dataset
-from img2catalog.outputs.fdp import FDPOutput, FDPPushError, get_identifier_value, remove_internal_distribution_links
+from img2catalog.outputs.fdp import (
+    FDPOutput,
+    FDPPushError,
+    FDPRecordOriginError,
+    get_identifier_value,
+    remove_internal_distribution_links,
+)
+
+from .fake_fdp import FakeSPARQLEndpoint, connect_fake_fdp
 
 CATALOG_URI = URIRef("http://fdp.example.com/catalog/ega")
 DATASET_URI = URIRef("http://img2catalog.internal/dataset/EGAD00001005083")
@@ -25,81 +32,13 @@ pytestmark = [
 ]
 
 
-class FakeFDP:
-    """In-memory FDP that creates, updates and publishes datasets like the FDP API used by fairclient.
-
-    It follows the state rules of the reference FDP (v1.16.2): a created record is a DRAFT until it is published,
-    updating a record keeps its state, and publishing a record that is already published is refused (HTTP 400).
-    """
-
-    timeout = 60
-
-    def __init__(self):
-        self.datasets = {}
-        self.states = {}
-        self.publish_fails = False
-        self.session = self
-
-    def create_and_publish(self, _resource_type, metadata):
-        fdp_uri = URIRef(f"http://fdp.example.com/dataset/{len(self.datasets) + 1}")
-        stored = Graph() + metadata
-        rewrite_graph_subject(stored, stored.value(predicate=RDF.type, object=DCAT.Dataset, any=False), fdp_uri)
-        self.datasets[fdp_uri] = stored
-        self.states[fdp_uri] = "DRAFT"
-        self.publish_record(fdp_uri)
-        return fdp_uri
-
-    def update_serialized(self, resource_uri, metadata):
-        assert URIRef(resource_uri) in self.datasets, "Updated a dataset that does not exist in the FDP"
-        self.datasets[URIRef(resource_uri)] = Graph() + metadata
-        return object()  # fairclient returns the requests.Response of the update
-
-    def publish_record(self, record_url):
-        if self.publish_fails:
-            raise requests.ConnectionError("FDP not reachable")
-        if self.states[URIRef(record_url)] == "PUBLISHED":
-            raise requests.HTTPError("400 Bad Request: Metadata is already published")
-        self.states[URIRef(record_url)] = "PUBLISHED"
-
-    def get(self, url, headers, timeout):  # requests.Session.get of the logged in fairclient session
-        assert url.endswith("/meta")
-        assert headers == {"Accept": "application/json"}
-        assert timeout
-        state = self.states[URIRef(url[: -len("/meta")])]
-        return Mock(raise_for_status=Mock(), json=Mock(return_value={"state": {"current": state, "children": {}}}))
-
-
-class FakeSPARQLEndpoint:
-    """SPARQL endpoint of the FakeFDP, which runs the actual SPARQL query of fairclient on its datasets."""
-
-    def __init__(self, fdp):
-        self.fdp = fdp
-        self.queries = []
-
-    def setQuery(self, query):  # noqa: N802 - SPARQLWrapper API
-        self.queries.append(query)
-
-    def queryAndConvert(self):  # noqa: N802 - SPARQLWrapper API
-        store = Graph()
-        for graph in self.fdp.datasets.values():
-            store += graph
-        rows = store.query(self.queries[-1])
-        return {
-            "results": {
-                "bindings": [{"subject": {"type": "uri", "value": str(row.subject)}} for row in rows],
-            }
-        }
-
-
 @pytest.fixture
 def fdp_output(config):
     with patch.object(FDPClient, "__init__", return_value=None):
         fdp_output = FDPOutput(
             config, fdp="http://fdp.example.com", fdp_username="user", fdp_password="pass", catalog_uri=CATALOG_URI
         )
-    fdp_output.fdpclient = FakeFDP()
-    fdp_output.sparqlclient = FDPSPARQLClient("http://fdp.example.com/sparql")
-    fdp_output.sparqlclient.sparql = FakeSPARQLEndpoint(fdp_output.fdpclient)
+    connect_fake_fdp(fdp_output)
     return fdp_output
 
 
@@ -193,7 +132,7 @@ def test_rerun_with_duplicates_in_fdp_warns_with_identifier(fdp_output, default_
 
     mapped_objects = _mapped_objects(default_ega_dataset, ega_config)
 
-    with caplog.at_level(logging.WARNING), pytest.raises(FDPPushError, match="1 of 1 datasets could not be pushed"):
+    with caplog.at_level(logging.WARNING), pytest.raises(FDPPushError, match="1 record"):
         fdp_output.push_to_fdp(mapped_objects)
 
     assert len(fdp_output.fdpclient.datasets) == 2
@@ -201,6 +140,40 @@ def test_rerun_with_duplicates_in_fdp_warns_with_identifier(fdp_output, default_
         "Error pushing dataset https://ega-archive.org/datasets/EGAD00001005083 to FDP: "
         "More than one result for SPARQL query. Remove the duplicate datasets"
     ) in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("uri", "allowed"),
+    [
+        ("http://fdp.example.com/dataset/1", True),
+        ("HTTP://FDP.Example.com/dataset/1", True),
+        # The FDP can give itself another URI than the one it is pushed to, e.g. when it runs behind a proxy
+        ("http://fdp.internal/dataset/1", True),
+        ("http://attacker.invalid/dataset/1", False),
+        ("https://fdp.example.com/dataset/1", False),
+        ("http://fdp.example.com.attacker.invalid/dataset/1", False),
+    ],
+)
+def test_check_fdp_record_uri_only_accepts_records_of_the_fdp(fdp_output, uri, allowed):
+    with patch.object(fdp_output, "get_fdp_root", return_value=URIRef("http://fdp.internal")):
+        if allowed:
+            assert fdp_output.check_fdp_record_uri(uri) == uri
+        else:
+            with pytest.raises(FDPRecordOriginError, match="not a record of the FDP"):
+                fdp_output.check_fdp_record_uri(uri)
+
+
+def test_dataset_found_outside_the_fdp_is_not_updated(fdp_output, default_ega_dataset, ega_config):
+    """A forged SPARQL result must not receive the authenticated update request."""
+    mapped_objects = _mapped_objects(default_ega_dataset, ega_config)
+    fdp_output.sparqlclient = Mock()
+    fdp_output.sparqlclient.find_subject.return_value = "http://attacker.invalid/dataset/1"
+
+    root = patch.object(fdp_output, "get_fdp_root", return_value=URIRef("http://fdp.example.com"))
+    with root, pytest.raises(FDPPushError, match="not a record of the FDP"):
+        fdp_output.push_to_fdp(mapped_objects)
+
+    assert fdp_output.fdpclient.datasets == {}
 
 
 def test_remove_internal_distribution_links_keeps_actual_distributions():
@@ -233,7 +206,7 @@ def test_rerun_publishes_dataset_that_stayed_draft(fdp_output, default_ega_datas
     # Arrange
     fdp_output.fdpclient.publish_fails = True
     mapped_objects = _mapped_objects(default_ega_dataset, ega_config)
-    with pytest.raises(FDPPushError, match="could not be pushed"):
+    with pytest.raises(FDPPushError, match="1 record"):
         fdp_output.push_to_fdp(mapped_objects)
     assert fdp_output.fdpclient.states == {URIRef("http://fdp.example.com/dataset/1"): "DRAFT"}
     fdp_output.fdpclient.publish_fails = False
@@ -244,22 +217,30 @@ def test_rerun_publishes_dataset_that_stayed_draft(fdp_output, default_ega_datas
 
     # Assert
     assert fdp_output.fdpclient.states == {URIRef("http://fdp.example.com/dataset/1"): "PUBLISHED"}
-    assert "Publishing dataset http://fdp.example.com/dataset/1, which was still a draft" in caplog.text
+    assert "Publishing http://fdp.example.com/dataset/1, which was still a draft" in caplog.text
 
 
 def test_rerun_updates_dataset_when_state_cannot_be_checked(fdp_output, default_ega_dataset, ega_config, caplog):
     fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
     default_ega_dataset["title"] = "Updated title"
 
+    fdp = fdp_output.fdpclient
+    get_record = fdp.get
+
+    def state_unreachable(url, headers, timeout):
+        if url.endswith("/meta"):
+            raise requests.ConnectionError("timeout")
+        return get_record(url, headers, timeout)
+
     mapped_objects = _mapped_objects(default_ega_dataset, ega_config)
-    unreachable = patch.object(fdp_output.fdpclient, "get", side_effect=requests.ConnectionError("timeout"))
-    with unreachable, caplog.at_level(logging.WARNING), pytest.raises(FDPPushError, match="could not be pushed"):
+    # The update goes through, but the push is reported as failed, as the dataset may have stayed a draft
+    unreachable = patch.object(fdp, "get", side_effect=state_unreachable)
+    with unreachable, caplog.at_level(logging.WARNING), pytest.raises(FDPPushError, match="publishing it failed"):
         fdp_output.push_to_fdp(mapped_objects)
 
-    # The update itself went through, but the push is reported as failed, as the dataset may have stayed a draft
     updated = fdp_output.fdpclient.datasets[URIRef("http://fdp.example.com/dataset/1")]
     assert Literal("Updated title") in set(updated.objects(None, DCTERMS.title))
-    assert "Could not check if dataset http://fdp.example.com/dataset/1 is published in the FDP" in caplog.text
+    assert "Could not check if http://fdp.example.com/dataset/1 is published in the FDP" in caplog.text
 
 
 def test_failed_push_without_duplicates_gets_no_duplicate_hint(fdp_output, default_ega_dataset, ega_config, caplog):
@@ -271,7 +252,7 @@ def test_failed_push_without_duplicates_gets_no_duplicate_hint(fdp_output, defau
         side_effect=json.JSONDecodeError("Expecting value", "<html>", 0),
     )
 
-    with unreadable, caplog.at_level(logging.WARNING), pytest.raises(FDPPushError, match="1 of 1 datasets"):
+    with unreadable, caplog.at_level(logging.WARNING), pytest.raises(FDPPushError, match="1 record"):
         fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
 
     assert (
@@ -289,28 +270,44 @@ def test_rerun_reports_failure_when_publishing_a_draft_fails_again(fdp_output, d
         fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
 
     # Act
-    with caplog.at_level(logging.WARNING), pytest.raises(FDPPushError, match="1 of 1 datasets could not be pushed"):
+    with caplog.at_level(logging.WARNING), pytest.raises(FDPPushError, match="1 record"):
         fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
 
     # Assert: still the same dataset, and still a draft
     assert fdp_output.fdpclient.states == {URIRef("http://fdp.example.com/dataset/1"): "DRAFT"}
     assert (
-        "Error pushing dataset https://ega-archive.org/datasets/EGAD00001005083 to FDP: FDP not reachable"
+        "Updated dataset http://fdp.example.com/dataset/1, but it may not be published: FDP not reachable"
         in caplog.text
     )
 
 
 def test_rerun_reports_failure_when_state_check_is_refused(fdp_output, default_ega_dataset, ega_config, caplog):
     fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
+    fdp = fdp_output.fdpclient
+    get_record = fdp.get
     refused = Mock(raise_for_status=Mock(side_effect=requests.HTTPError("403 Forbidden")))
 
-    state_check_refused = patch.object(fdp_output.fdpclient, "get", return_value=refused)
-    with state_check_refused, caplog.at_level(logging.WARNING), pytest.raises(
-        FDPPushError, match="could not be pushed"
+    def state_refused(url, headers, timeout):
+        return refused if url.endswith("/meta") else get_record(url, headers, timeout)
+
+    with patch.object(fdp, "get", side_effect=state_refused), caplog.at_level(logging.WARNING), pytest.raises(
+        FDPPushError, match="publishing it failed"
     ):
         fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
 
-    assert (
-        "Could not check if dataset http://fdp.example.com/dataset/1 is published in the FDP: 403 Forbidden"
-        in caplog.text
-    )
+    assert "Could not check if http://fdp.example.com/dataset/1 is published in the FDP: 403 Forbidden" in caplog.text
+
+
+def test_rerun_does_not_update_dataset_that_cannot_be_read(fdp_output, default_ega_dataset, ega_config, caplog):
+    """Updating a dataset without its links to its distributions in the FDP would remove them, so it is skipped."""
+    fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
+    default_ega_dataset["title"] = "Updated title"
+
+    mapped_objects = _mapped_objects(default_ega_dataset, ega_config)
+    unreachable = patch.object(fdp_output.fdpclient, "get", side_effect=requests.ConnectionError("timeout"))
+    with unreachable, caplog.at_level(logging.WARNING), pytest.raises(FDPPushError, match="1 record"):
+        fdp_output.push_to_fdp(mapped_objects)
+
+    not_updated = fdp_output.fdpclient.datasets[URIRef("http://fdp.example.com/dataset/1")]
+    assert Literal("Updated title") not in set(not_updated.objects(None, DCTERMS.title))
+    assert "Error pushing dataset https://ega-archive.org/datasets/EGAD00001005083 to FDP: timeout" in caplog.text
