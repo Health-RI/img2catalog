@@ -4,13 +4,16 @@ Each input is run with its example configuration (and, for XDS, its example CSV)
 XNAT server, FDP) are simulated. Every push is run twice, as rerunning must update the FDP instead of adding to it.
 """
 
+import copy
 import datetime
 import pathlib
+from collections import Counter
 from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
 from fairclient.sparqlclient import FDPSPARQLClient
+from fairclient.utils import rewrite_graph_subject
 from rdflib import DCAT, DCTERMS, RDF, BNode, Graph, Literal, Namespace, URIRef
 
 from img2catalog.cli_app import cli_click
@@ -50,13 +53,13 @@ def run(runner, args):
     return result
 
 
-def existing_catalog(fdp, title="Existing catalog", datasets=0):
-    """A catalog already in the FDP, with datasets that the push does not know about."""
+def existing_catalog(fdp, title="Existing catalog", datasets=0, parent=FDP_ROOT):
+    """A catalog already in the FDP (in the FDP with this parent), with datasets that the push does not know about."""
     graph = Graph()
     subject = URIRef("http://example.com/catalog")
     graph.add((subject, RDF.type, DCAT.Catalog))
     graph.add((subject, DCTERMS.title, Literal(title)))
-    graph.add((subject, DCTERMS.isPartOf, FDP_ROOT))
+    graph.add((subject, DCTERMS.isPartOf, parent))
     catalog = fdp.create_and_publish("catalog", graph)
     for number in range(datasets):
         dataset = Graph()
@@ -202,8 +205,10 @@ def test_xds_without_catalog_fails(fdp, isolated_cli_runner):
         cli_click, ["-c", str(EXAMPLES / "xds" / "example_config.toml"), *args, *FDP_ARGS]
     )
 
-    assert result.exit_code != 0
-    assert "No catalog URI set to push to" in str(result.exception)
+    # Reported as an error of the push, not as a traceback
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    assert "No catalog URI set to push to" in result.output
     assert fdp.records == {}
 
 
@@ -356,3 +361,228 @@ def test_xnat_pushes_into_given_catalog_without_changing_it(fdp, isolated_cli_ru
     assert fdp.records[catalog].value(catalog, DCTERMS.title) == Literal("Existing catalog")
     assert len(fdp.of_type("dataset")) == 1
     assert_fdp_consistent(fdp)
+
+
+def ega_args():
+    return ["-c", str(EXAMPLES / "ega" / "example_config.toml"), "ega", "-a", "EGAD00001005083", "map-ega-hriv2"]
+
+
+def invoke(runner, args, datasets):
+    """Run the CLI with these EGA datasets, without asserting on the exit code."""
+    with patch("img2catalog.cli_app.fetch_ega_datasets", return_value=datasets):
+        return runner.invoke(cli_click, args)
+
+
+def refuse_fdp_root(fdp):
+    """Make reading the FDP itself fail, as when the FDP is briefly unreachable."""
+    get_record = fdp.get
+
+    def get(url, headers, timeout):
+        if url == FDP_URL:
+            raise requests.ConnectionError("timeout")
+        return get_record(url, headers, timeout)
+
+    return patch.object(fdp, "get", side_effect=get)
+
+
+def add_record(fdp, uri, record_type, graph):
+    """Put a record in the FDP as it is found with SPARQL, without going through the FDP API."""
+    fdp.records[uri] = graph
+    fdp.record_types[uri] = record_type
+    fdp.states[uri] = "PUBLISHED"
+
+
+def remove_record(fdp, uri):
+    del fdp.records[uri], fdp.record_types[uri], fdp.states[uri]
+
+
+def test_ega_fails_without_pushing_when_the_fdp_root_cannot_be_read(fdp, default_ega_dataset, isolated_cli_runner):
+    """Without the URI of the FDP, the catalog would get the wrong parent and be created again on every push."""
+    with refuse_fdp_root(fdp):
+        result = invoke(isolated_cli_runner, ega_args() + FDP_ARGS, [default_ega_dataset])
+
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    assert "Could not read the FDP root" in result.output
+    assert fdp.records == {}
+
+
+def test_ega_pushes_into_given_catalog_when_the_fdp_root_cannot_be_read_to_update_it(
+    fdp, default_ega_dataset, isolated_cli_runner
+):
+    catalog = existing_catalog(fdp)
+
+    with refuse_fdp_root(fdp):
+        result = invoke(
+            isolated_cli_runner, ega_args() + FDP_ARGS + ["-c", str(catalog), "--update-catalog"], [default_ega_dataset]
+        )
+
+    # The catalog is not updated, which is reported, but the datasets are still pushed into it
+    assert result.exit_code == 1
+    assert f"catalog {catalog}: Could not read the FDP root" in result.output
+    assert fdp.records[catalog].value(catalog, DCTERMS.title) == Literal("Existing catalog")
+    assert len(fdp.of_type("dataset")) == 1
+    assert len(fdp.of_type("distribution")) == 1
+
+
+def test_ega_rerun_updates_datasets_when_the_fdp_root_cannot_be_read(
+    fdp, default_ega_dataset, isolated_cli_runner, caplog
+):
+    """The root is not needed to push into a given catalog; the records found are then only trusted on the FDP URL."""
+    catalog = existing_catalog(fdp)
+    args = ega_args() + FDP_ARGS + ["-c", str(catalog)]
+    assert invoke(isolated_cli_runner, args, [default_ega_dataset]).exit_code == 0
+
+    with refuse_fdp_root(fdp), caplog.at_level("WARNING"):
+        result = invoke(isolated_cli_runner, args, [default_ega_dataset])
+
+    assert result.exit_code == 0, result.output
+    assert "Only accepting records of" in caplog.text
+    assert len(fdp.of_type("dataset")) == 1
+
+
+def test_ega_stops_when_two_catalogs_have_the_title_of_the_catalog(fdp, default_ega_dataset, isolated_cli_runner):
+    first = existing_catalog(fdp, title="Example EGA catalog")
+    second = existing_catalog(fdp, title="Example EGA catalog")
+
+    result = invoke(isolated_cli_runner, ega_args() + FDP_ARGS, [default_ega_dataset])
+
+    assert result.exit_code == 1
+    assert "More than one catalog titled 'Example EGA catalog'" in result.output
+    assert "give the one to use with -c" in result.output
+    assert set(fdp.of_type("catalog")) == {first, second}
+    assert fdp.of_type("dataset") == {}
+
+
+def test_ega_ignores_catalog_with_its_title_that_is_not_in_the_fdp_root(fdp, default_ega_dataset, isolated_cli_runner):
+    """A catalog is found by its title within the FDP itself, so records of another FDP are not updated."""
+    foreign = existing_catalog(fdp, title="Example EGA catalog", parent=URIRef("http://other-fdp.example.com"))
+
+    result = invoke(isolated_cli_runner, ega_args() + FDP_ARGS, [default_ega_dataset])
+
+    assert result.exit_code == 0, result.output
+    assert len(fdp.of_type("catalog")) == 2
+    assert not list(fdp.records[foreign].objects(foreign, DCAT.contactPoint)), "the foreign catalog was updated"
+    assert not list(fdp.records[foreign].objects(foreign, DCAT.dataset))
+
+
+def test_ega_does_not_update_catalog_found_outside_the_fdp(fdp, default_ega_dataset, isolated_cli_runner):
+    """A forged SPARQL result must not receive the authenticated requests of the FDP client."""
+    forged = URIRef("http://attacker.invalid/catalog/1")
+    graph = Graph()
+    graph.add((forged, RDF.type, DCAT.Catalog))
+    graph.add((forged, DCTERMS.title, Literal("Example EGA catalog")))
+    graph.add((forged, DCTERMS.isPartOf, FDP_ROOT))
+    add_record(fdp, forged, "catalog", graph)
+    before = set(graph)
+
+    with patch.object(fdp, "get", wraps=fdp.get) as get, patch.object(
+        fdp, "update_serialized", wraps=fdp.update_serialized
+    ) as update:
+        result = invoke(isolated_cli_runner, ega_args() + FDP_ARGS, [default_ega_dataset])
+
+    assert result.exit_code == 1
+    assert "not a record of the FDP" in result.output
+    assert not [call for call in get.call_args_list if "attacker" in str(call.args[0])]
+    update.assert_not_called()
+    assert set(fdp.records[forged]) == before
+    assert fdp.of_type("dataset") == {}
+
+
+def test_ega_does_not_update_distribution_found_outside_the_fdp(fdp, default_ega_dataset, isolated_cli_runner):
+    # Arrange: pushed once, after which the SPARQL store holds the distribution as a record on another host
+    assert invoke(isolated_cli_runner, ega_args() + FDP_ARGS, [default_ega_dataset]).exit_code == 0
+    (distribution,) = fdp.of_type("distribution")
+    forged = URIRef("http://attacker.invalid/distribution/1")
+    graph = Graph() + fdp.records[distribution]
+    rewrite_graph_subject(graph, distribution, forged)
+    remove_record(fdp, distribution)
+    add_record(fdp, forged, "distribution", graph)
+    before = set(graph)
+
+    # Act
+    with patch.object(fdp, "get", wraps=fdp.get) as get, patch.object(
+        fdp, "update_serialized", wraps=fdp.update_serialized
+    ) as update:
+        result = invoke(isolated_cli_runner, ega_args() + FDP_ARGS, [default_ega_dataset])
+
+    # Assert
+    assert result.exit_code == 1
+    assert "not a record of the FDP" in result.output
+    assert not [call for call in get.call_args_list if "attacker" in str(call.args[0])]
+    assert all(call.args[0] != forged for call in update.call_args_list)
+    assert set(fdp.records[forged]) == before
+
+
+def test_ega_distributions_are_found_within_their_own_dataset(fdp, default_ega_dataset, isolated_cli_runner):
+    """Datasets with the same file formats each keep their own Distributions when rerunning."""
+    default_ega_dataset["files"].append({"accession_id": "EGAF00000000003", "filesize": 500, "extension": "vcf"})
+    second = copy.deepcopy(default_ega_dataset)
+    second.update(accession_id="EGAD00001005084", title="Second dataset")
+    datasets = [default_ega_dataset, second]
+
+    first_run = invoke(isolated_cli_runner, ega_args() + FDP_ARGS, datasets)
+    first = set(fdp.records)
+    second_run = invoke(isolated_cli_runner, ega_args() + FDP_ARGS, datasets)
+
+    assert (first_run.exit_code, second_run.exit_code) == (0, 0), second_run.output
+    assert set(fdp.records) == first
+    assert len(fdp.of_type("dataset")) == 2
+    parents = Counter(fdp.records[d].value(d, DCTERMS.isPartOf) for d in fdp.of_type("distribution"))
+    assert sorted(parents.values()) == [2, 2]
+    assert set(parents) == set(fdp.of_type("dataset"))
+    assert_fdp_consistent(fdp)
+
+
+def test_ega_reports_two_distributions_with_the_same_format_in_a_dataset(fdp, default_ega_dataset, isolated_cli_runner):
+    assert invoke(isolated_cli_runner, ega_args() + FDP_ARGS, [default_ega_dataset]).exit_code == 0
+    (distribution,) = fdp.of_type("distribution")
+    fdp.create_and_publish("distribution", Graph() + fdp.records[distribution])
+
+    result = invoke(isolated_cli_runner, ega_args() + FDP_ARGS, [default_ega_dataset])
+
+    assert result.exit_code == 1
+    assert "1 record(s) could not be pushed to the FDP: distribution" in result.output
+    assert "More than one distribution with format" in result.output
+    assert len(fdp.of_type("distribution")) == 2
+
+
+def test_ega_pushes_datasets_into_given_catalog_when_updating_it_fails(fdp, default_ega_dataset, isolated_cli_runner):
+    catalog = existing_catalog(fdp)
+    update_record = fdp.update_serialized
+
+    def refuse_catalog(resource_uri, metadata):
+        if resource_uri == catalog:
+            raise ValueError("400 Bad Request")
+        return update_record(resource_uri, metadata)
+
+    with patch.object(fdp, "update_serialized", side_effect=refuse_catalog):
+        result = invoke(
+            isolated_cli_runner, ega_args() + FDP_ARGS + ["-c", str(catalog), "--update-catalog"], [default_ega_dataset]
+        )
+
+    assert result.exit_code == 1
+    assert f"1 record(s) could not be pushed to the FDP: catalog {catalog}: 400 Bad Request" in result.output
+    assert fdp.records[catalog].value(catalog, DCTERMS.title) == Literal("Existing catalog")
+    assert len(fdp.of_type("dataset")) == 1
+    assert len(fdp.of_type("distribution")) == 1
+
+
+def test_ega_pushes_nothing_when_the_catalog_cannot_be_created(fdp, default_ega_dataset, isolated_cli_runner):
+    create_record = fdp.create_and_publish
+
+    def refuse_catalogs(resource_type, metadata):
+        if resource_type == "catalog":
+            raise ValueError("400 Bad Request")
+        return create_record(resource_type, metadata)
+
+    with patch.object(fdp, "create_and_publish", side_effect=refuse_catalogs):
+        result = invoke(isolated_cli_runner, ega_args() + FDP_ARGS, [default_ega_dataset])
+
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    assert (
+        "Could not push catalog 'Example EGA catalog' to the FDP, so no records are pushed: 400 Bad Request"
+        in result.output
+    )
+    assert fdp.records == {}
