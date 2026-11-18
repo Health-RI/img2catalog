@@ -85,8 +85,10 @@ Which catalog in the FDP is used:
   metadata is left as it is, unless `--update-catalog` is given: then it is replaced by the Catalog of the mapping
   (XNAT, EGA).
 - Without `-c`, the Catalog of the mapping is looked up in the FDP by its title (this needs `-s`), updated when it is
-  there and created when it is not. If more than one catalog in the FDP has that title, the push stops; give the one to
-  use with `-c`. XDS has no Catalog, so it needs `-c`.
+  there and created when it is not. If more than one catalog in the FDP has that title, or the catalog cannot be
+  pushed, or the URI of the FDP itself cannot be read, nothing is pushed and `img2catalog` exits with an error; in the
+  first case, give the catalog to use with `-c`.
+- XDS has no Catalog, and neither has EGA without a `[catalog]` configuration, so these need `-c`.
 
 If you pushed datasets into a catalog with `-c` before, keep giving that catalog with `-c`: datasets are matched within
 their catalog, so pushing without it would add all datasets again to a new catalog.
@@ -110,7 +112,7 @@ img2catalog -c config.toml ega -a EGAD00001005083 -a EGAD00001005084 map-ega-hri
 
 Records pushed by an earlier version of `img2catalog`, with another identifier, are not matched; remove those from the
 FDP once. If the FDP holds more than one dataset or distribution that matches, that one is skipped with a warning until
-the duplicates are removed. A record that cannot be read from the FDP is not updated, as the update would remove its
+the duplicates are removed, and the push is reported as failed (see below). A record that cannot be read from the FDP is not updated, as the update would remove its
 links to its children. An EGA dataset of which the metadata cannot be fetched completely is skipped, so that it does
 not replace the dataset in the FDP with incomplete metadata. When EGA answers Not Found for the DACs, files or studies
 of a dataset, the dataset has none of them; this is logged as a warning, as it would also be the result of EGA no
@@ -118,7 +120,9 @@ longer serving them.
 
 When one or more records (Catalog, Datasets or Distributions) cannot be pushed to the FDP, the other records are still
 pushed, after which `img2catalog` exits with an error (exit code 1) that lists the records that failed. This also
-applies to pushes from XNAT and XDS. Check the exit code in scripts and schedulers to notice that the FDP is not up to date.
+applies to pushes from XNAT and XDS. The exceptions are the errors above where no catalog is known to push into: then
+nothing is pushed, and the error is reported with exit code 1 as well. Check the exit code in scripts and schedulers to
+notice that the FDP is not up to date.
 
 ### Configuration XNAT
 

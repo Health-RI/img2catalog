@@ -39,7 +39,7 @@ from img2catalog.mappings.ega import (
 )
 from img2catalog.mappings.xds import ensure_unique_identifiers, map_xds_to_healthri_dcat_dataset
 from img2catalog.mappings.xnat import map_xnat_to_healthriv2
-from img2catalog.outputs.fdp import FDPOutput, FDPPushError
+from img2catalog.outputs.fdp import FDPError, FDPOutput
 from img2catalog.outputs.rdf import RDFOutput
 
 logger = logging.getLogger(__name__)
@@ -275,7 +275,7 @@ def output_fdp(
 
     try:
         fdp_output.push_to_fdp(mapped_objects)
-    except FDPPushError as e:
+    except FDPError as e:
         # Exit with an error, so that scripts and schedulers notice that the FDP is not up to date
         raise click.ClickException(str(e)) from e
 

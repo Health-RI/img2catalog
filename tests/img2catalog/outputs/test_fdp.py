@@ -4,7 +4,7 @@ import pytest
 from fairclient.fdpclient import FDPClient
 from rdflib import DCTERMS, URIRef
 
-from img2catalog.outputs.fdp import FDPOutput, FDPPushError
+from img2catalog.outputs.fdp import FDPCatalogError, FDPOutput, FDPPushError
 
 
 @patch.object(FDPOutput, "push_record", return_value=URIRef("http://fdp.example.com/dataset/1"))
@@ -81,5 +81,5 @@ def test_fdp_no_catalog_uri(mock_fdp_client, mock_dataset):
     fdp_output = FDPOutput({}, fdp="http://localhost", fdp_username=None, fdp_password=None)
     mapped_objects = {"dataset": [{"uri": URIRef("http://example.com/dataset"), "model_object": mock_dataset}]}
 
-    with pytest.raises(ValueError, match="No catalog URI set to push to"):
+    with pytest.raises(FDPCatalogError, match="No catalog URI set to push to"):
         fdp_output.push_to_fdp(mapped_objects)

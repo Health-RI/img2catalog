@@ -28,11 +28,19 @@ FDP_MANAGED = {"catalog": [DCAT.themeTaxonomy]}
 DUPLICATE_DATASET_MESSAGE = "More than one result"
 
 
-class FDPPushError(RuntimeError):
+class FDPError(RuntimeError):
+    """Base of the errors of pushing to the FDP, which the command line reports without a traceback."""
+
+
+class FDPPushError(FDPError):
     """Pushing one or more records to the FDP failed, after all records were tried."""
 
 
-class FDPRecordOriginError(RuntimeError):
+class FDPCatalogError(FDPError):
+    """The catalog to push the Datasets into is not known or could not be pushed, so nothing is pushed."""
+
+
+class FDPRecordOriginError(FDPError):
     """A record found with SPARQL is not on the FDP, so no authenticated request is sent to it."""
 
 
@@ -179,9 +187,17 @@ class FDPOutput:
         somewhere else (e.g. a forged result) must not be used. The FDP is known by the URL it is pushed to, and by the
         URI it gives itself, which differ when the FDP runs behind another address.
         """
-        if self._fdp_origins is None:
-            self._fdp_origins = {self._origin(self.fdp), self._origin(self.get_fdp_root())}
-        if self._origin(uri) not in self._fdp_origins:
+        origins = self._fdp_origins
+        if origins is None:
+            origins = {self._origin(self.fdp)}
+            try:
+                origins.add(self._origin(self.get_fdp_root()))
+                self._fdp_origins = origins
+            except FDPError as e:
+                # Only the URL that is pushed to is trusted then, which can only refuse records. This is not kept, so
+                # the next record tries to read the URI of the FDP again.
+                logger.warning("Only accepting records of %s, as the URI of the FDP is not known: %s", self.fdp, e)
+        if self._origin(uri) not in origins:
             raise FDPRecordOriginError(f"{uri} found with SPARQL is not a record of the FDP {self.fdp}")
         return str(uri)
 
@@ -198,7 +214,9 @@ class FDPOutput:
         """
         if not catalogs:
             if not self.catalog_uri:
-                raise ValueError("FDP Error: No catalog URI set to push to")
+                raise FDPCatalogError(
+                    "No catalog URI set to push to: the mapping has no Catalog, so give an existing catalog with -c"
+                )
             return self.catalog_uri
         if self.catalog_uri and not self.update_catalog:
             logger.info(
@@ -218,19 +236,21 @@ class FDPOutput:
         graph = catalog["model_object"].to_graph(catalog["uri"])
         # The FDP links the Catalog to the Datasets pushed into it
         graph.remove((catalog["uri"], DCAT.dataset, None))
-        root = self.get_fdp_root()
-        graph.add((catalog["uri"], DCTERMS.isPartOf, root))
 
         title = str(next(iter(graph.objects(catalog["uri"], DCTERMS.title)), ""))
         fdp_uri = self.catalog_uri
         try:
+            root = self.get_fdp_root()
+            graph.add((catalog["uri"], DCTERMS.isPartOf, root))
             if not fdp_uri:
                 found = self.find_catalog(title, root)
                 fdp_uri = self.check_fdp_record_uri(found) if found else None
             return self.push_record("catalog", graph, catalog["uri"], fdp_uri)
         except Exception as e:
             if not fdp_uri:
-                raise ValueError(f"FDP Error: Could not push catalog {title!r} to the FDP: {e}") from e
+                raise FDPCatalogError(
+                    f"Could not push catalog {title!r} to the FDP, so no records are pushed: {e}"
+                ) from e
             # The catalog exists, so the datasets can still be pushed into it, but its metadata is not up to date
             logger.warning("Error updating catalog %s in the FDP, pushing the datasets into it: %s", fdp_uri, e)
             self._fail(f"catalog {fdp_uri}: {e}")
@@ -346,7 +366,11 @@ class FDPOutput:
             self.fdpclient.publish_record(fdp_uri)
 
     def get_fdp_root(self) -> URIRef:
-        """Return the URI of the FAIR Data Point itself, which is the parent of its catalogs."""
+        """Return the URI of the FAIR Data Point itself, which is the parent of its catalogs.
+
+        It can differ from the URL the FDP is pushed to, so the URL is not used when the FDP cannot be read: a catalog
+        with the wrong parent would not be found again, and be created again on every push.
+        """
         try:
             response = self.fdpclient.session.get(self.fdp, headers={"Accept": "text/turtle"}, timeout=30)
             response.raise_for_status()
@@ -354,9 +378,10 @@ class FDPOutput:
                 Graph().parse(data=response.text, format="turtle").value(predicate=RDF.type, object=FDP_O.FAIRDataPoint)
             )
         except Exception as e:
-            logger.warning("Could not read the FDP root %s, using its URL: %s", self.fdp, e)
-            root = None
-        return URIRef(root or self.fdp)
+            raise FDPError(f"Could not read the FDP root {self.fdp}: {e}") from e
+        if root is None:
+            raise FDPError(f"{self.fdp} does not describe a FAIR Data Point, so its URI is not known")
+        return URIRef(root)
 
     def _query_subjects(self, query: str) -> List[str]:
         self.sparqlclient.sparql.setQuery(query)
