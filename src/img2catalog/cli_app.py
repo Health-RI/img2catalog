@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Tuple
 import click
 import xnat
 from click_option_group import MutuallyExclusiveOptionGroup, optgroup
+from pydantic import ValidationError
 from rdflib import URIRef
 from sempyro.hri_dcat import HRICatalog
 from xnat import XNATSession
@@ -31,6 +32,7 @@ from img2catalog.inputs.ega import fetch_ega_datasets
 from img2catalog.inputs.xnat import XNATInput
 from img2catalog.mappings.ega import (
     EGAConfigError,
+    InvalidEGAValueError,
     MissingEGAValueError,
     get_accession_id,
     get_distribution_code,
@@ -389,6 +391,9 @@ def input_ega(ctx: click.Context, dataset_ids: tuple, api_url: str):
     if not ega_datasets:
         raise click.ClickException("None of the requested EGA datasets could be fetched")
     ctx.obj["unmapped_objects"] = {"dataset": ega_datasets}
+    # Datasets that could not be fetched fail the run after the others are mapped (see report_skipped_ega_datasets)
+    fetched_ids = {ega_dataset.get("accession_id") for ega_dataset in ega_datasets}
+    ctx.obj["skipped_ega_datasets"] = [dataset_id for dataset_id in dataset_ids if dataset_id not in fetched_ids]
 
 
 cli_click.add_command(input_ega)
@@ -423,8 +428,9 @@ def _map_ega_dataset(ega_dataset: Dict, config: Dict) -> Optional[Tuple[Dict, Li
         raise click.UsageError(str(e)) from e
     except KeyError as e:
         raise click.UsageError(f"The configuration has no {e}") from e
-    except (TypeError, ValueError) as e:
-        # Metadata of this dataset that cannot be mapped, e.g. a list instead of a text, or a value the model refuses
+    except (InvalidEGAValueError, ValidationError) as e:
+        # Metadata of this dataset that cannot be mapped, e.g. a list instead of a text, or a value the model refuses.
+        # Other errors are bugs in the mapping, which must fail the run instead of skipping the dataset.
         logger.warning("Skipping EGA dataset %s: %s", accession_id, e)
         return None
 
@@ -456,7 +462,9 @@ def mapping_ega_healthriv2(ctx: click.Context):
     distributions = []
     for ega_dataset in unmapped_objects["dataset"]:
         mapped = _map_ega_dataset(ega_dataset, config)
-        if mapped is not None:
+        if mapped is None:
+            ctx.obj["skipped_ega_datasets"].append(ega_dataset.get("accession_id") or "(no accession ID)")
+        else:
             datasets.append(mapped[0])
             distributions.extend(mapped[1])
 
@@ -473,6 +481,21 @@ def mapping_ega_healthriv2(ctx: click.Context):
         ]
 
     ctx.obj["mapped_objects"] = mapped_objects
+
+
+@mapping_ega_healthriv2.result_callback()
+@click.pass_context
+def report_skipped_ega_datasets(ctx: click.Context, _result):
+    """Fail the run after the output is written when datasets were skipped.
+
+    The other datasets are still written or pushed, but a scheduled run must notice that the skipped datasets are
+    missing or out of date in the output.
+    """
+    skipped = ctx.obj["skipped_ega_datasets"]
+    if skipped:
+        raise click.ClickException(
+            f"{len(skipped)} of the requested EGA datasets were skipped, see the warnings above: {', '.join(skipped)}"
+        )
 
 
 input_ega.add_command(mapping_ega_healthriv2)

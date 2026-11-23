@@ -123,6 +123,10 @@ class MissingEGAValueError(KeyError):
     """A mandatory value of an EGA dataset is missing or empty, so the dataset cannot be mapped."""
 
 
+class InvalidEGAValueError(TypeError):
+    """A value of an EGA dataset has a shape that cannot be mapped, e.g. a list where a single text is expected."""
+
+
 class EGAConfigError(ValueError):
     """A mandatory value of the configuration is empty or invalid, which applies to every dataset."""
 
@@ -135,7 +139,7 @@ def _text(value: Any) -> Optional[str]:
     if _is_empty(value):
         return None
     if not isinstance(value, (str, int, float)):
-        raise TypeError(f"Expected a single text value, got {type(value).__name__}: {value!r}")
+        raise InvalidEGAValueError(f"Expected a single text value, got {type(value).__name__}: {value!r}")
     return str(value).strip()
 
 
