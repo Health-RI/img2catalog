@@ -272,6 +272,12 @@ def output_fdp(
     config = ctx.obj["config"]
     mapped_objects = ctx.obj["mapped_objects"]
 
+    if update_catalog and not (catalog or config.get("fdp", {}).get("catalog")):
+        raise click.UsageError(
+            "--update-catalog only applies to an existing catalog given with -c (or as 'catalog' in the [fdp] "
+            "configuration); without it, the Catalog of the mapping is found by its title and updated anyway"
+        )
+
     fdp_output = FDPOutput(
         config, fdp, username, password, catalog_uri=catalog, sparql=sparql, update_catalog=update_catalog
     )

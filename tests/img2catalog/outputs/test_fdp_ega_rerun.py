@@ -230,7 +230,7 @@ def test_rerun_warns_about_an_unknown_dataset_state(fdp_output, default_ega_data
         fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
 
     assert (
-        f"Dataset http://fdp.example.com/dataset/1 has an unknown state {state!r} in the FDP, so it is not published"
+        f"http://fdp.example.com/dataset/1 has an unknown state {state!r} in the FDP, so it is not published"
         in caplog.text
     )
 

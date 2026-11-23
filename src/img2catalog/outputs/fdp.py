@@ -139,8 +139,9 @@ class FDPOutput:
         points (vcard:Kind) and other nested classes are pushed as part of the record they belong to.
 
         A record already in the FDP is updated instead of added again, so rerunning a push keeps the FDP up to date: a
-        Dataset is found by its identifier within the Catalog, a Distribution by its format within its Dataset, and a
-        Catalog by its title (unless an existing catalog is given). This needs the SPARQL endpoint of the FDP.
+        Dataset is found by its identifier within the Catalog, a Distribution by its format and compression within its
+        Dataset, and a Catalog by its title (unless an existing catalog is given). This needs the SPARQL endpoint of the
+        FDP.
 
         Parameters
         ----------
@@ -154,7 +155,7 @@ class FDPOutput:
                 "No SPARQL endpoint set: existing records in the FDP cannot be found, so every push adds them again"
             )
 
-        catalog_uri = self.push_catalog(input_obj.get("catalog") or [])
+        catalog_uri = self.push_catalog(input_obj.get("catalog") or [], input_obj["dataset"])
 
         fdp_datasets = {}
         for dataset in input_obj["dataset"]:
@@ -205,12 +206,13 @@ class FDPOutput:
         """Remember that a record could not be pushed, so the push is reported as failed after all records are tried."""
         self.failures.append(message)
 
-    def push_catalog(self, catalogs: List[Dict]) -> URIRef:
+    def push_catalog(self, catalogs: List[Dict], datasets: Optional[List[Dict]] = None) -> URIRef:
         """Push the mapped Catalog, and return the URI of the catalog in the FDP to push the Datasets to.
 
         An existing catalog given with its URI is only updated with the mapped Catalog when update_catalog is set, so
         the metadata of a catalog maintained otherwise is not replaced. Without a given catalog, the mapped Catalog is
-        found by its title and updated, or created.
+        found by its title and updated, or created. It is not created when the Datasets to push are already in another
+        catalog of the FDP (see refuse_new_catalog_for_existing_datasets).
         """
         if not catalogs:
             if not self.catalog_uri:
@@ -245,6 +247,8 @@ class FDPOutput:
             if not fdp_uri:
                 found = self.find_catalog(title, root)
                 fdp_uri = self.check_fdp_record_uri(found) if found else None
+            if not fdp_uri:
+                self.refuse_new_catalog_for_existing_datasets(title, root, datasets or [])
             return self.push_record("catalog", graph, catalog["uri"], fdp_uri)
         except Exception as e:
             if not fdp_uri:
@@ -285,10 +289,15 @@ class FDPOutput:
         graph = distribution["model_object"].to_graph(distribution["uri"])
         graph.add((distribution["uri"], DCTERMS.isPartOf, dataset_uri))
         file_format = getattr(distribution["model_object"], "format", None)
+        compression_format = getattr(distribution["model_object"], "compression_format", None)
         try:
             fdp_uri = None
             if self.sparqlclient and file_format:
-                found = self.find_distribution(dataset_uri, URIRef(str(file_format)))
+                found = self.find_distribution(
+                    dataset_uri,
+                    URIRef(str(file_format)),
+                    URIRef(str(compression_format)) if compression_format else None,
+                )
                 fdp_uri = self.check_fdp_record_uri(found) if found else None
             return self.push_record("distribution", graph, distribution["uri"], fdp_uri)
         except Exception as e:
@@ -338,6 +347,9 @@ class FDPOutput:
         existing = Graph().parse(data=response.text, format="turtle")
 
         if predicate is not None:
+            # The FDP lists the children of a record on a container (e.g. <.../dataset/> ldp:contains <child>), not on
+            # the record itself, so any subject is read. The response only describes this record, so the containers
+            # in it are those of this record.
             children = set(existing.objects(None, LDP.contains))
             for child in existing.objects(fdp_uri, predicate):
                 if child in children:
@@ -367,7 +379,7 @@ class FDPOutput:
         elif state != "PUBLISHED":
             # Another FDP version may answer with another shape; then a draft would silently stay unpublished
             logger.warning(
-                "Dataset %s has an unknown state %r in the FDP, so it is not published if it is still a draft",
+                "%s has an unknown state %r in the FDP, so it is not published if it is still a draft",
                 fdp_uri,
                 state,
             )
@@ -406,7 +418,7 @@ PREFIX dcterms: <http://purl.org/dc/terms/>
 SELECT DISTINCT ?subject
 WHERE {{
     ?subject a dcat:Catalog ;
-        dcterms:isPartOf <{root}> ;
+        dcterms:isPartOf {URIRef(root).n3()} ;
         dcterms:title ?title .
     FILTER(str(?title) = {_sparql_string(title)})
 }}"""
@@ -417,8 +429,15 @@ WHERE {{
             )
         return subjects[0] if subjects else None
 
-    def find_distribution(self, dataset_uri: URIRef, file_format: URIRef) -> Optional[str]:
-        """Find the Distribution of a Dataset in the FDP with this format, which identifies it within the Dataset."""
+    def find_distribution(
+        self, dataset_uri: URIRef, file_format: URIRef, compression_format: Optional[URIRef] = None
+    ) -> Optional[str]:
+        """Find the Distribution of a Dataset in the FDP with this format and compression, which identify it within
+        the Dataset: e.g. TXT, and TXT compressed with gzip, are separate Distributions."""
+        if compression_format is None:
+            compression = "FILTER NOT EXISTS { ?subject dcat:compressFormat ?compression }"
+        else:
+            compression = f"?subject dcat:compressFormat {URIRef(compression_format).n3()} ."
         subjects = self._query_subjects(
             f"""PREFIX dcat: <http://www.w3.org/ns/dcat#>
 PREFIX dcterms: <http://purl.org/dc/terms/>
@@ -426,10 +445,49 @@ PREFIX dcterms: <http://purl.org/dc/terms/>
 SELECT DISTINCT ?subject
 WHERE {{
     ?subject a dcat:Distribution ;
-        dcterms:isPartOf <{dataset_uri}> ;
-        dcterms:format <{file_format}> .
+        dcterms:isPartOf {URIRef(dataset_uri).n3()} ;
+        dcterms:format {URIRef(file_format).n3()} .
+    {compression}
 }}"""
         )
         if len(subjects) > 1:
-            raise ValueError(f"More than one distribution with format {file_format} in dataset {dataset_uri}")
+            raise ValueError(
+                f"More than one distribution with format {file_format} and compression {compression_format} in dataset "
+                f"{dataset_uri}"
+            )
         return subjects[0] if subjects else None
+
+    def refuse_new_catalog_for_existing_datasets(self, title: str, root: URIRef, datasets: List[Dict]) -> None:
+        """Refuse to create a catalog when Datasets of this push are already in another catalog of the FDP.
+
+        No catalog with the title of the mapped Catalog was found, but its datasets were: most likely the title was
+        changed in the configuration. As datasets are found within their catalog, a new catalog would get every
+        dataset again.
+        """
+        identifiers = sorted(
+            {get_identifier_value(dataset["model_object"].identifier) for dataset in datasets} - {None, ""}
+        )
+        if not self.sparqlclient or not identifiers:
+            return
+        identifier_list = ", ".join(_sparql_string(identifier) for identifier in identifiers)
+        catalogs = self._query_subjects(
+            f"""PREFIX dcat: <http://www.w3.org/ns/dcat#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+
+SELECT DISTINCT ?subject
+WHERE {{
+    ?dataset a dcat:Dataset ;
+        dcterms:identifier ?identifier ;
+        dcterms:isPartOf ?subject .
+    ?subject a dcat:Catalog ;
+        dcterms:isPartOf {URIRef(root).n3()} .
+    FILTER(str(?identifier) IN ({identifier_list}))
+}}"""
+        )
+        if catalogs:
+            raise FDPCatalogError(
+                f"No catalog titled {title!r} is in the FDP, but datasets of this push are already in catalog(s) "
+                f"{', '.join(catalogs)}. If the catalog title was changed in the configuration, give the existing "
+                "catalog with -c (and --update-catalog to update its title); a new catalog would add every dataset "
+                "again"
+            )

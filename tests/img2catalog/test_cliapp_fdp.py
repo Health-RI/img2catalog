@@ -586,3 +586,104 @@ def test_ega_pushes_nothing_when_the_catalog_cannot_be_created(fdp, default_ega_
         in result.output
     )
     assert fdp.records == {}
+
+
+def renamed_catalog_config(tmp_path):
+    """The EGA example configuration, with the title of the catalog changed."""
+    config = (EXAMPLES / "ega" / "example_config.toml").read_text()
+    assert 'title = "Example EGA catalog"' in config
+    path = tmp_path / "renamed.toml"
+    path.write_text(config.replace('title = "Example EGA catalog"', 'title = "Renamed EGA catalog"'))
+    return path
+
+
+def test_ega_refuses_new_catalog_when_its_datasets_are_in_another_catalog(
+    fdp, default_ega_dataset, isolated_cli_runner, tmp_path
+):
+    """Renaming the catalog in the config must not create a second catalog with every dataset again."""
+    # Arrange: pushed once under the original title
+    assert invoke(isolated_cli_runner, ega_args() + FDP_ARGS, [default_ega_dataset]).exit_code == 0
+    records = set(fdp.records)
+    (catalog,) = fdp.of_type("catalog")
+    renamed = ["-c", str(renamed_catalog_config(tmp_path)), *ega_args()[2:]]
+
+    # Act
+    result = invoke(isolated_cli_runner, renamed + FDP_ARGS, [default_ega_dataset])
+
+    # Assert
+    assert result.exit_code == 1
+    assert "No catalog titled 'Renamed EGA catalog' is in the FDP" in result.output
+    assert f"datasets of this push are already in catalog(s) {catalog}" in result.output
+    assert set(fdp.records) == records
+
+
+def test_ega_updates_renamed_catalog_when_given_with_its_uri(fdp, default_ega_dataset, isolated_cli_runner, tmp_path):
+    assert invoke(isolated_cli_runner, ega_args() + FDP_ARGS, [default_ega_dataset]).exit_code == 0
+    records = set(fdp.records)
+    (catalog,) = fdp.of_type("catalog")
+    renamed = ["-c", str(renamed_catalog_config(tmp_path)), *ega_args()[2:]]
+
+    result = invoke(
+        isolated_cli_runner, renamed + FDP_ARGS + ["-c", str(catalog), "--update-catalog"], [default_ega_dataset]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert set(fdp.records) == records
+    assert Literal("Renamed EGA catalog") in set(fdp.records[catalog].objects(catalog, DCTERMS.title))
+
+
+def test_ega_creates_catalog_when_its_datasets_are_not_in_the_fdp(fdp, default_ega_dataset, isolated_cli_runner):
+    """Datasets with other identifiers in another catalog do not stop a new catalog."""
+    existing_catalog(fdp, datasets=2)
+
+    result = invoke(isolated_cli_runner, ega_args() + FDP_ARGS, [default_ega_dataset])
+
+    assert result.exit_code == 0, result.output
+    assert len(fdp.of_type("catalog")) == 2
+
+
+def test_ega_keeps_compressed_and_uncompressed_distributions_apart_on_rerun(
+    fdp, default_ega_dataset, isolated_cli_runner
+):
+    """A .vcf and a .vcf.gz file are both TXT; the compression keeps their Distributions apart in the FDP."""
+    default_ega_dataset["files"] = [
+        {"accession_id": "EGAF00000000001", "filesize": 100, "extension": "vcf"},
+        {"accession_id": "EGAF00000000002", "filesize": 200, "extension": "vcf.gz"},
+    ]
+
+    first_run = invoke(isolated_cli_runner, ega_args() + FDP_ARGS, [default_ega_dataset])
+    records = set(fdp.records)
+    second_run = invoke(isolated_cli_runner, ega_args() + FDP_ARGS, [default_ega_dataset])
+
+    assert (first_run.exit_code, second_run.exit_code) == (0, 0), second_run.output
+    assert set(fdp.records) == records
+    distributions = fdp.of_type("distribution")
+    assert len(distributions) == 2
+    gzip = URIRef("http://www.iana.org/assignments/media-types/application/gzip")
+    sizes = {
+        fdp.records[d].value(d, DCAT.compressFormat): str(fdp.records[d].value(d, DCAT.byteSize)) for d in distributions
+    }
+    assert sizes == {None: "100", gzip: "200"}
+    assert_fdp_consistent(fdp)
+
+
+@pytest.mark.parametrize("catalog_config", [False, True])
+def test_update_catalog_without_catalog_is_a_usage_error(
+    fdp, default_ega_dataset, isolated_cli_runner, tmp_path, catalog_config
+):
+    """--update-catalog only applies to the catalog given with -c (or in the [fdp] configuration)."""
+    config = (EXAMPLES / "ega" / "example_config.toml").read_text()
+    if catalog_config:
+        config += f'\n[fdp]\ncatalog = "{FDP_URL}/catalog/1"\n'
+    path = tmp_path / "config.toml"
+    path.write_text(config)
+    args = ["-c", str(path), *ega_args()[2:], *FDP_ARGS, "--update-catalog"]
+
+    result = invoke(isolated_cli_runner, args, [default_ega_dataset])
+
+    if catalog_config:
+        assert "--update-catalog only applies" not in result.output
+    else:
+        assert result.exit_code == 2
+        assert "--update-catalog only applies to an existing catalog given with -c" in result.output
+        assert fdp.records == {}
