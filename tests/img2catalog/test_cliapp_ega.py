@@ -75,6 +75,34 @@ def test_ega_cli_links_dataset_distributions_and_catalog(fetch_ega_datasets, iso
 
 
 @patch("img2catalog.cli_app.fetch_ega_datasets")
+def test_ega_cli_gives_compressed_files_their_own_distribution(
+    fetch_ega_datasets, isolated_cli_runner, default_ega_dataset
+):
+    """A .vcf and a .vcf.gz file have the same file type (TXT), so the compression must keep their URIs apart."""
+    # Arrange
+    default_ega_dataset["files"] = [
+        {"accession_id": "EGAF00000000001", "filesize": 100, "extension": "vcf"},
+        {"accession_id": "EGAF00000000002", "filesize": 200, "extension": "vcf.gz"},
+    ]
+    fetch_ega_datasets.return_value = [default_ega_dataset]
+    gzip_distribution_uri = URIRef("http://img2catalog.internal/distribution/EGAD00001005083/TXT-gzip")
+
+    # Act
+    result = _run_map_ega_to_rdf(isolated_cli_runner, EGA_EXAMPLE_CONFIG)
+
+    # Assert
+    assert result.exit_code == 0, result.output
+    graph = Graph().parse("output.ttl")
+    assert set(graph.objects(DATASET_URI, DCAT.distribution)) == {TXT_DISTRIBUTION_URI, gzip_distribution_uri}
+    assert (
+        gzip_distribution_uri,
+        DCAT.compressFormat,
+        URIRef("http://www.iana.org/assignments/media-types/application/gzip"),
+    ) in graph
+    assert (TXT_DISTRIBUTION_URI, DCAT.compressFormat, None) not in graph
+
+
+@patch("img2catalog.cli_app.fetch_ega_datasets")
 def test_ega_cli_leaves_catalog_out_without_catalog_config(
     fetch_ega_datasets, isolated_cli_runner, default_ega_dataset, tmp_path
 ):

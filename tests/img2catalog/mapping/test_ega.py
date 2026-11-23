@@ -1,17 +1,20 @@
+import json
 import logging
 from datetime import date, datetime, timezone
+from pathlib import Path
 
 import pytest
 from pydantic import AnyHttpUrl, ValidationError
-from rdflib import URIRef
+from rdflib import DCAT, DCTERMS, URIRef
 from sempyro.dcat import AccessRights
 from sempyro.hri_dcat import DatasetStatus, HRICatalog, HRIDataset
 
 from img2catalog.mappings.ega import (
+    FileFormat,
     get_contact_email,
     get_contact_page,
     get_description,
-    get_file_type,
+    get_file_format,
     get_identifier,
     get_is_referenced_by,
     get_keyword,
@@ -196,23 +199,95 @@ def test_get_is_referenced_by_handles_studies_without_publications(default_ega_d
     assert get_is_referenced_by(missing_ega_dataset) == []
 
 
+BIN = "http://publications.europa.eu/resource/authority/file-type/BIN"
+TXT = "http://publications.europa.eu/resource/authority/file-type/TXT"
+GZIP = "http://www.iana.org/assignments/media-types/application/gzip"
+ZSTD = "http://www.iana.org/assignments/media-types/application/zstd"
+EGA_EXAMPLES = Path(__file__).parent.parent / "examples" / "ega"
+
+
 @pytest.mark.parametrize(
     ("extension", "expected"),
     [
-        ("bam", "http://publications.europa.eu/resource/authority/file-type/BIN"),
-        ("cram", "http://publications.europa.eu/resource/authority/file-type/BIN"),
-        ("vcf.gz", "http://publications.europa.eu/resource/authority/file-type/BIN"),
-        ("vcf", "http://publications.europa.eu/resource/authority/file-type/TXT"),
-        ("SAM", "http://publications.europa.eu/resource/authority/file-type/TXT"),
-        ("fastq", "http://publications.europa.eu/resource/authority/file-type/TXT"),
-        ("fasta", "http://publications.europa.eu/resource/authority/file-type/TXT"),
-        ("bed", "http://publications.europa.eu/resource/authority/file-type/TXT"),
-        ("gff", "http://publications.europa.eu/resource/authority/file-type/TXT"),
-        (None, "http://publications.europa.eu/resource/authority/file-type/BIN"),
+        ("bam", FileFormat(BIN, None, known=True)),
+        ("cram", FileFormat(BIN, None, known=True)),
+        ("vcf", FileFormat(TXT, None, known=True)),
+        ("SAM", FileFormat(TXT, None, known=True)),
+        ("fastq", FileFormat(TXT, None, known=True)),
+        ("fasta", FileFormat(TXT, None, known=True)),
+        ("bed", FileFormat(TXT, None, known=True)),
+        ("gff", FileFormat(TXT, None, known=True)),
+        # Extensions as EGA gives them for compressed files: the format of the data, compressed
+        ("vcf.gz", FileFormat(TXT, GZIP, known=True)),
+        ("fastq.gz", FileFormat(TXT, GZIP, known=True)),
+        ("CEL.gz", FileFormat(BIN, GZIP, known=True)),
+        ("tar.gz", FileFormat(BIN, GZIP, known=True)),
+        ("vcf.bgz", FileFormat(TXT, GZIP, known=True)),
+        ("tsv.zst", FileFormat(TXT, ZSTD, known=True)),
+        (".vcf.gz", FileFormat(TXT, GZIP, known=True)),
+        # Compressed, but the format of the data is unknown
+        ("gz", FileFormat(BIN, GZIP, known=False)),
+        # EGA gives numbers as extension for some files
+        ("1664408722194", FileFormat(BIN, None, known=False)),
+        (None, FileFormat(BIN, None, known=False)),
+        ("", FileFormat(BIN, None, known=False)),
     ],
 )
-def test_get_file_type_maps_extension(extension, expected):
-    assert get_file_type({"extension": extension}) == expected
+def test_get_file_format_maps_extension(extension, expected):
+    assert get_file_format({"extension": extension}) == expected
+
+
+def test_map_ega_to_healthri_dcat_distributions_maps_real_ega_file_listing(default_ega_dataset, ega_config, caplog):
+    """The files of EGAD00001003338 as the EGA metadata API returns them (one file per extension)."""
+    # Arrange
+    default_ega_dataset["files"] = json.loads((EGA_EXAMPLES / "files_EGAD00001003338.json").read_text())
+
+    # Act
+    with caplog.at_level(logging.WARNING):
+        result = map_ega_to_healthri_dcat_distributions(default_ega_dataset, ega_config)
+
+    # Assert
+    # cram, crai, bam, bai, tbi, bcf and csi are binary; the vcf.gz is text compressed with gzip
+    formats = {(str(d.format), str(d.compression_format) if d.compression_format else None) for d in result}
+    assert formats == {(BIN, None), (TXT, GZIP)}
+    vcf = next(d for d in result if d.compression_format)
+    assert vcf.byte_size.value == "25455080"
+    # Only the file with a number as extension is reported as unknown
+    assert "EGAD00001005083 has 1 files with an unknown format" in caplog.text
+    assert "'1664408722194' (1)" in caplog.text
+
+
+def test_map_ega_to_healthri_dcat_distributions_puts_compression_in_compress_format(default_ega_dataset, ega_config):
+    # Arrange
+    default_ega_dataset["files"] = [
+        {"accession_id": "EGAF00000000001", "filesize": 100, "extension": "vcf"},
+        {"accession_id": "EGAF00000000002", "filesize": 200, "extension": "vcf.gz"},
+        {"accession_id": "EGAF00000000003", "filesize": 300, "extension": "fastq.gz"},
+    ]
+
+    # Act
+    result = map_ega_to_healthri_dcat_distributions(default_ega_dataset, ega_config)
+
+    # Assert
+    assert len(result) == 2
+    sizes = {str(d.compression_format) if d.compression_format else None: d.byte_size.value for d in result}
+    assert sizes == {None: "100", GZIP: "500"}
+    assert {str(d.format) for d in result} == {TXT}
+
+    compressed = next(d for d in result if d.compression_format)
+    subject = URIRef("http://example.com/distribution")
+    graph = compressed.to_graph(subject)
+    assert (subject, DCAT.compressFormat, URIRef(GZIP)) in graph
+    assert (subject, DCTERMS.format, URIRef(TXT)) in graph
+
+
+def test_map_ega_to_healthri_dcat_distributions_does_not_warn_for_known_formats(
+    default_ega_dataset, ega_config, caplog
+):
+    with caplog.at_level(logging.WARNING):
+        map_ega_to_healthri_dcat_distributions(default_ega_dataset, ega_config)
+
+    assert "unknown format" not in caplog.text
 
 
 def test_map_ega_to_healthri_dcat_distributions_combines_files(default_ega_dataset, ega_config):

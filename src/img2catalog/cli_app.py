@@ -401,7 +401,7 @@ def mapping_ega_healthriv2(ctx: click.Context):
         accession_id = ega_dataset["accession_id"]
         dataset_uri = URIRef(f"http://img2catalog.internal/dataset/{accession_id}")
 
-        # One Distribution per file format, identified by the format code (e.g. BIN, TXT)
+        # One Distribution per file format, identified by the format code and compression (e.g. BIN, TXT, TXT-gzip)
         distribution_uris = []
         try:
             ega_distributions = map_ega_to_healthri_dcat_distributions(ega_dataset, config)
@@ -409,6 +409,8 @@ def mapping_ega_healthriv2(ctx: click.Context):
             raise click.UsageError(str(e)) from e
         for distribution in ega_distributions:
             format_code = str(distribution.format).rsplit("/", 1)[-1]
+            if distribution.compression_format:
+                format_code += "-" + str(distribution.compression_format).rsplit("/", 1)[-1]
             distribution_uri = URIRef(f"http://img2catalog.internal/distribution/{accession_id}/{format_code}")
             distribution_uris.append(distribution_uri)
             distributions.append({"uri": distribution_uri, "model_object": distribution, "dataset_uri": dataset_uri})

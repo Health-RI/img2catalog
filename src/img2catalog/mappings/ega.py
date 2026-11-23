@@ -1,6 +1,7 @@
 import logging
+from collections import Counter
 from datetime import date, datetime, time
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple, Union
 
 from rdflib import XSD, URIRef
 from sempyro import LiteralField
@@ -26,11 +27,16 @@ PUBMED_URL = "https://pubmed.ncbi.nlm.nih.gov/"
 
 FILE_TYPE_BINARY = "http://publications.europa.eu/resource/authority/file-type/BIN"
 FILE_TYPE_TEXT = "http://publications.europa.eu/resource/authority/file-type/TXT"
-# Extensions of uncompressed text based file formats; all other EGA files (bam, cram, gzipped files, ...) are binary
+
+# The FSD maps the format of EGA files to the EU file types TXT and BIN. Which formats are text and which are binary
+# follows from the specification of each format (e.g. SAM/BAM/CRAM and VCF/BCF by htslib/GA4GH); EGA itself only gives
+# the file extension. BED is taken as the UCSC text format, not the binary PLINK genotype file with the same extension.
 TEXT_FILE_EXTENSIONS = {
     "bed",
+    "bim",
     "csv",
     "fa",
+    "fam",
     "fasta",
     "fastq",
     "fq",
@@ -39,13 +45,63 @@ TEXT_FILE_EXTENSIONS = {
     "gtf",
     "json",
     "maf",
+    "ped",
     "sam",
     "tab",
+    "tfam",
+    "tped",
     "tsv",
     "txt",
     "vcf",
     "xml",
 }
+# Binary formats found in EGA, so that only extensions that are neither text nor binary are reported as unknown
+BINARY_FILE_EXTENSIONS = {
+    "bai",
+    "bam",
+    "bcf",
+    "bgen",
+    "bigwig",
+    "bw",
+    "cel",
+    "crai",
+    "cram",
+    "csi",
+    "fast5",
+    "h5",
+    "hdf5",
+    "idat",
+    "pdf",
+    "pgen",
+    "pod5",
+    "sff",
+    "sra",
+    "srf",
+    "tar",
+    "tbi",
+    "xls",
+    "xlsx",
+    "zip",
+}
+
+# DCAT describes compressed data with the format of the data itself (dct:format) and the compression as an IANA media
+# type (dcat:compressFormat), so e.g. a .vcf.gz file is a TXT file compressed with gzip. bgzip output is gzip.
+IANA_MEDIA_TYPES = "http://www.iana.org/assignments/media-types/"
+COMPRESSION_FORMATS = {
+    "bgz": f"{IANA_MEDIA_TYPES}application/gzip",
+    "gz": f"{IANA_MEDIA_TYPES}application/gzip",
+    "gzip": f"{IANA_MEDIA_TYPES}application/gzip",
+    "zst": f"{IANA_MEDIA_TYPES}application/zstd",
+}
+
+
+class FileFormat(NamedTuple):
+    """The EU file type of an EGA file, its IANA compression format (None when not compressed), and whether the
+    extension is a known format; an unknown extension is mapped to BIN."""
+
+    file_type: str
+    compression_format: Optional[str]
+    known: bool
 
 
 def _to_urls(values: List[str]) -> List[URIRef]:
@@ -119,7 +175,11 @@ def get_main_contacts(ega_dataset: Dict) -> List[Dict]:
 
 
 def get_contact_email(ega_dataset: Dict) -> Optional[str]:
-    """Return the email of the first DAC main contact, which handles the access requests of the dataset."""
+    """Return the email of the first DAC main contact, which handles the access requests of the dataset.
+
+    The contact point has a single email, but lists the pages of all DACs. With several DACs, any of them handles access
+    requests, so the email does not have to belong to the first DAC page; it is the first main contact that has one.
+    """
     for contact in get_main_contacts(ega_dataset):
         if contact.get("email"):
             return f"mailto:{contact['email']}"
@@ -169,10 +229,22 @@ def get_qualified_attribution(ega_dataset: Dict, dataset_config: Dict) -> List[A
     return attributions
 
 
-def get_file_type(ega_file: Dict) -> str:
-    """Map an EGA file extension to the EU file type: TXT for text formats, BIN for binary formats."""
-    extension = (ega_file.get("extension") or "").lower()
-    return FILE_TYPE_TEXT if extension in TEXT_FILE_EXTENSIONS else FILE_TYPE_BINARY
+def get_file_format(ega_file: Dict) -> FileFormat:
+    """Map the extension of an EGA file to its EU file type and compression format.
+
+    EGA gives the full extension after the first dot, e.g. "vcf.gz" or "fastq.gz". A compression suffix is split off
+    and mapped to dcat:compressFormat, and the extension before it gives the file type: TXT for text formats, BIN for
+    binary formats. Other extensions, like the numbers EGA gives for some files, are mapped to BIN as unknown.
+    """
+    parts = (ega_file.get("extension") or "").strip().lower().strip(".").split(".")
+    compression_format = COMPRESSION_FORMATS.get(parts[-1])
+    if compression_format:
+        parts = parts[:-1]
+    extension = parts[-1] if parts else ""
+
+    if extension in TEXT_FILE_EXTENSIONS:
+        return FileFormat(FILE_TYPE_TEXT, compression_format, known=True)
+    return FileFormat(FILE_TYPE_BINARY, compression_format, known=extension in BINARY_FILE_EXTENSIONS)
 
 
 def get_publisher(publisher_config: Dict) -> HRIAgent:
@@ -196,15 +268,28 @@ def map_ega_to_healthri_dcat_distributions(ega_dataset: Dict, config: Dict) -> L
     """Map the files of an EGA dataset to Distributions.
 
     The files together form the Distribution of the dataset, so individual files are not mapped to separate
-    Distributions. Only when the data is available in multiple formats, a Distribution is made per format.
+    Distributions. Only when the data is available in multiple formats, a Distribution is made per format: per file
+    type and compression format, e.g. TXT for .vcf files and TXT compressed with gzip for .vcf.gz files.
 
     Raises ValueError when there are files, but the configuration has no [distribution] section.
     """
-    files_per_type: Dict[str, List[Dict]] = {}
+    files_per_format: Dict[Tuple[str, Optional[str]], List[Dict]] = {}
+    unknown_extensions: Counter = Counter()
     for ega_file in ega_dataset.get("files", []):
-        files_per_type.setdefault(get_file_type(ega_file), []).append(ega_file)
+        file_format = get_file_format(ega_file)
+        files_per_format.setdefault((file_format.file_type, file_format.compression_format), []).append(ega_file)
+        if not file_format.known:
+            unknown_extensions[ega_file.get("extension")] += 1
 
-    if not files_per_type:
+    if unknown_extensions:
+        logger.warning(
+            "EGA dataset %s has %d files with an unknown format, which are mapped as binary (BIN); extensions: %s",
+            ega_dataset.get("accession_id"),
+            sum(unknown_extensions.values()),
+            ", ".join(f"{extension!r} ({count})" for extension, count in unknown_extensions.most_common(10)),
+        )
+
+    if not files_per_format:
         return []
 
     distribution_config = config.get("distribution")
@@ -216,7 +301,7 @@ def map_ega_to_healthri_dcat_distributions(ega_dataset: Dict, config: Dict) -> L
     dataset_page = get_identifier(ega_dataset)
 
     distributions = []
-    for file_type, ega_files in files_per_type.items():
+    for (file_type, compression_format), ega_files in files_per_format.items():
         # Properties in the order of the FSD mapping document
         distribution_fields = {
             "access_url": dataset_page,
@@ -224,6 +309,7 @@ def map_ega_to_healthri_dcat_distributions(ega_dataset: Dict, config: Dict) -> L
                 value=str(sum(ega_file.get("filesize") or 0 for ega_file in ega_files)),
                 datatype=XSD.nonNegativeInteger,
             ),
+            "compression_format": compression_format,
             "description": [LiteralField(value=get_description(ega_dataset))],
             "format": file_type,
             "language": _optional(distribution_config, "language", _to_urls),
