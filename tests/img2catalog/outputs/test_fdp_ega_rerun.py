@@ -247,6 +247,30 @@ def test_rerun_publishes_dataset_that_stayed_draft(fdp_output, default_ega_datas
     assert "Publishing dataset http://fdp.example.com/dataset/1, which was still a draft" in caplog.text
 
 
+@pytest.mark.parametrize("state", [None, "ARCHIVED"])
+def test_rerun_warns_about_an_unknown_dataset_state(fdp_output, default_ega_dataset, ega_config, caplog, state):
+    """Another FDP version may answer with another state, or none; a draft then stays unpublished, which is logged."""
+    fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
+    fdp_output.fdpclient.states[URIRef("http://fdp.example.com/dataset/1")] = state
+
+    with caplog.at_level(logging.WARNING):
+        fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
+
+    assert (
+        f"Dataset http://fdp.example.com/dataset/1 has an unknown state {state!r} in the FDP, so it is not published"
+        in caplog.text
+    )
+
+
+def test_rerun_does_not_warn_about_a_published_dataset(fdp_output, default_ega_dataset, ega_config, caplog):
+    fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
+
+    with caplog.at_level(logging.WARNING):
+        fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
+
+    assert "unknown state" not in caplog.text
+
+
 def test_rerun_updates_dataset_when_state_cannot_be_checked(fdp_output, default_ega_dataset, ega_config, caplog):
     fdp_output.push_to_fdp(_mapped_objects(default_ega_dataset, ega_config))
     default_ega_dataset["title"] = "Updated title"

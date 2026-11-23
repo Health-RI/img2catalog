@@ -1,11 +1,10 @@
 import logging
+from http import HTTPStatus
 from typing import Dict, List, Optional
 
 import requests
 
 logger = logging.getLogger(__name__)
-
-HTTP_NOT_FOUND = 404
 
 
 def fetch_ega_dataset(dataset_id: str, api_url: str) -> Dict:
@@ -18,7 +17,7 @@ def fetch_ega_dataset(dataset_id: str, api_url: str) -> Dict:
 def _fetch_ega_dataset_resource(dataset_id: str, api_url: str, resource: str) -> List[Dict]:
     """Fetch related resources of an EGA dataset; Not Found means the dataset has none of them."""
     response = requests.get(f"{api_url}/datasets/{dataset_id}/{resource}", timeout=30)
-    if response.status_code == HTTP_NOT_FOUND:
+    if response.status_code == HTTPStatus.NOT_FOUND:
         # Not an error, but visible: if EGA stops serving a resource, every dataset would silently lose it
         logger.warning(
             "EGA dataset %s has no %s (Not Found: %s), so it is mapped without them", dataset_id, resource, response.url

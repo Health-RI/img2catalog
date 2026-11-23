@@ -116,6 +116,13 @@ class FDPOutput:
         if state == "DRAFT":
             logger.info("Publishing dataset %s, which was still a draft in the FDP", fdp_uri)
             self.fdpclient.publish_record(fdp_uri)
+        elif state != "PUBLISHED":
+            # Another FDP version may answer with another shape; then a draft would silently stay unpublished
+            logger.warning(
+                "Dataset %s has an unknown state %r in the FDP, so it is not published if it is still a draft",
+                fdp_uri,
+                state,
+            )
 
     def push_to_fdp(self, input_obj: Dict[str, List[Dict]]) -> None:
         """Push Datasets to a FAIR Data Point

@@ -108,6 +108,9 @@ def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
 
     return HRIDataset(
         # MANDATORY DCAT FIELDS
+        # The title (institute, modality and period) is what makes a row a separate dataset: the same institute and
+        # modality occur once per period, e.g. Hospital B CT for 2023 and for 2024 in examples/xds/input_example.csv.
+        # Leaving the period out would give those rows the same identifier, so one would overwrite the other.
         identifier=LiteralField(value=format_identifier(dataset_config["identifier"], dataset_formatted_title)),
         title=[LiteralField(value=dataset_formatted_title)],
         description=[LiteralField(value=dataset_config["description"])],

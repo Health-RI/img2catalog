@@ -142,8 +142,10 @@ identifier is the `identifier` of the `[dataset]` configuration, followed by a s
 dataset in the FDP when its identifier is the same, so:
 - Datasets pushed by an earlier version of `img2catalog`, which all had the configured identifier, are not matched.
   Remove those from the FDP once, or the rerun adds all datasets again next to them.
-- The period is part of the title. When the period of a row changes, the row gets a new identifier and is added as a
-  new dataset; remove the old one from the FDP.
+- The period is part of the title, because the same institute and modality occur once per period (e.g. Hospital B CT
+  for 2023 and for 2024), and those rows are separate datasets. When the period of a row changes, e.g. because a new
+  export covers a longer period, the row gets a new identifier and is added as a new dataset. To migrate: after the
+  push, remove the dataset with the old period (same institute and modality) from the FDP.
 - Rows with the same identifier, which differ only in characters that the identifier leaves out (like case and
   punctuation), are refused with an error, as one would overwrite the other.
 
