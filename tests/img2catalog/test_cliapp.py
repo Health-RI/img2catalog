@@ -1,9 +1,10 @@
 import pathlib
+import uuid
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pandas as pd
 import pytest
-from rdflib import URIRef
+from rdflib import DCAT, RDF, Graph, URIRef
 
 from img2catalog.cli_app import cli_click, load_img2catalog_configuration
 from img2catalog.const import (
@@ -354,11 +355,16 @@ def test_xds_cli(mock_fdp_client, mock_fdp_output, isolated_cli_runner, xds_csv_
     mock_fdp_output.assert_called_once()
 
 
-def _write_xds_csv(path, institutes):
-    """Write an XDS CSV export with a CT row, for the period of 2024, per institute."""
+def _write_xds_csv(path, institutes, identifiers=None):
+    """Write an XDS CSV export with a CT row, for the period of 2024, per institute.
+
+    The rows get the given values in the `identifier` column, if any.
+    """
     rows = len(institutes)
+    columns = {"identifier": identifiers} if identifiers is not None else {}
     pd.DataFrame(
         {
+            **columns,
             "instituteName": institutes,
             "numberOfUniqueIndividuals": [5041] * rows,
             "numberOfRecords": [11052] * rows,
@@ -386,7 +392,7 @@ def _run_xds_to_fdp(runner, csv_path):
 @patch("img2catalog.cli_app.FDPOutput")
 def test_xds_cli_refuses_rows_with_the_same_identifier(mock_fdp_output, isolated_cli_runner, tmp_path):
     """Rows that get the same identifier would overwrite each other in the FDP, so the run stops before the push."""
-    csv_path = _write_xds_csv(tmp_path / "clash.csv", ["Hospital A", "HOSPITAL a!"])
+    csv_path = _write_xds_csv(tmp_path / "clash.csv", ["Hospital A", "Hospital B"], identifiers=["ds-1", "ds-1"])
 
     result = _run_xds_to_fdp(isolated_cli_runner, csv_path)
 
@@ -396,7 +402,8 @@ def test_xds_cli_refuses_rows_with_the_same_identifier(mock_fdp_output, isolated
 
 
 @patch("img2catalog.cli_app.FDPOutput")
-def test_xds_cli_gives_each_row_its_own_identifier(mock_fdp_output, isolated_cli_runner, tmp_path):
+def test_xds_cli_gives_each_row_its_own_generated_identifier(mock_fdp_output, isolated_cli_runner, tmp_path):
+    """Without identifier column, each row gets the configured prefix followed by a UUID of its own."""
     csv_path = _write_xds_csv(tmp_path / "distinct.csv", ["Hospital A", "Hospital B"])
 
     result = _run_xds_to_fdp(isolated_cli_runner, csv_path)
@@ -404,9 +411,24 @@ def test_xds_cli_gives_each_row_its_own_identifier(mock_fdp_output, isolated_cli
     assert result.exit_code == 0, result.output
     pushed = mock_fdp_output.return_value.push_to_fdp.call_args.args[0]["dataset"]
     identifiers = [dataset["model_object"].identifier.value for dataset in pushed]
-    assert identifiers == [
-        "https://www.example.com/img-123/hospital-a-ct-2024",
-        "https://www.example.com/img-123/hospital-b-ct-2024",
+    assert len(set(identifiers)) == 2
+    for identifier in identifiers:
+        prefix, _, suffix = identifier.rpartition("/")
+        assert prefix == "https://www.example.com/img-123"
+        assert str(uuid.UUID(suffix)) == suffix
+
+
+@patch("img2catalog.cli_app.FDPOutput")
+def test_xds_cli_uses_identifier_column(mock_fdp_output, isolated_cli_runner, tmp_path):
+    csv_path = _write_xds_csv(tmp_path / "given.csv", ["Hospital A", "Hospital B"], identifiers=["ds-a", "ds-b"])
+
+    result = _run_xds_to_fdp(isolated_cli_runner, csv_path)
+
+    assert result.exit_code == 0, result.output
+    pushed = mock_fdp_output.return_value.push_to_fdp.call_args.args[0]["dataset"]
+    assert [dataset["model_object"].identifier.value for dataset in pushed] == [
+        "https://www.example.com/img-123/ds-a",
+        "https://www.example.com/img-123/ds-b",
     ]
 
 
@@ -433,3 +455,18 @@ def test_output_project(
 
     connect.assert_called_once_with(server="http://example.com", user=ANY, password=ANY)
     mock_project_to_dataset.assert_called_once_with("test_project")
+
+
+def test_xds_cli_rdf_output(isolated_cli_runner, xds_csv_example):
+    """Test CLI serialization to RDF, using an XDS CSV export as input"""
+    config_path = str(pathlib.Path(__file__).parent / "examples" / "xds" / "example-config.toml")
+
+    result = isolated_cli_runner.invoke(
+        cli_click,
+        ["--config", config_path, "xds", "--input", xds_csv_example, "map-xds", "rdf"],
+    )
+
+    assert result.exit_code == 0, result.output
+    graph = Graph().parse(data=result.output, format="turtle")
+    assert len(list(graph.subjects(RDF.type, DCAT.Dataset))) == 4
+    assert len(list(graph.objects(None, DCAT.startDate))) == 4

@@ -150,6 +150,17 @@ The XDS (Cross-enterprise Document Sharing) module allows you to ingest metadata
 - CSV file: contains the dataset metadata rows. See `/examples/xds/input_example.csv` for the expected format.
 - Config file (.toml):  defines metadata fields that apply to all datasets (e.g. publisher, contact point, access rights). Base yours on `/examples/xds/example_config.toml`.
 
+Each CSV row becomes one dataset. Besides the columns of `/examples/xds/input_example.csv` that are always needed:
+- `identifier` (optional column): the identifier of the dataset. See below.
+- `temporalCoverage` (`DD-MM-YYYY to DD-MM-YYYY`): set as the temporal coverage of the dataset, in ISO 8601 dates.
+- `description` and `keywords` (optional columns): description and keywords (separated by `;` or `,`) of the dataset.
+  When absent or empty for a row, the `description` and `keyword` values from the configuration are used.
+
+The XDS input can be serialized to RDF or pushed to an FDP, for example to try out your input and configuration:
+```sh
+img2catalog -c examples/xds/example_config.toml xds --input examples/xds/input_example.csv map-xds rdf
+```
+
 Datasets can be filtered by minimum number of unique individuals, so that small, real-world datasets that are
 not useful for reuse are not submitted to the FDP. Configure the minimum in the `[xds]` section:
 ```toml
@@ -158,18 +169,16 @@ minimum_unique_individuals = 10
 ```
 If not set, no datasets are filtered out.
 
-Each row of the CSV file is a separate dataset (institute, modality and period). When pushing to the FDP, its
-identifier is the `identifier` of the `[dataset]` configuration, followed by a slug of the dataset title, e.g.
-`https://www.example.com/img-123/hospital-a-ct-2024`. Rerunning the push with the SPARQL endpoint supplied updates a
-dataset in the FDP when its identifier is the same, so:
-- Datasets pushed by an earlier version of `img2catalog`, which all had the configured identifier, are not matched.
-  Remove those from the FDP once, or the rerun adds all datasets again next to them.
-- The period is part of the title, because the same institute and modality occur once per period (e.g. Hospital B CT
-  for 2023 and for 2024), and those rows are separate datasets. When the period of a row changes, e.g. because a new
-  export covers a longer period, the row gets a new identifier and is added as a new dataset. To migrate: after the
-  push, remove the dataset with the old period (same institute and modality) from the FDP.
-- Rows with the same identifier, which differ only in characters that the identifier leaves out (like case and
-  punctuation), are refused with an error, as one would overwrite the other.
+Each row of the CSV file is a separate dataset. Its identifier is the `identifier` of the `[dataset]` configuration (the
+prefix, optional) followed by the value of the `identifier` column of the row, e.g. `https://www.example.com/img-123/hospital-a-ct-2024`.
+If a row has no value in the `identifier` column, a UUID is used instead, e.g.
+`https://www.example.com/img-123/5b4f7c0e-0f0e-4f4a-9a53-0d7f6f3d2b1c`. Rerunning the push with the SPARQL endpoint
+supplied updates a dataset in the FDP when its identifier is the same, so:
+- A generated UUID is new on every run. To update a dataset in the FDP when rerunning, instead of adding it again, give
+  the row an `identifier` in the CSV file.
+- Datasets pushed by an earlier version of `img2catalog`, which got an identifier from the title of the dataset, are
+  not matched. Remove those from the FDP once, or the rerun adds all datasets again next to them.
+- Rows with the same identifier are refused with an error, as one would overwrite the other.
 
 
 

@@ -394,6 +394,7 @@ def mapping_xds(ctx: click.Context):
 
 
 input_xds.add_command(mapping_xds)
+mapping_xds.add_command(output_rdf)
 mapping_xds.add_command(output_fdp)
 
 

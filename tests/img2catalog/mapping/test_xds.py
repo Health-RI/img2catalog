@@ -1,4 +1,7 @@
+import uuid
+
 import pytest
+from rdflib import XSD
 from sempyro.hri_dcat import HRIDataset
 from sempyro.time import PeriodOfTime
 
@@ -7,6 +10,7 @@ from img2catalog.mappings.xds import (
     format_date,
     format_identifier,
     format_temporal_coverage,
+    format_temporal_coverage_iso,
     format_title,
     map_xds_to_healthri_dcat_dataset,
 )
@@ -94,55 +98,170 @@ def test_map_xds_to_healthri_dcat_dataset_raises_on_missing_field(missing_csv_da
 
 
 @pytest.mark.parametrize(
-    ("identifier_base", "title", "expected"),
+    ("prefix", "identifier", "expected"),
     [
-        (
-            "https://www.example.com/img-123",
-            "Amsterdam Hospital - CT - 2026",
-            "https://www.example.com/img-123/amsterdam-hospital-ct-2026",
-        ),
-        (
-            "https://www.example.com/img/",
-            "Hospital B - MR - 01-01-2023/31-12-2024",
-            "https://www.example.com/img/hospital-b-mr-01-01-2023-31-12-2024",
-        ),
+        ("https://www.example.com/img-123", "ds-1", "https://www.example.com/img-123/ds-1"),
+        ("https://www.example.com/img/", "ds-1", "https://www.example.com/img/ds-1"),
+        (None, "ds-1", "ds-1"),
+        ("", "ds-1", "ds-1"),
     ],
 )
-def test_format_identifier(identifier_base, title, expected):
-    assert format_identifier(identifier_base, title) == expected
+def test_format_identifier_with_given_identifier(prefix, identifier, expected):
+    assert format_identifier(prefix, identifier) == expected
 
 
-def test_ensure_unique_identifiers_refuses_titles_that_give_the_same_identifier(default_csv_data, default_config):
-    """Titles that only differ in punctuation or case get the same identifier, so one would overwrite the other."""
+@pytest.mark.parametrize("identifier", [None, ""])
+def test_format_identifier_uses_uuid_without_identifier(identifier):
+    result = format_identifier("https://www.example.com/img-123/", identifier)
+
+    base, _, suffix = result.rpartition("/")
+    assert base == "https://www.example.com/img-123"
+    assert str(uuid.UUID(suffix)) == suffix
+
+
+def test_format_identifier_without_prefix_and_identifier_is_a_uuid():
+    result = format_identifier(None)
+
+    assert str(uuid.UUID(result)) == result
+
+
+def test_format_identifier_generates_a_new_uuid_each_time():
+    assert format_identifier("https://www.example.com/img-123") != format_identifier("https://www.example.com/img-123")
+
+
+def test_ensure_unique_identifiers_refuses_rows_with_the_same_identifier(default_csv_data, default_config):
+    """Rows with the same value in the identifier column would overwrite each other in the FDP."""
+    first_row = default_csv_data.copy()
+    first_row["identifier"] = "ds-1"
     other_row = default_csv_data.copy()
-    other_row["instituteName"] = "AMSTERDAM  hospital!"
-    datasets = [map_xds_to_healthri_dcat_dataset(row, default_config) for row in (default_csv_data, other_row)]
+    other_row["modality"] = "MR"
+    other_row["identifier"] = "ds-1"
+    datasets = [map_xds_to_healthri_dcat_dataset(row, default_config) for row in (first_row, other_row)]
 
     with pytest.raises(ValueError, match="same dataset identifier") as error:
         ensure_unique_identifiers(datasets)
 
     assert "Amsterdam Hospital - CT - 2026" in str(error.value)
-    assert "AMSTERDAM  hospital! - CT - 2026" in str(error.value)
+    assert "Amsterdam Hospital - MR - 2026" in str(error.value)
 
 
-def test_ensure_unique_identifiers_accepts_different_rows(default_csv_data, default_config):
-    other_row = default_csv_data.copy()
-    other_row["modality"] = "MR"
-    datasets = [map_xds_to_healthri_dcat_dataset(row, default_config) for row in (default_csv_data, other_row)]
+def test_ensure_unique_identifiers_accepts_generated_identifiers(default_csv_data, default_config):
+    datasets = [map_xds_to_healthri_dcat_dataset(default_csv_data, default_config) for _ in range(2)]
 
     ensure_unique_identifiers(datasets)
 
 
-def test_map_xds_gives_each_row_its_own_identifier(default_csv_data, default_config):
-    """Each row is a separate dataset, which the FDP output finds by its identifier when updating it."""
-    other_row = default_csv_data.copy()
-    other_row["modality"] = "MR"
+def test_map_xds_gives_each_row_its_own_generated_identifier(default_csv_data, default_config):
+    """Without identifier column, every row gets an identifier of its own: the prefix followed by a UUID."""
+    datasets = [map_xds_to_healthri_dcat_dataset(default_csv_data, default_config) for _ in range(2)]
+    identifiers = [dataset.identifier.value for dataset in datasets]
 
-    identifiers = {
-        map_xds_to_healthri_dcat_dataset(row, default_config).identifier.value for row in (default_csv_data, other_row)
-    }
+    assert len(set(identifiers)) == 2
+    for identifier in identifiers:
+        prefix, _, suffix = identifier.rpartition("/")
+        assert prefix == "https://www.example.com/img-123"
+        assert str(uuid.UUID(suffix)) == suffix
 
-    assert identifiers == {
-        "https://www.example.com/img-123/amsterdam-hospital-ct-2026",
-        "https://www.example.com/img-123/amsterdam-hospital-mr-2026",
-    }
+
+def test_format_temporal_coverage_iso_returns_xsd_dates():
+    # Act
+    result = format_temporal_coverage_iso("01-01-2022 to 31-12-2023")
+
+    # Assert
+    assert result.start_date.value == "2022-01-01"
+    assert result.end_date.value == "2023-12-31"
+    assert str(result.start_date.datatype) == str(XSD.date)
+    assert str(result.end_date.datatype) == str(XSD.date)
+
+
+def test_format_temporal_coverage_iso_raises_on_malformed_value():
+    with pytest.raises(ValueError, match="not enough values to unpack"):
+        format_temporal_coverage_iso("2022 until 2023")
+
+
+def test_map_sets_temporal_coverage(default_csv_data, default_config):
+    # Act
+    result = map_xds_to_healthri_dcat_dataset(default_csv_data, default_config)
+
+    # Assert
+    assert len(result.temporal_coverage) == 1
+    assert result.temporal_coverage[0].start_date.value == "2026-01-01"
+    assert result.temporal_coverage[0].end_date.value == "2026-12-31"
+
+
+def test_map_uses_prefix_and_identifier_column(default_csv_data, default_config):
+    # Arrange
+    row = default_csv_data.copy()
+    row["identifier"] = "dataset-1"
+
+    # Act
+    result = map_xds_to_healthri_dcat_dataset(row, default_config)
+
+    # Assert
+    assert result.identifier.value == "https://www.example.com/img-123/dataset-1"
+
+
+def test_map_same_identifier_column_gives_same_identifier(default_csv_data, default_config):
+    """A given identifier is stable, so the FDP output can find the dataset again when rerunning."""
+    row = default_csv_data.copy()
+    row["identifier"] = "dataset-1"
+
+    first = map_xds_to_healthri_dcat_dataset(row, default_config)
+    second = map_xds_to_healthri_dcat_dataset(row, default_config)
+
+    assert first.identifier.value == second.identifier.value
+
+
+def test_map_empty_identifier_cell_gets_uuid(default_csv_data, default_config):
+    # Arrange
+    row = default_csv_data.copy()
+    row["identifier"] = float("nan")
+
+    # Act
+    result = map_xds_to_healthri_dcat_dataset(row, default_config)
+
+    # Assert
+    prefix, _, suffix = result.identifier.value.rpartition("/")
+    assert prefix == "https://www.example.com/img-123"
+    assert str(uuid.UUID(suffix)) == suffix
+
+
+def test_map_without_configured_prefix_uses_identifier_as_is(default_csv_data, default_config):
+    # Arrange
+    row = default_csv_data.copy()
+    row["identifier"] = "dataset-1"
+    del default_config["dataset"]["identifier"]
+
+    # Act
+    result = map_xds_to_healthri_dcat_dataset(row, default_config)
+
+    # Assert
+    assert result.identifier.value == "dataset-1"
+
+
+def test_map_row_description_and_keywords_override_config(default_csv_data, default_config):
+    # Arrange
+    row = default_csv_data.copy()
+    row["description"] = "Row description"
+    row["keywords"] = "ct; thorax,  radiology"
+
+    # Act
+    result = map_xds_to_healthri_dcat_dataset(row, default_config)
+
+    # Assert
+    assert [d.value for d in result.description] == ["Row description"]
+    assert [k.value for k in result.keyword] == ["ct", "thorax", "radiology"]
+
+
+def test_map_falls_back_to_config_description_and_keywords(default_csv_data, default_config):
+    # Arrange
+    row = default_csv_data.copy()
+    row["description"] = float("nan")
+    row["keywords"] = "  "
+
+    # Act
+    result = map_xds_to_healthri_dcat_dataset(row, default_config)
+
+    # Assert
+    assert [d.value for d in result.description] == ["This is imaging data description"]
+    assert [k.value for k in result.keyword] == ["list", "of", "key", "words"]
