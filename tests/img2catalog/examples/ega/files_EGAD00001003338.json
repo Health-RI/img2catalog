@@ -1,0 +1,47 @@
+[
+  {
+    "accession_id": "EGAF00001753734",
+    "extension": "cram",
+    "filesize": 45030910198
+  },
+  {
+    "accession_id": "EGAF00001753735",
+    "extension": "crai",
+    "filesize": 1575787
+  },
+  {
+    "accession_id": "EGAF00001753746",
+    "extension": "bam",
+    "filesize": 143427187111
+  },
+  {
+    "accession_id": "EGAF00001753747",
+    "extension": "bai",
+    "filesize": 8953804
+  },
+  {
+    "accession_id": "EGAF00005000662",
+    "extension": "vcf.gz",
+    "filesize": 25455080
+  },
+  {
+    "accession_id": "EGAF00005000663",
+    "extension": "tbi",
+    "filesize": 18596
+  },
+  {
+    "accession_id": "EGAF00005000664",
+    "extension": "bcf",
+    "filesize": 26957200
+  },
+  {
+    "accession_id": "EGAF00005000665",
+    "extension": "csi",
+    "filesize": 14509
+  },
+  {
+    "accession_id": "EGAF00007243776",
+    "extension": "1664408722194",
+    "filesize": 1997
+  }
+]
