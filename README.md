@@ -84,8 +84,9 @@ Which catalog in the FDP is used:
 - With `-c` (or `catalog` in the `[fdp]` configuration), the Datasets are pushed into that existing catalog. Its
   metadata is left as it is, unless `--update-catalog` is given: then it is replaced by the Catalog of the mapping
   (XNAT, EGA).
-- Without `-c`, the Catalog of the mapping is looked up in the FDP by its title (this needs `-s`), updated when it is
-  there and created when it is not. If more than one catalog in the FDP has that title, or the catalog cannot be
+- Without `-c`, the Catalog of the mapping is looked up in the FDP by its title (this needs `-s`). When it is there,
+  the Datasets are pushed into it and its metadata is left as it is, unless `--update-catalog` is given; when it is
+  not, it is created. If more than one catalog in the FDP has that title, or the catalog cannot be
   pushed, or the URI of the FDP itself cannot be read, nothing is pushed and `img2catalog` exits with an error; in the
   first case, give the catalog to use with `-c`.
 - XDS has no Catalog, and neither has EGA without a `[catalog]` configuration, so these need `-c`.

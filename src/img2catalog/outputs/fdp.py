@@ -98,8 +98,8 @@ class FDPOutput:
     sparql: Union[str, None]
         URL to the SparQL endpoint
     update_catalog: bool
-        Update the catalog given with catalog_uri with the mapped Catalog. Off by default, as that replaces the
-        metadata of an existing catalog.
+        Update the existing catalog (given with catalog_uri, or found by its title) with the mapped Catalog. Off by
+        default, as that replaces the metadata of an existing catalog.
 
     """
 
@@ -209,10 +209,10 @@ class FDPOutput:
     def push_catalog(self, catalogs: List[Dict], datasets: Optional[List[Dict]] = None) -> URIRef:
         """Push the mapped Catalog, and return the URI of the catalog in the FDP to push the Datasets to.
 
-        An existing catalog given with its URI is only updated with the mapped Catalog when update_catalog is set, so
-        the metadata of a catalog maintained otherwise is not replaced. Without a given catalog, the mapped Catalog is
-        found by its title and updated, or created. It is not created when the Datasets to push are already in another
-        catalog of the FDP (see refuse_new_catalog_for_existing_datasets).
+        An existing catalog, given with its URI or found by the title of the mapped Catalog, is only updated with the
+        mapped Catalog when update_catalog is set, so the metadata of a catalog maintained otherwise is not replaced.
+        When no catalog is given or found, the mapped Catalog is created. It is not created when the Datasets to push
+        are already in another catalog of the FDP (see refuse_new_catalog_for_existing_datasets).
         """
         if not catalogs:
             if not self.catalog_uri:
@@ -247,6 +247,14 @@ class FDPOutput:
             if not fdp_uri:
                 found = self.find_catalog(title, root)
                 fdp_uri = self.check_fdp_record_uri(found) if found else None
+                if fdp_uri and not self.update_catalog:
+                    logger.info(
+                        "Pushing into catalog %s found by its title %r, without updating it with the mapped Catalog "
+                        "(use --update-catalog for that)",
+                        fdp_uri,
+                        title,
+                    )
+                    return URIRef(fdp_uri)
             if not fdp_uri:
                 self.refuse_new_catalog_for_existing_datasets(title, root, datasets or [])
             return self.push_record("catalog", graph, catalog["uri"], fdp_uri)

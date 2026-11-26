@@ -667,23 +667,29 @@ def test_ega_keeps_compressed_and_uncompressed_distributions_apart_on_rerun(
     assert_fdp_consistent(fdp)
 
 
-@pytest.mark.parametrize("catalog_config", [False, True])
-def test_update_catalog_without_catalog_is_a_usage_error(
-    fdp, default_ega_dataset, isolated_cli_runner, tmp_path, catalog_config
-):
-    """--update-catalog only applies to the catalog given with -c (or in the [fdp] configuration)."""
-    config = (EXAMPLES / "ega" / "example_config.toml").read_text()
-    if catalog_config:
-        config += f'\n[fdp]\ncatalog = "{FDP_URL}/catalog/1"\n'
-    path = tmp_path / "config.toml"
-    path.write_text(config)
-    args = ["-c", str(path), *ega_args()[2:], *FDP_ARGS, "--update-catalog"]
+def test_ega_pushes_into_catalog_found_by_its_title_without_changing_it(fdp, default_ega_dataset, isolated_cli_runner):
+    """A catalog in the FDP with the title of the mapped Catalog gets the datasets, but keeps its metadata."""
+    catalog = existing_catalog(fdp, title="Example EGA catalog", datasets=2)
 
-    result = invoke(isolated_cli_runner, args, [default_ega_dataset])
+    with patch.object(fdp, "update_serialized", wraps=fdp.update_serialized) as update:
+        run_twice = [invoke(isolated_cli_runner, ega_args() + FDP_ARGS, [default_ega_dataset]) for _ in range(2)]
 
-    if catalog_config:
-        assert "--update-catalog only applies" not in result.output
-    else:
-        assert result.exit_code == 2
-        assert "--update-catalog only applies to an existing catalog given with -c" in result.output
-        assert fdp.records == {}
+    assert all(result.exit_code == 0 for result in run_twice), run_twice[-1].output
+    assert catalog not in [call.args[0] for call in update.call_args_list]
+    assert list(fdp.of_type("catalog")) == [catalog]
+    assert not list(fdp.records[catalog].objects(catalog, DCAT.contactPoint))
+    assert len(list(fdp.records[catalog].objects(catalog, DCAT.dataset))) == 3
+
+
+def test_ega_updates_catalog_found_by_its_title_with_update_catalog(fdp, default_ega_dataset, isolated_cli_runner):
+    catalog = existing_catalog(fdp, title="Example EGA catalog", datasets=2)
+
+    run_twice = [
+        invoke(isolated_cli_runner, ega_args() + FDP_ARGS + ["--update-catalog"], [default_ega_dataset])
+        for _ in range(2)
+    ]
+
+    assert all(result.exit_code == 0 for result in run_twice), run_twice[-1].output
+    assert list(fdp.of_type("catalog")) == [catalog]
+    assert_contact_point(fdp, catalog)
+    assert len(list(fdp.records[catalog].objects(catalog, DCAT.dataset))) == 3

@@ -254,7 +254,10 @@ def output_rdf(ctx: click.Context, output: click.Path, format: str):
     "--update-catalog",
     is_flag=True,
     default=False,
-    help="Update the catalog given with -c with the Catalog of the mapping (EGA, XNAT), replacing its metadata.",
+    help=(
+        "Update the existing catalog (given with -c, or found by its title) with the Catalog of the mapping "
+        "(EGA, XNAT), replacing its metadata."
+    ),
 )
 @click.option(
     "-s",
@@ -271,12 +274,6 @@ def output_fdp(
     """Push metadata to a FAIR Data Point (FDP): the Catalog, Datasets and Distributions."""
     config = ctx.obj["config"]
     mapped_objects = ctx.obj["mapped_objects"]
-
-    if update_catalog and not (catalog or config.get("fdp", {}).get("catalog")):
-        raise click.UsageError(
-            "--update-catalog only applies to an existing catalog given with -c (or as 'catalog' in the [fdp] "
-            "configuration); without it, the Catalog of the mapping is found by its title and updated anyway"
-        )
 
     fdp_output = FDPOutput(
         config, fdp, username, password, catalog_uri=catalog, sparql=sparql, update_catalog=update_catalog
