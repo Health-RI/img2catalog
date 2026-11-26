@@ -82,6 +82,27 @@ the metadata stored in your FDP. To do so, supply the SPARQL endpoint as an argu
 img2catalog xnat --server https://xnat.health-ri.nl map-xnat-hriv2 fdp --fdp "https://fdp.healthdata.nl" -u "albert.einstein@example.com" -p "password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d" -s "https://sparql-acc.healthdata.nl/repositories/fdp"
 ```
 
+#### Updating EGA datasets
+EGA datasets are pushed the same way; only the Datasets are pushed, into the existing Catalog given with `-c`. With
+the SPARQL endpoint of the same FDP supplied, rerunning the same command updates the EGA datasets already in the
+Catalog instead of adding them again, so the FDP stays up to date with EGA:
+
+```sh
+img2catalog -c config.toml ega -a EGAD00001005083 -a EGAD00001005084 map-ega-hriv2 fdp --fdp "https://fdp-acc.healthdata.nl" -u "albert.einstein@example.com" -p "password" -c "https://fdp-acc.healthdata.nl/catalog/5400322c-273c-4f47-ae30-00e7c345b85d" -s "https://sparql-acc.healthdata.nl/repositories/fdp"
+```
+
+A dataset is matched on its identifier, the EGA archive URL (e.g. `https://ega-archive.org/datasets/EGAD00001005083`),
+within the Catalog, so use the same Catalog URI on every run. Datasets pushed by an earlier version of `img2catalog`,
+with another identifier, are not matched; remove those from the FDP once. If the Catalog holds more than one dataset
+with the same identifier, that dataset is skipped with a warning until the duplicates are removed. A dataset of which
+the EGA metadata cannot be fetched completely is skipped, so that it does not replace the dataset in the FDP with
+incomplete metadata. When EGA answers Not Found for the DACs, files or studies of a dataset, the dataset has none of
+them; this is logged as a warning, as it would also be the result of EGA no longer serving them.
+
+When one or more datasets cannot be pushed to the FDP, the other datasets are still pushed, after which
+`img2catalog` exits with an error (exit code 1) that lists the datasets that failed. This also applies to pushes from
+XNAT and XDS. Check the exit code in scripts and schedulers to notice that the FDP is not up to date.
+
 ### Configuration XNAT
 
 A number of configuration options are available through the command line interface (CLI). To get an overview of these
@@ -114,6 +135,19 @@ not useful for reuse are not submitted to the FDP. Configure the minimum in the 
 minimum_unique_individuals = 10
 ```
 If not set, no datasets are filtered out.
+
+Each row of the CSV file is a separate dataset (institute, modality and period). When pushing to the FDP, its
+identifier is the `identifier` of the `[dataset]` configuration, followed by a slug of the dataset title, e.g.
+`https://www.example.com/img-123/hospital-a-ct-2024`. Rerunning the push with the SPARQL endpoint supplied updates a
+dataset in the FDP when its identifier is the same, so:
+- Datasets pushed by an earlier version of `img2catalog`, which all had the configured identifier, are not matched.
+  Remove those from the FDP once, or the rerun adds all datasets again next to them.
+- The period is part of the title, because the same institute and modality occur once per period (e.g. Hospital B CT
+  for 2023 and for 2024), and those rows are separate datasets. When the period of a row changes, e.g. because a new
+  export covers a longer period, the row gets a new identifier and is added as a new dataset. To migrate: after the
+  push, remove the dataset with the old period (same institute and modality) from the FDP.
+- Rows with the same identifier, which differ only in characters that the identifier leaves out (like case and
+  punctuation), are refused with an error, as one would overwrite the other.
 
 
 

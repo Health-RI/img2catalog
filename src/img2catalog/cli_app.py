@@ -40,9 +40,9 @@ from img2catalog.mappings.ega import (
     map_ega_to_healthri_dcat_dataset,
     map_ega_to_healthri_dcat_distributions,
 )
-from img2catalog.mappings.xds import map_xds_to_healthri_dcat_dataset
+from img2catalog.mappings.xds import ensure_unique_identifiers, map_xds_to_healthri_dcat_dataset
 from img2catalog.mappings.xnat import map_xnat_to_healthriv2
-from img2catalog.outputs.fdp import FDPOutput
+from img2catalog.outputs.fdp import FDPOutput, FDPPushError
 from img2catalog.outputs.rdf import RDFOutput
 
 logger = logging.getLogger(__name__)
@@ -258,7 +258,11 @@ def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catal
 
     fdp_output = FDPOutput(config, fdp, username, password, catalog_uri=catalog, sparql=sparql)
 
-    fdp_output.push_to_fdp(mapped_objects)
+    try:
+        fdp_output.push_to_fdp(mapped_objects)
+    except FDPPushError as e:
+        # Exit with an error, so that scripts and schedulers notice that the FDP is not up to date
+        raise click.ClickException(str(e)) from e
 
 
 @click.group(name="xnat-project")
@@ -359,6 +363,11 @@ def mapping_xds(ctx: click.Context):
     for _i, row in unmapped_objects["dataset"].iterrows():
         dataset = map_xds_to_healthri_dcat_dataset(row, config)
         datasets.append({"uri": URIRef(f"http://img2catalog.internal/dataset/{uuid.uuid4()}"), "model_object": dataset})
+
+    try:
+        ensure_unique_identifiers([dataset["model_object"] for dataset in datasets])
+    except ValueError as e:
+        raise click.ClickException(str(e)) from e
 
     ctx.obj["mapped_objects"] = {"dataset": datasets}
 

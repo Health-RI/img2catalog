@@ -3,7 +3,9 @@ from sempyro.hri_dcat import HRIDataset
 from sempyro.time import PeriodOfTime
 
 from img2catalog.mappings.xds import (
+    ensure_unique_identifiers,
     format_date,
+    format_identifier,
     format_temporal_coverage,
     format_title,
     map_xds_to_healthri_dcat_dataset,
@@ -89,3 +91,58 @@ def test_map_xds_to_healthri_dcat_dataset_raises_on_missing_field(missing_csv_da
     # Act & Assert
     with pytest.raises(KeyError):
         map_xds_to_healthri_dcat_dataset(missing_csv_data, default_config)
+
+
+@pytest.mark.parametrize(
+    ("identifier_base", "title", "expected"),
+    [
+        (
+            "https://www.example.com/img-123",
+            "Amsterdam Hospital - CT - 2026",
+            "https://www.example.com/img-123/amsterdam-hospital-ct-2026",
+        ),
+        (
+            "https://www.example.com/img/",
+            "Hospital B - MR - 01-01-2023/31-12-2024",
+            "https://www.example.com/img/hospital-b-mr-01-01-2023-31-12-2024",
+        ),
+    ],
+)
+def test_format_identifier(identifier_base, title, expected):
+    assert format_identifier(identifier_base, title) == expected
+
+
+def test_ensure_unique_identifiers_refuses_titles_that_give_the_same_identifier(default_csv_data, default_config):
+    """Titles that only differ in punctuation or case get the same identifier, so one would overwrite the other."""
+    other_row = default_csv_data.copy()
+    other_row["instituteName"] = "AMSTERDAM  hospital!"
+    datasets = [map_xds_to_healthri_dcat_dataset(row, default_config) for row in (default_csv_data, other_row)]
+
+    with pytest.raises(ValueError, match="same dataset identifier") as error:
+        ensure_unique_identifiers(datasets)
+
+    assert "Amsterdam Hospital - CT - 2026" in str(error.value)
+    assert "AMSTERDAM  hospital! - CT - 2026" in str(error.value)
+
+
+def test_ensure_unique_identifiers_accepts_different_rows(default_csv_data, default_config):
+    other_row = default_csv_data.copy()
+    other_row["modality"] = "MR"
+    datasets = [map_xds_to_healthri_dcat_dataset(row, default_config) for row in (default_csv_data, other_row)]
+
+    ensure_unique_identifiers(datasets)
+
+
+def test_map_xds_gives_each_row_its_own_identifier(default_csv_data, default_config):
+    """Each row is a separate dataset, which the FDP output finds by its identifier when updating it."""
+    other_row = default_csv_data.copy()
+    other_row["modality"] = "MR"
+
+    identifiers = {
+        map_xds_to_healthri_dcat_dataset(row, default_config).identifier.value for row in (default_csv_data, other_row)
+    }
+
+    assert identifiers == {
+        "https://www.example.com/img-123/amsterdam-hospital-ct-2026",
+        "https://www.example.com/img-123/amsterdam-hospital-mr-2026",
+    }
