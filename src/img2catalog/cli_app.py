@@ -42,7 +42,7 @@ from img2catalog.mappings.ega import (
 )
 from img2catalog.mappings.xds import ensure_unique_identifiers, map_xds_to_healthri_dcat_dataset
 from img2catalog.mappings.xnat import map_xnat_to_healthriv2
-from img2catalog.outputs.fdp import FDPOutput, FDPPushError
+from img2catalog.outputs.fdp import FDPError, FDPOutput
 from img2catalog.outputs.rdf import RDFOutput
 
 logger = logging.getLogger(__name__)
@@ -240,27 +240,48 @@ def output_rdf(ctx: click.Context, output: click.Path, format: str):
 @click.option("-u", "--username", envvar=FDP_USER_ENV, type=str, required=True, help="Username of FDP to push to")
 @click.option("-p", "--password", envvar=FDP_PASS_ENV, type=str, required=True, help="Password of FDP to push to")
 @click.option(
-    "-c", "--catalog", default=None, type=URIRef, help="Catalog URI where datasets will be placed in", required=True
+    "-c",
+    "--catalog",
+    default=None,
+    type=URIRef,
+    help=(
+        "URI of an existing catalog in the FDP where datasets will be placed in. When not given, the Catalog of the "
+        "mapping (EGA, XNAT) is found in the FDP by its title, or created. Required when the mapping has no Catalog "
+        "(XDS), unless set as 'catalog' in the [fdp] configuration."
+    ),
+)
+@click.option(
+    "--update-catalog",
+    is_flag=True,
+    default=False,
+    help=(
+        "Update the existing catalog (given with -c, or found by its title) with the Catalog of the mapping "
+        "(EGA, XNAT), replacing its metadata."
+    ),
 )
 @click.option(
     "-s",
     "--sparql",
     envvar=SPARQL_ENV,
     type=URIRef,
-    help=" URL of SPARQL endpoint of FDP, used for querying which dataset to update",
+    help=" URL of SPARQL endpoint of FDP, used for querying which records to update",
 )
 @mapping_xnat_healthriv2.command(name="fdp")
 @click.pass_context
-def output_fdp(ctx: click.Context, fdp: str, username: str, password: str, catalog: URIRef, sparql: str):
-    """Push metadata to a FAIR Data Point (FDP)."""
+def output_fdp(
+    ctx: click.Context, fdp: str, username: str, password: str, catalog: URIRef, update_catalog: bool, sparql: str
+):
+    """Push metadata to a FAIR Data Point (FDP): the Catalog, Datasets and Distributions."""
     config = ctx.obj["config"]
     mapped_objects = ctx.obj["mapped_objects"]
 
-    fdp_output = FDPOutput(config, fdp, username, password, catalog_uri=catalog, sparql=sparql)
+    fdp_output = FDPOutput(
+        config, fdp, username, password, catalog_uri=catalog, sparql=sparql, update_catalog=update_catalog
+    )
 
     try:
         fdp_output.push_to_fdp(mapped_objects)
-    except FDPPushError as e:
+    except FDPError as e:
         # Exit with an error, so that scripts and schedulers notice that the FDP is not up to date
         raise click.ClickException(str(e)) from e
 

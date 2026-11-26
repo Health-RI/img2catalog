@@ -1,30 +1,53 @@
+import json
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
+from urllib.parse import urlsplit
 
 from fairclient.fdpclient import FDPClient
 from fairclient.sparqlclient import FDPSPARQLClient
-from fairclient.utils import add_or_update_dataset
-from rdflib import DCAT, DCTERMS, RDF, Graph, URIRef
+from fairclient.utils import rewrite_graph_subject
+from rdflib import DCAT, DCTERMS, RDF, Graph, Namespace, URIRef
 from sempyro import LiteralField
 
 logger = logging.getLogger(__name__)
 
+FDP_O = Namespace("https://w3id.org/fdp/fdp-o#")
+LDP = Namespace("http://www.w3.org/ns/ldp#")
+
 # URIs that img2catalog gives to mapped objects before they get a URI in the FDP
 INTERNAL_URI_PREFIX = "http://img2catalog.internal/"
+
+# The FDP links a parent record to its children (e.g. a Catalog to its Datasets) when a child is pushed, and lists them
+# with ldp:contains. Updating the parent replaces its metadata, which removes these links, so they are kept when
+# updating a record. The FDP also adds the themes of the Datasets of a Catalog to it as dcat:themeTaxonomy.
+CHILD_LINKS = {"catalog": DCAT.dataset, "dataset": DCAT.distribution}
+FDP_MANAGED = {"catalog": [DCAT.themeTaxonomy]}
 
 
 # Raised by fairclient when the FDP catalog holds more than one dataset with the identifier that is looked up
 DUPLICATE_DATASET_MESSAGE = "More than one result"
 
 
-class FDPPushError(RuntimeError):
+class FDPError(RuntimeError):
+    """Base of the errors of pushing to the FDP, which the command line reports without a traceback."""
+
+
+class FDPPushError(FDPError):
     """Pushing one or more records to the FDP failed, after all records were tried."""
+
+
+class FDPCatalogError(FDPError):
+    """The catalog to push the Datasets into is not known or could not be pushed, so nothing is pushed."""
+
+
+class FDPRecordOriginError(FDPError):
+    """A record found with SPARQL is not on the FDP, so no authenticated request is sent to it."""
 
 
 def remove_internal_distribution_links(graph: Graph, dataset_uri: URIRef) -> None:
     """Remove the links of a Dataset to Distributions that only have an internal img2catalog URI.
 
-    Distributions are not pushed to the FDP (yet), so these links would not resolve in the FDP. Links to
+    The FDP links a Dataset to the Distributions pushed into it, so these links would not resolve in the FDP. Links to
     Distributions with an actual URI are kept.
     """
     for distribution in graph.objects(dataset_uri, DCAT.distribution):
@@ -51,6 +74,11 @@ def get_identifier_value(identifier: Union[str, LiteralField, None]) -> Optional
     return identifier
 
 
+def _sparql_string(value: str) -> str:
+    """Quote a text as a SPARQL string literal."""
+    return json.dumps(value, ensure_ascii=False)
+
+
 class FDPOutput:
     """Output class that handles output to a FAIR Data Point (FDP)
 
@@ -65,9 +93,13 @@ class FDPOutput:
     fdp_password: str
         Password for the FDP to push to
     catalog_uri: Union[str, None]
-        URI for the catalog on the FDP to add the datasets under
+        URI of an existing catalog in the FDP to push the Datasets to. Without it, the mapped Catalog is found in the
+        FDP by its title, or created.
     sparql: Union[str, None]
         URL to the SparQL endpoint
+    update_catalog: bool
+        Update the existing catalog (given with catalog_uri, or found by its title) with the mapped Catalog. Off by
+        default, as that replaces the metadata of an existing catalog.
 
     """
 
@@ -79,9 +111,14 @@ class FDPOutput:
         fdp_password: str,
         catalog_uri: Union[str, None] = None,
         sparql: Union[str, None] = None,
+        update_catalog: bool = False,
     ):
         self.config = config
         self.fdp = fdp
+        self.update_catalog = update_catalog
+        # The records that could not be pushed, which make the push fail after all records were tried
+        self.failures: List[str] = []
+        self._fdp_origins: Optional[Set[Tuple[str, str]]] = None
 
         self.fdpclient = FDPClient(self.fdp, fdp_username, fdp_password)
 
@@ -92,10 +129,242 @@ class FDPOutput:
         self.catalog_uri = catalog_uri
         if not self.catalog_uri:
             self.catalog_uri = self.config["fdp"].get("catalog", None) if "fdp" in self.config else None
-        if not self.catalog_uri:
-            raise ValueError("FDP Error: No catalog URI set to push to")
         if isinstance(self.catalog_uri, str):
             self.catalog_uri = URIRef(self.catalog_uri)
+
+    def push_to_fdp(self, input_obj: Dict[str, List[Dict]]) -> None:
+        """Push the Catalog, Datasets and Distributions to a FAIR Data Point
+
+        The Catalog is pushed first, then the Datasets into it, then the Distributions into their Dataset. Contact
+        points (vcard:Kind) and other nested classes are pushed as part of the record they belong to.
+
+        A record already in the FDP is updated instead of added again, so rerunning a push keeps the FDP up to date: a
+        Dataset is found by its identifier within the Catalog, a Distribution by its format and compression within its
+        Dataset, and a Catalog by its title (unless an existing catalog is given). This needs the SPARQL endpoint of the
+        FDP.
+
+        Parameters
+        ----------
+        input_obj: Dict[str, List[Dict]]
+            Dictionary with a list of Health-RI concept objects per concept type
+
+        """
+        self.failures = []
+        if not self.sparqlclient:
+            logger.warning(
+                "No SPARQL endpoint set: existing records in the FDP cannot be found, so every push adds them again"
+            )
+
+        catalog_uri = self.push_catalog(input_obj.get("catalog") or [], input_obj["dataset"])
+
+        fdp_datasets = {}
+        for dataset in input_obj["dataset"]:
+            fdp_uri = self.push_dataset(dataset, catalog_uri)
+            if fdp_uri is not None:
+                fdp_datasets[dataset["uri"]] = fdp_uri
+
+        for distribution in input_obj.get("distribution") or []:
+            dataset_uri = fdp_datasets.get(distribution["dataset_uri"])
+            if dataset_uri is None:
+                logger.warning(
+                    "Skipping Distribution %s, as its Dataset was not pushed to the FDP", distribution["uri"]
+                )
+                continue
+            self.push_distribution(distribution, dataset_uri)
+
+        if self.failures:
+            raise FDPPushError(
+                f"{len(self.failures)} record(s) could not be pushed to the FDP: {'; '.join(self.failures)}"
+            )
+
+    def _origin(self, uri: Union[str, URIRef]) -> Tuple[str, str]:
+        parts = urlsplit(str(uri))
+        return parts.scheme.lower(), parts.netloc.lower()
+
+    def check_fdp_record_uri(self, uri: Union[str, URIRef]) -> str:
+        """Return the URI of a record found with SPARQL, when it is on the FDP itself.
+
+        The FDP client sends its login token with every request, so a record URI from a SPARQL store that points
+        somewhere else (e.g. a forged result) must not be used. The FDP is known by the URL it is pushed to, and by the
+        URI it gives itself, which differ when the FDP runs behind another address.
+        """
+        origins = self._fdp_origins
+        if origins is None:
+            origins = {self._origin(self.fdp)}
+            try:
+                origins.add(self._origin(self.get_fdp_root()))
+                self._fdp_origins = origins
+            except FDPError as e:
+                # Only the URL that is pushed to is trusted then, which can only refuse records. This is not kept, so
+                # the next record tries to read the URI of the FDP again.
+                logger.warning("Only accepting records of %s, as the URI of the FDP is not known: %s", self.fdp, e)
+        if self._origin(uri) not in origins:
+            raise FDPRecordOriginError(f"{uri} found with SPARQL is not a record of the FDP {self.fdp}")
+        return str(uri)
+
+    def _fail(self, message: str) -> None:
+        """Remember that a record could not be pushed, so the push is reported as failed after all records are tried."""
+        self.failures.append(message)
+
+    def push_catalog(self, catalogs: List[Dict], datasets: Optional[List[Dict]] = None) -> URIRef:
+        """Push the mapped Catalog, and return the URI of the catalog in the FDP to push the Datasets to.
+
+        An existing catalog, given with its URI or found by the title of the mapped Catalog, is only updated with the
+        mapped Catalog when update_catalog is set, so the metadata of a catalog maintained otherwise is not replaced.
+        When no catalog is given or found, the mapped Catalog is created. It is not created when the Datasets to push
+        are already in another catalog of the FDP (see refuse_new_catalog_for_existing_datasets).
+        """
+        if not catalogs:
+            if not self.catalog_uri:
+                raise FDPCatalogError(
+                    "No catalog URI set to push to: the mapping has no Catalog, so give an existing catalog with -c"
+                )
+            return self.catalog_uri
+        if self.catalog_uri and not self.update_catalog:
+            logger.info(
+                "Pushing into catalog %s without updating it with the mapped Catalog (use --update-catalog for that)",
+                self.catalog_uri,
+            )
+            return self.catalog_uri
+        if not self.catalog_uri and not self.sparqlclient:
+            logger.warning(
+                "No catalog and no SPARQL endpoint given: the existing catalog cannot be found, so a new catalog with "
+                "new datasets is created on every push. Give the catalog with -c or the SPARQL endpoint with -s"
+            )
+        if len(catalogs) > 1:
+            logger.warning("Only the first of %d Catalogs is pushed to the FDP", len(catalogs))
+
+        catalog = catalogs[0]
+        graph = catalog["model_object"].to_graph(catalog["uri"])
+        # The FDP links the Catalog to the Datasets pushed into it
+        graph.remove((catalog["uri"], DCAT.dataset, None))
+
+        title = str(next(iter(graph.objects(catalog["uri"], DCTERMS.title)), ""))
+        fdp_uri = self.catalog_uri
+        try:
+            root = self.get_fdp_root()
+            graph.add((catalog["uri"], DCTERMS.isPartOf, root))
+            if not fdp_uri:
+                found = self.find_catalog(title, root)
+                fdp_uri = self.check_fdp_record_uri(found) if found else None
+                if fdp_uri and not self.update_catalog:
+                    logger.info(
+                        "Pushing into catalog %s found by its title %r, without updating it with the mapped Catalog "
+                        "(use --update-catalog for that)",
+                        fdp_uri,
+                        title,
+                    )
+                    return URIRef(fdp_uri)
+            if not fdp_uri:
+                self.refuse_new_catalog_for_existing_datasets(title, root, datasets or [])
+            return self.push_record("catalog", graph, catalog["uri"], fdp_uri)
+        except Exception as e:
+            if not fdp_uri:
+                raise FDPCatalogError(
+                    f"Could not push catalog {title!r} to the FDP, so no records are pushed: {e}"
+                ) from e
+            # The catalog exists, so the datasets can still be pushed into it, but its metadata is not up to date
+            logger.warning("Error updating catalog %s in the FDP, pushing the datasets into it: %s", fdp_uri, e)
+            self._fail(f"catalog {fdp_uri}: {e}")
+            return URIRef(fdp_uri)
+
+    def push_dataset(self, dataset: Dict, catalog_uri: URIRef) -> Optional[URIRef]:
+        """Push a Dataset into the catalog in the FDP, and return its URI in the FDP (None when it failed)."""
+        graph = dataset["model_object"].to_graph(dataset["uri"])
+        # This is FDP specific: Dataset points back to the Catalog
+        graph.add((dataset["uri"], DCTERMS.isPartOf, catalog_uri))
+        remove_internal_distribution_links(graph, dataset["uri"])
+        identifier = get_identifier_value(dataset["model_object"].identifier)
+        logger.debug("Going to push %s to FDP", dataset["model_object"].title)
+        try:
+            fdp_uri = None
+            if self.sparqlclient and identifier:
+                found = self.sparqlclient.find_subject(identifier, catalog_uri)
+                fdp_uri = self.check_fdp_record_uri(found) if found else None
+            return self.push_record("dataset", graph, dataset["uri"], fdp_uri)
+        except Exception as e:
+            hint = (
+                ". Remove the duplicate datasets with this identifier from the FDP catalog to update it again"
+                if is_duplicate_dataset_error(e)
+                else ""
+            )
+            logger.warning("Error pushing dataset %s to FDP: %s%s", identifier, e, hint)
+            self._fail(f"dataset {identifier}: {e}")
+        return None
+
+    def push_distribution(self, distribution: Dict, dataset_uri: URIRef) -> Optional[URIRef]:
+        """Push a Distribution into its Dataset in the FDP, and return its URI in the FDP (None when it failed)."""
+        graph = distribution["model_object"].to_graph(distribution["uri"])
+        graph.add((distribution["uri"], DCTERMS.isPartOf, dataset_uri))
+        file_format = getattr(distribution["model_object"], "format", None)
+        compression_format = getattr(distribution["model_object"], "compression_format", None)
+        try:
+            fdp_uri = None
+            if self.sparqlclient and file_format:
+                found = self.find_distribution(
+                    dataset_uri,
+                    URIRef(str(file_format)),
+                    URIRef(str(compression_format)) if compression_format else None,
+                )
+                fdp_uri = self.check_fdp_record_uri(found) if found else None
+            return self.push_record("distribution", graph, distribution["uri"], fdp_uri)
+        except Exception as e:
+            logger.warning("Error pushing distribution %s of dataset %s to FDP: %s", file_format, dataset_uri, e)
+            self._fail(f"distribution {file_format} of dataset {dataset_uri}: {e}")
+        return None
+
+    def push_record(self, record_type: str, graph: Graph, subject: URIRef, fdp_uri: Union[str, URIRef, None]) -> URIRef:
+        """Create a record in the FDP, or update the existing record with URI fdp_uri, and return its URI."""
+        if not fdp_uri:
+            created = URIRef(self.fdpclient.create_and_publish(record_type, graph))
+            logger.info("Created %s %s in the FDP", record_type, created)
+            return created
+
+        fdp_uri = URIRef(fdp_uri)
+        rewrite_graph_subject(graph, subject, fdp_uri)
+        self.keep_fdp_managed_links(record_type, fdp_uri, graph)
+        self.fdpclient.update_serialized(fdp_uri, graph)
+        logger.info("Updated %s %s in the FDP", record_type, fdp_uri)
+        # An updated record keeps its state in the FDP
+        try:
+            self.publish_if_draft(fdp_uri)
+        except Exception as e:
+            # The record is updated and exists in the FDP, so its children (the Distributions of a Dataset) can still
+            # be pushed into it; the push is reported as failed, as the record may not be published
+            logger.warning("Updated %s %s, but it may not be published: %s", record_type, fdp_uri, e)
+            self._fail(f"{record_type} {fdp_uri} was updated, but publishing it failed: {e}")
+        return fdp_uri
+
+    def keep_fdp_managed_links(self, record_type: str, fdp_uri: URIRef, graph: Graph) -> None:
+        """Add the links the FDP manages for an existing record to the graph it is updated with.
+
+        Otherwise the update removes them, and e.g. the Datasets of a Catalog that are not pushed again would no
+        longer be listed in it. Only links to the children the FDP holds for the record (ldp:contains) are kept, so a
+        link that was removed from the mapped metadata, e.g. an external distribution URL, stays removed.
+
+        When the record cannot be read, an error is raised instead of updating it, as the update would remove the links.
+        """
+        predicate = CHILD_LINKS.get(record_type)
+        managed = FDP_MANAGED.get(record_type, [])
+        if predicate is None and not managed:
+            return
+        response = self.fdpclient.session.get(
+            str(fdp_uri), headers={"Accept": "text/turtle"}, timeout=self.fdpclient.timeout
+        )
+        response.raise_for_status()
+        existing = Graph().parse(data=response.text, format="turtle")
+
+        if predicate is not None:
+            # The FDP lists the children of a record on a container (e.g. <.../dataset/> ldp:contains <child>), not on
+            # the record itself, so any subject is read. The response only describes this record, so the containers
+            # in it are those of this record.
+            children = set(existing.objects(None, LDP.contains))
+            for child in existing.objects(fdp_uri, predicate):
+                if child in children:
+                    graph.add((fdp_uri, predicate, child))
+        for managed_predicate in managed:
+            for value in existing.objects(fdp_uri, managed_predicate):
+                graph.add((fdp_uri, managed_predicate, value))
 
     def publish_if_draft(self, fdp_uri: URIRef) -> None:
         """Publish an existing record in the FDP when it is still a draft.
@@ -110,63 +379,123 @@ class FDPOutput:
             response.raise_for_status()
             state = (response.json().get("state") or {}).get("current")
         except Exception as e:
-            # The dataset is updated, but may stay a draft that is not shown, so the push is reported as failed
-            raise FDPPushError(f"Could not check if dataset {fdp_uri} is published in the FDP: {e}") from e
+            raise FDPPushError(f"Could not check if {fdp_uri} is published in the FDP: {e}") from e
 
         if state == "DRAFT":
-            logger.info("Publishing dataset %s, which was still a draft in the FDP", fdp_uri)
+            logger.info("Publishing %s, which was still a draft in the FDP", fdp_uri)
             self.fdpclient.publish_record(fdp_uri)
         elif state != "PUBLISHED":
             # Another FDP version may answer with another shape; then a draft would silently stay unpublished
             logger.warning(
-                "Dataset %s has an unknown state %r in the FDP, so it is not published if it is still a draft",
+                "%s has an unknown state %r in the FDP, so it is not published if it is still a draft",
                 fdp_uri,
                 state,
             )
 
-    def push_to_fdp(self, input_obj: Dict[str, List[Dict]]) -> None:
-        """Push Datasets to a FAIR Data Point
+    def get_fdp_root(self) -> URIRef:
+        """Return the URI of the FAIR Data Point itself, which is the parent of its catalogs.
 
-        A Dataset already in the FDP catalog, with the same identifier, is updated instead of added again, so
-        rerunning a push keeps the datasets in the FDP up to date. This needs the SPARQL endpoint of the FDP.
-
-        Parameters
-        ----------
-        input_obj: Dict[str, List[Dict]]
-            Dictionary with a list of Health-RI concept objects per concept type
-
+        It can differ from the URL the FDP is pushed to, so the URL is not used when the FDP cannot be read: a catalog
+        with the wrong parent would not be found again, and be created again on every push.
         """
-        if not self.sparqlclient:
-            logger.warning(
-                "No SPARQL endpoint set: existing datasets in the FDP cannot be found, so every push adds them again"
+        try:
+            response = self.fdpclient.session.get(self.fdp, headers={"Accept": "text/turtle"}, timeout=30)
+            response.raise_for_status()
+            root = (
+                Graph().parse(data=response.text, format="turtle").value(predicate=RDF.type, object=FDP_O.FAIRDataPoint)
             )
+        except Exception as e:
+            raise FDPError(f"Could not read the FDP root {self.fdp}: {e}") from e
+        if root is None:
+            raise FDPError(f"{self.fdp} does not describe a FAIR Data Point, so its URI is not known")
+        return URIRef(root)
 
-        dataset_obj = input_obj["dataset"]
-        failed = []
-        for dataset in dataset_obj:
-            graph = dataset["model_object"].to_graph(dataset["uri"])
+    def _query_subjects(self, query: str) -> List[str]:
+        self.sparqlclient.sparql.setQuery(query)
+        bindings = self.sparqlclient.sparql.queryAndConvert()["results"]["bindings"]
+        return sorted({binding["subject"]["value"] for binding in bindings})
 
-            # This is FDP specific: Dataset points back to the Catalog
-            graph.add((dataset["uri"], DCTERMS.isPartOf, self.catalog_uri))
-            remove_internal_distribution_links(graph, dataset["uri"])
-            identifier = get_identifier_value(dataset["model_object"].identifier)
-            logger.debug("Going to push %s to FDP", dataset["model_object"].title)
-            try:
-                result = add_or_update_dataset(graph, self.fdpclient, identifier, self.catalog_uri, self.sparqlclient)
-                # A created dataset is published by fairclient (it returns its URI); an updated one keeps its state.
-                # The updated graph has the subject of the existing dataset in the FDP.
-                if not isinstance(result, URIRef):
-                    self.publish_if_draft(graph.value(predicate=RDF.type, object=DCAT.Dataset, any=False))
-            except Exception as e:
-                hint = (
-                    ". Remove the duplicate datasets with this identifier from the FDP catalog to update it again"
-                    if is_duplicate_dataset_error(e)
-                    else ""
-                )
-                logger.warning("Error pushing dataset %s to FDP: %s%s", identifier, e, hint)
-                failed.append(str(identifier or dataset["uri"]))
+    def find_catalog(self, title: str, root: URIRef) -> Optional[str]:
+        """Find the catalog with this title in the FDP."""
+        if not self.sparqlclient or not title:
+            return None
+        subjects = self._query_subjects(
+            f"""PREFIX dcat: <http://www.w3.org/ns/dcat#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
 
-        if failed:
-            raise FDPPushError(
-                f"{len(failed)} of {len(dataset_obj)} datasets could not be pushed to the FDP: {', '.join(failed)}"
+SELECT DISTINCT ?subject
+WHERE {{
+    ?subject a dcat:Catalog ;
+        dcterms:isPartOf {URIRef(root).n3()} ;
+        dcterms:title ?title .
+    FILTER(str(?title) = {_sparql_string(title)})
+}}"""
+        )
+        if len(subjects) > 1:
+            raise ValueError(
+                f"More than one catalog titled {title!r} in the FDP: {subjects}; give the one to use with -c"
+            )
+        return subjects[0] if subjects else None
+
+    def find_distribution(
+        self, dataset_uri: URIRef, file_format: URIRef, compression_format: Optional[URIRef] = None
+    ) -> Optional[str]:
+        """Find the Distribution of a Dataset in the FDP with this format and compression, which identify it within
+        the Dataset: e.g. TXT, and TXT compressed with gzip, are separate Distributions."""
+        if compression_format is None:
+            compression = "FILTER NOT EXISTS { ?subject dcat:compressFormat ?compression }"
+        else:
+            compression = f"?subject dcat:compressFormat {URIRef(compression_format).n3()} ."
+        subjects = self._query_subjects(
+            f"""PREFIX dcat: <http://www.w3.org/ns/dcat#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+
+SELECT DISTINCT ?subject
+WHERE {{
+    ?subject a dcat:Distribution ;
+        dcterms:isPartOf {URIRef(dataset_uri).n3()} ;
+        dcterms:format {URIRef(file_format).n3()} .
+    {compression}
+}}"""
+        )
+        if len(subjects) > 1:
+            raise ValueError(
+                f"More than one distribution with format {file_format} and compression {compression_format} in dataset "
+                f"{dataset_uri}"
+            )
+        return subjects[0] if subjects else None
+
+    def refuse_new_catalog_for_existing_datasets(self, title: str, root: URIRef, datasets: List[Dict]) -> None:
+        """Refuse to create a catalog when Datasets of this push are already in another catalog of the FDP.
+
+        No catalog with the title of the mapped Catalog was found, but its datasets were: most likely the title was
+        changed in the configuration. As datasets are found within their catalog, a new catalog would get every
+        dataset again.
+        """
+        identifiers = sorted(
+            {get_identifier_value(dataset["model_object"].identifier) for dataset in datasets} - {None, ""}
+        )
+        if not self.sparqlclient or not identifiers:
+            return
+        identifier_list = ", ".join(_sparql_string(identifier) for identifier in identifiers)
+        catalogs = self._query_subjects(
+            f"""PREFIX dcat: <http://www.w3.org/ns/dcat#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+
+SELECT DISTINCT ?subject
+WHERE {{
+    ?dataset a dcat:Dataset ;
+        dcterms:identifier ?identifier ;
+        dcterms:isPartOf ?subject .
+    ?subject a dcat:Catalog ;
+        dcterms:isPartOf {URIRef(root).n3()} .
+    FILTER(str(?identifier) IN ({identifier_list}))
+}}"""
+        )
+        if catalogs:
+            raise FDPCatalogError(
+                f"No catalog titled {title!r} is in the FDP, but datasets of this push are already in catalog(s) "
+                f"{', '.join(catalogs)}. If the catalog title was changed in the configuration, give the existing "
+                "catalog with -c (and --update-catalog to update its title); a new catalog would add every dataset "
+                "again"
             )
