@@ -98,7 +98,8 @@ def _convert(value: str, vocabulary: Optional[Type[Enum]]) -> Any:
         return vocabulary(URIRef(value))
     except ValueError as e:
         allowed = ", ".join(str(member.value) for member in vocabulary)
-        raise ValueError(f"'{value}' is not one of: {allowed}") from e
+        # repr() escapes control characters in the text of the cell, which would otherwise reach the terminal as is
+        raise ValueError(f"{value!r} is not one of: {allowed}") from e
 
 
 def map_columns_to_properties(

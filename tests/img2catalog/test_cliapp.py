@@ -508,7 +508,7 @@ def test_xds_cli_reports_row_with_invalid_mapped_value(isolated_cli_runner, tmp_
     )
 
     assert result.exit_code == 1
-    assert "Row 0 of the XDS file" in result.output
+    assert "Line 2 of the XDS file" in result.output
 
 
 def test_xds_cli_skips_mapped_column_that_is_not_in_the_file(isolated_cli_runner, tmp_path, xds_csv_example):
@@ -519,3 +519,42 @@ def test_xds_cli_skips_mapped_column_that_is_not_in_the_file(isolated_cli_runner
     )
 
     assert result.exit_code == 0, result.output
+
+
+def test_xds_cli_refuses_rows_with_the_same_mapped_identifier(isolated_cli_runner, tmp_path):
+    config_path = _xds_config_with_mapping(tmp_path, '[xds.column_mapping]\n"Dataset ID" = "identifier"\n')
+    csv_path = tmp_path / "clash.csv"
+    csv_path.write_text(
+        "instituteName,numberOfUniqueIndividuals,numberOfRecords,minTypicalAge,maxTypicalAge,temporalCoverage,"
+        "modality,Dataset ID\n"
+        "Hospital A,5041,11052,16,89,01-01-2024 to 31-12-2024,CT,ds-1\n"
+        "Hospital B,6543,8436,21,92,01-01-2024 to 31-12-2024,MR,ds-1\n"
+    )
+
+    result = isolated_cli_runner.invoke(
+        cli_click, ["--config", config_path, "xds", "--input", str(csv_path), "map-xds", "rdf"]
+    )
+
+    assert result.exit_code == 1
+    assert "get the same dataset identifier" in result.output
+
+
+@pytest.mark.parametrize(
+    ("settings", "message"),
+    [
+        ('column_mapping = "description"', "[xds.column_mapping] in the configuration: it must be a table"),
+        ("list_separator = 5", "list_separator in [xds]"),
+        ('list_separator = ""', "list_separator in [xds]"),
+    ],
+)
+def test_xds_cli_refuses_malformed_settings_without_traceback(isolated_cli_runner, tmp_path, settings, message):
+    config_path = _xds_config_with_mapping(tmp_path, settings + "\n")
+    csv_path = _write_mapped_xds_csv(tmp_path / "mapped.csv")
+
+    result = isolated_cli_runner.invoke(
+        cli_click, ["--config", config_path, "xds", "--input", csv_path, "map-xds", "rdf"]
+    )
+
+    assert result.exit_code == 1
+    assert message in result.output
+    assert isinstance(result.exception, SystemExit)

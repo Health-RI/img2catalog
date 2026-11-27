@@ -40,7 +40,7 @@ def test_filter_by_unique_individuals_drops_rows_below_threshold(xds_csv_example
 
     # Assert
     assert len(result) == 3
-    assert (result["numberOfUniqueIndividuals"] >= 5000).all()
+    assert (pd.to_numeric(result["numberOfUniqueIndividuals"]) >= 5000).all()
 
 
 def test_filter_by_unique_individuals_keeps_rows_equal_to_threshold(xds_csv_example):
@@ -52,7 +52,7 @@ def test_filter_by_unique_individuals_keeps_rows_equal_to_threshold(xds_csv_exam
     result = filter_by_unique_individuals(df, config)
 
     # Assert
-    assert 5041 in result["numberOfUniqueIndividuals"].values
+    assert "5041" in result["numberOfUniqueIndividuals"].values
 
 
 def test_filter_by_unique_individuals_keeps_all_when_key_missing(xds_csv_example):
@@ -114,3 +114,29 @@ def test_filter_by_unique_individuals_raises_on_non_numeric_row_value(xds_csv_ex
     # Act & Assert
     with pytest.raises(ValueError, match="non-numeric value"):
         filter_by_unique_individuals(df, config)
+
+
+def test_read_csv_keeps_the_text_of_cells(tmp_path):
+    # Arrange
+    csv_path = tmp_path / "text.csv"
+    csv_path.write_text("id,remark,empty\n007,NA,\n1.50,null,x\n")
+
+    # Act
+    result = read_csv(csv_path)
+
+    # Assert
+    assert result["id"].tolist() == ["007", "1.50"]
+    assert result["remark"].tolist() == ["NA", "null"]
+    assert result["empty"].tolist() == ["", "x"]
+
+
+def test_filter_by_unique_individuals_uses_the_column_mapped_to_the_property():
+    # Arrange
+    df = pd.DataFrame({"Persons": ["20", "5"], "numberOfUniqueIndividuals": ["1", "100"]})
+    config = {"xds": {"minimum_unique_individuals": 10, "column_mapping": {"Persons": "number_of_unique_individuals"}}}
+
+    # Act
+    result = filter_by_unique_individuals(df, config)
+
+    # Assert
+    assert result["Persons"].tolist() == ["20"]

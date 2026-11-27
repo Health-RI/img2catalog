@@ -6,6 +6,7 @@ from sempyro.hri_dcat import HRIDataset
 from sempyro.time import PeriodOfTime
 
 from img2catalog.mappings.xds import (
+    ensure_unique_identifiers,
     format_date,
     format_identifier,
     format_temporal_coverage,
@@ -257,10 +258,85 @@ def test_map_reports_row_for_invalid_mapped_value(default_csv_data, default_conf
     row["Records"] = "many"
     default_config["xds"] = {"column_mapping": {"Records": "number_of_records"}}
 
-    with pytest.raises(ValueError, match="Row 7 of the XDS file"):
+    # Index 7 is the 8th data row, so line 9 of the file: the header is line 1
+    with pytest.raises(ValueError, match="Line 9 of the XDS file"):
         map_xds_to_healthri_dcat_dataset(row, default_config)
 
 
 def test_format_identifier_uses_given_identifier_after_prefix():
     assert format_identifier("https://www.example.com/img-123/", "ds-1") == "https://www.example.com/img-123/ds-1"
     assert format_identifier(None, "ds-1") == "ds-1"
+
+
+def test_map_reports_line_for_invalid_vocabulary_value(default_csv_data, default_config):
+    row = default_csv_data.copy()
+    row.name = 0
+    row["Status"] = "http://example.com/not-a-status"
+    default_config["xds"] = {"column_mapping": {"Status": "status"}}
+
+    with pytest.raises(ValueError, match="Line 2 of the XDS file: Column 'Status'"):
+        map_xds_to_healthri_dcat_dataset(row, default_config)
+
+
+def test_map_escapes_control_characters_of_a_cell_in_the_error(default_csv_data, default_config):
+    row = default_csv_data.copy()
+    row["Status"] = "bad\x1b[2Jvalue"
+    default_config["xds"] = {"column_mapping": {"Status": "status"}}
+
+    with pytest.raises(ValueError, match="not one of") as error:
+        map_xds_to_healthri_dcat_dataset(row, default_config)
+
+    assert "\x1b" not in str(error.value)
+    assert "\\x1b[2Jvalue" in str(error.value)
+
+
+def test_map_does_not_read_source_number_that_is_mapped(default_csv_data, default_config):
+    """A number that the user maps from another column is not read from its own column, which may be unusable."""
+    row = default_csv_data.copy()
+    row["numberOfRecords"] = ""
+    row["Records"] = "42"
+    default_config["xds"] = {"column_mapping": {"Records": "number_of_records"}}
+
+    result = map_xds_to_healthri_dcat_dataset(row, default_config)
+
+    assert result.number_of_records == 42
+
+
+def test_map_still_requires_source_number_that_is_not_mapped(default_csv_data, default_config):
+    row = default_csv_data.copy()
+    row["numberOfRecords"] = ""
+
+    with pytest.raises(ValueError, match="of the XDS file"):
+        map_xds_to_healthri_dcat_dataset(row, default_config)
+
+
+def test_ensure_unique_identifiers_refuses_rows_with_the_same_mapped_identifier(default_csv_data, default_config):
+    first_row = default_csv_data.copy()
+    first_row["Dataset ID"] = "ds-1"
+    other_row = default_csv_data.copy()
+    other_row["modality"] = "MR"
+    other_row["Dataset ID"] = "ds-1"
+    default_config["xds"] = {"column_mapping": {"Dataset ID": "identifier"}}
+    datasets = [map_xds_to_healthri_dcat_dataset(row, default_config) for row in (first_row, other_row)]
+
+    with pytest.raises(ValueError, match="same dataset identifier") as error:
+        ensure_unique_identifiers(datasets)
+
+    assert "Amsterdam Hospital - CT - 2026" in str(error.value)
+    assert "Amsterdam Hospital - MR - 2026" in str(error.value)
+
+
+def test_ensure_unique_identifiers_accepts_generated_identifiers(default_csv_data, default_config):
+    datasets = [map_xds_to_healthri_dcat_dataset(default_csv_data, default_config) for _ in range(2)]
+
+    ensure_unique_identifiers(datasets)
+
+
+def test_map_keeps_leading_zeros_of_mapped_identifier(default_csv_data, default_config):
+    row = default_csv_data.copy()
+    row["Dataset ID"] = "007"
+    default_config["xds"] = {"column_mapping": {"Dataset ID": "identifier"}}
+
+    result = map_xds_to_healthri_dcat_dataset(row, default_config)
+
+    assert result.identifier.value == "https://www.example.com/img-123/007"

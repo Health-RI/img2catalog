@@ -10,8 +10,13 @@ logger = logging.getLogger(__name__)
 
 
 def read_csv(csv_path: str) -> DataFrame:
+    """Read a CSV file with all cells as the text in the file.
+
+    Cells are not converted, so that values like `007` or `NA` reach the mapping as they are written. Empty cells are
+    empty text.
+    """
     try:
-        return pd.read_csv(csv_path)
+        return pd.read_csv(csv_path, dtype=str, keep_default_na=False)
     except Exception:
         logger.exception("Error reading .csv file")
         return pd.DataFrame()
@@ -26,7 +31,8 @@ def filter_by_unique_individuals(df: DataFrame, config: Dict) -> DataFrame:
     Parameters
     ----------
     df : DataFrame
-        Dataframe of XDS dataset rows, must contain a "numberOfUniqueIndividuals" column.
+        Dataframe of XDS dataset rows, must contain a "numberOfUniqueIndividuals" column, or the column that the
+        `xds.column_mapping` maps to `number_of_unique_individuals`.
     config : Dict
         Configuration dictionary, may contain an `xds.minimum_unique_individuals` key.
 
@@ -35,7 +41,12 @@ def filter_by_unique_individuals(df: DataFrame, config: Dict) -> DataFrame:
     DataFrame
         Dataframe containing only rows that meet the configured minimum.
     """
-    if df.empty or "numberOfUniqueIndividuals" not in df.columns:
+    # The column that fills the number of unique individuals of the dataset, so that the filter and the dataset agree
+    column_mapping = config.get("xds", {}).get("column_mapping", {})
+    column = next(
+        (c for c, p in column_mapping.items() if p == "number_of_unique_individuals"), "numberOfUniqueIndividuals"
+    )
+    if df.empty or column not in df.columns:
         return df
 
     minimum = config.get("xds", {}).get("minimum_unique_individuals", XDS_MIN_UNIQUE_INDIVIDUALS_DEFAULT)
@@ -48,11 +59,11 @@ def filter_by_unique_individuals(df: DataFrame, config: Dict) -> DataFrame:
         )
         numeric_minimum = XDS_MIN_UNIQUE_INDIVIDUALS_DEFAULT
 
-    unique_individuals = pd.to_numeric(df["numberOfUniqueIndividuals"], errors="coerce")
-    invalid_rows = df.loc[unique_individuals.isna(), "numberOfUniqueIndividuals"]
+    unique_individuals = pd.to_numeric(df[column], errors="coerce")
+    invalid_rows = df.loc[unique_individuals.isna(), column]
     if not invalid_rows.empty:
         raise ValueError(
-            f"Column 'numberOfUniqueIndividuals' contains non-numeric value(s) at row(s) "
+            f"Column '{column}' contains non-numeric value(s) at row(s) "
             f"{invalid_rows.index.tolist()}: {invalid_rows.tolist()}"
         )
 

@@ -176,11 +176,18 @@ keywords and landing page, and a stable identifier:
   separator with `list_separator = "|"` in the `[xds]` section.
 - A property with a fixed set of values (a vocabulary, like `theme`) takes the URI of a value.
 - Dates are best given as `YYYY-MM-DD`; other notations may be read in another order than you expect.
-- A mapping to an unknown property, or two columns to one property, stops the run before anything is pushed. A value
-  that does not fit the property (e.g. text for `number_of_records`) stops it with the row number.
+- The CSV file is read as text: cells such as `007` or `NA` reach the mapping as they are written, and only empty cells
+  count as empty.
+- A mapping to an unknown property, two columns to one property, or a setting of the wrong type stops the run before
+  anything is pushed. A value that does not fit the property (e.g. text for `number_of_records`) stops it with the line
+  number in the CSV file (the header is line 1).
+- The columns of `numberOfUniqueIndividuals`, `numberOfRecords`, `minTypicalAge` and `maxTypicalAge` are read for the
+  dataset, unless you map another column to the property. The filter on `minimum_unique_individuals` then uses the mapped
+  column.
 - With `identifier` mapped, the identifier of a dataset is the `identifier` of the `[dataset]` configuration (the prefix,
   optional), followed by the value of the cell. A row with an empty cell gets a UUID instead. A stable identifier lets
-  a rerun with the SPARQL endpoint update the dataset in the FDP, instead of adding it again.
+  a rerun with the SPARQL endpoint update the dataset in the FDP, instead of adding it again. Rows with the same
+  identifier are refused with an error, as one would overwrite the other.
 
 The XDS input can be serialized to RDF or pushed to an FDP, for example to try out your input and configuration:
 ```sh

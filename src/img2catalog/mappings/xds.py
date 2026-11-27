@@ -1,11 +1,11 @@
 import logging
 import uuid
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import click
 from pandas import DataFrame, Series
-from pydantic import AnyHttpUrl, ValidationError
+from pydantic import AnyHttpUrl
 from rdflib import URIRef
 from sempyro import LiteralField
 from sempyro.dcat import AccessRights
@@ -20,6 +20,14 @@ from img2catalog.mappings.column_mapping import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Properties that are filled from a column of the CSV file, if the user has not mapped a column to them
+CSV_NUMBER_COLUMNS = {
+    "number_of_unique_individuals": "numberOfUniqueIndividuals",
+    "number_of_records": "numberOfRecords",
+    "minimum_typical_age": "minTypicalAge",
+    "maximum_typical_age": "maxTypicalAge",
+}
 
 
 def format_temporal_coverage(temporal_coverage: str) -> PeriodOfTime:
@@ -96,7 +104,46 @@ def format_identifier(prefix: Optional[str] = None, identifier: Optional[str] = 
     return f"{prefix.rstrip('/')}/{suffix}"
 
 
+def _row_label(row: Series) -> str:
+    """Name the line in the CSV file of a row, counting the header as line 1, so it can be found in an editor."""
+    if isinstance(row.name, int):
+        return f"Line {row.name + 2}"
+    return "A row" if row.name is None else f"Row {row.name}"
+
+
+def ensure_unique_identifiers(datasets: List[HRIDataset]) -> None:
+    """Refuse datasets that get the same identifier, as the FDP would take them for one dataset.
+
+    Generated identifiers are unique, so this only happens when rows have the same value in the column that is mapped
+    to `identifier`.
+    """
+    titles_per_identifier: Dict[str, str] = {}
+    for dataset in datasets:
+        identifier, title = dataset.identifier.value, dataset.title[0].value
+        if identifier in titles_per_identifier:
+            raise ValueError(
+                f"The XDS rows '{titles_per_identifier[identifier]}' and '{title}' get the same dataset identifier "
+                f"'{identifier}', so one would overwrite the other. Give them different identifiers."
+            )
+        titles_per_identifier[identifier] = title
+
+
 def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
+    """Map a row of the XDS CSV file to a Health-RI dataset.
+
+    Raises
+    ------
+    ValueError
+        If the row gives an invalid dataset, e.g. a value that does not fit the property it is mapped to. The message
+        names the line in the CSV file.
+    """
+    try:
+        return _map_row(row, config)
+    except ValueError as e:
+        raise ValueError(f"{_row_label(row)} of the XDS file: {e}") from e
+
+
+def _map_row(row: Series, config: Dict) -> HRIDataset:
     dataset_config = config.get("dataset")
     publisher_config = dataset_config["publisher"]
     contact_point_config = dataset_config["contact_point"]
@@ -148,31 +195,37 @@ def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
         "creator": [publisher],
         "applicable_legislation": dataset_applicable_legislation,
         "temporal_coverage": [temporal_coverage],
-        # CSV FIELDS
-        "number_of_unique_individuals": int(row["numberOfUniqueIndividuals"]),
-        "number_of_records": int(row["numberOfRecords"]),
-        "minimum_typical_age": int(row["minTypicalAge"]),
-        "maximum_typical_age": int(row["maxTypicalAge"]),
     }
+    # CSV FIELDS: the columns that the user mapped to the same property are not read, they take precedence
+    for property_name, column in CSV_NUMBER_COLUMNS.items():
+        if property_name not in mapped_properties:
+            properties[property_name] = int(row[column])
     # What the user mapped from the CSV file takes precedence over the above, which is the configuration and defaults
     properties.update(mapped_properties)
 
-    try:
-        return HRIDataset(**properties)
-    except ValidationError as e:
-        raise ValueError(f"Row {row.name} of the XDS file gives an invalid dataset: {e}") from e
+    return HRIDataset(**properties)
 
 
 def check_column_mapping(csv_rows: DataFrame, config: Dict) -> None:
-    """Check the `[xds.column_mapping]` of the configuration before mapping the rows.
+    """Check the `[xds]` settings for the column mapping of the configuration before mapping the rows.
 
     Raises
     ------
     click.ClickException
-        If the mapping cannot be used. Mapped columns that are not in the CSV file only give a warning, as the
-        columns are not mandatory.
+        If the mapping or the list separator cannot be used. Mapped columns that are not in the CSV file only give a
+        warning, as the columns are not mandatory.
     """
-    column_mapping = config.get("xds", {}).get("column_mapping", {})
+    xds_config = config.get("xds", {})
+    if not isinstance(xds_config, dict):
+        raise click.ClickException("Invalid [xds] in the configuration: it must be a table")
+    column_mapping = xds_config.get("column_mapping", {})
+    if not isinstance(column_mapping, dict):
+        raise click.ClickException(
+            'Invalid [xds.column_mapping] in the configuration: it must be a table of "column header" = "property"'
+        )
+    list_separator = xds_config.get("list_separator", DEFAULT_LIST_SEPARATOR)
+    if not isinstance(list_separator, str) or not list_separator:
+        raise click.ClickException("Invalid list_separator in [xds] in the configuration: it must be a non-empty text")
     try:
         validate_column_mapping(column_mapping, HRIDataset)
     except ColumnMappingError as e:
