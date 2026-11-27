@@ -1,12 +1,15 @@
+import uuid
+
 import pytest
+from rdflib import XSD
 from sempyro.hri_dcat import HRIDataset
 from sempyro.time import PeriodOfTime
 
 from img2catalog.mappings.xds import (
-    ensure_unique_identifiers,
     format_date,
     format_identifier,
     format_temporal_coverage,
+    format_temporal_coverage_iso,
     format_title,
     map_xds_to_healthri_dcat_dataset,
 )
@@ -93,56 +96,86 @@ def test_map_xds_to_healthri_dcat_dataset_raises_on_missing_field(missing_csv_da
         map_xds_to_healthri_dcat_dataset(missing_csv_data, default_config)
 
 
-@pytest.mark.parametrize(
-    ("identifier_base", "title", "expected"),
-    [
-        (
-            "https://www.example.com/img-123",
-            "Amsterdam Hospital - CT - 2026",
-            "https://www.example.com/img-123/amsterdam-hospital-ct-2026",
-        ),
-        (
-            "https://www.example.com/img/",
-            "Hospital B - MR - 01-01-2023/31-12-2024",
-            "https://www.example.com/img/hospital-b-mr-01-01-2023-31-12-2024",
-        ),
-    ],
-)
-def test_format_identifier(identifier_base, title, expected):
-    assert format_identifier(identifier_base, title) == expected
+@pytest.mark.parametrize("prefix", ["https://www.example.com/img-123", "https://www.example.com/img-123/"])
+def test_format_identifier_is_prefix_followed_by_uuid(prefix):
+    result = format_identifier(prefix)
+
+    base, _, suffix = result.rpartition("/")
+    assert base == "https://www.example.com/img-123"
+    assert str(uuid.UUID(suffix)) == suffix
 
 
-def test_ensure_unique_identifiers_refuses_titles_that_give_the_same_identifier(default_csv_data, default_config):
-    """Titles that only differ in punctuation or case get the same identifier, so one would overwrite the other."""
-    other_row = default_csv_data.copy()
-    other_row["instituteName"] = "AMSTERDAM  hospital!"
-    datasets = [map_xds_to_healthri_dcat_dataset(row, default_config) for row in (default_csv_data, other_row)]
+@pytest.mark.parametrize("prefix", [None, ""])
+def test_format_identifier_without_prefix_is_a_uuid(prefix):
+    result = format_identifier(prefix)
 
-    with pytest.raises(ValueError, match="same dataset identifier") as error:
-        ensure_unique_identifiers(datasets)
-
-    assert "Amsterdam Hospital - CT - 2026" in str(error.value)
-    assert "AMSTERDAM  hospital! - CT - 2026" in str(error.value)
+    assert str(uuid.UUID(result)) == result
 
 
-def test_ensure_unique_identifiers_accepts_different_rows(default_csv_data, default_config):
-    other_row = default_csv_data.copy()
-    other_row["modality"] = "MR"
-    datasets = [map_xds_to_healthri_dcat_dataset(row, default_config) for row in (default_csv_data, other_row)]
-
-    ensure_unique_identifiers(datasets)
+def test_format_identifier_generates_a_new_uuid_each_time():
+    assert format_identifier("https://www.example.com/img-123") != format_identifier("https://www.example.com/img-123")
 
 
-def test_map_xds_gives_each_row_its_own_identifier(default_csv_data, default_config):
-    """Each row is a separate dataset, which the FDP output finds by its identifier when updating it."""
-    other_row = default_csv_data.copy()
-    other_row["modality"] = "MR"
+def test_map_xds_gives_each_row_its_own_generated_identifier(default_csv_data, default_config):
+    """Every dataset gets an identifier of its own: the configured prefix followed by a UUID."""
+    datasets = [map_xds_to_healthri_dcat_dataset(default_csv_data, default_config) for _ in range(2)]
+    identifiers = [dataset.identifier.value for dataset in datasets]
 
-    identifiers = {
-        map_xds_to_healthri_dcat_dataset(row, default_config).identifier.value for row in (default_csv_data, other_row)
-    }
+    assert len(set(identifiers)) == 2
+    for identifier in identifiers:
+        prefix, _, suffix = identifier.rpartition("/")
+        assert prefix == "https://www.example.com/img-123"
+        assert str(uuid.UUID(suffix)) == suffix
 
-    assert identifiers == {
-        "https://www.example.com/img-123/amsterdam-hospital-ct-2026",
-        "https://www.example.com/img-123/amsterdam-hospital-mr-2026",
-    }
+
+def test_map_xds_without_configured_prefix_uses_a_uuid(default_csv_data, default_config):
+    del default_config["dataset"]["identifier"]
+
+    result = map_xds_to_healthri_dcat_dataset(default_csv_data, default_config)
+
+    assert str(uuid.UUID(result.identifier.value)) == result.identifier.value
+
+
+def test_format_temporal_coverage_iso_returns_xsd_dates():
+    # Act
+    result = format_temporal_coverage_iso("01-01-2022 to 31-12-2023")
+
+    # Assert
+    assert result.start_date.value == "2022-01-01"
+    assert result.end_date.value == "2023-12-31"
+    assert str(result.start_date.datatype) == str(XSD.date)
+    assert str(result.end_date.datatype) == str(XSD.date)
+
+
+def test_format_temporal_coverage_iso_raises_on_malformed_value():
+    with pytest.raises(ValueError, match="not enough values to unpack"):
+        format_temporal_coverage_iso("2022 until 2023")
+
+
+def test_format_temporal_coverage_iso_raises_when_end_is_before_start():
+    with pytest.raises(ValueError, match="before its start date"):
+        format_temporal_coverage_iso("31-12-2024 to 01-01-2024")
+
+
+def test_format_temporal_coverage_iso_accepts_a_single_day():
+    result = format_temporal_coverage_iso("01-01-2024 to 01-01-2024")
+
+    assert result.start_date.value == result.end_date.value == "2024-01-01"
+
+
+def test_map_raises_on_reversed_temporal_coverage(default_csv_data, default_config):
+    row = default_csv_data.copy()
+    row["temporalCoverage"] = "31-12-2026 to 01-01-2026"
+
+    with pytest.raises(ValueError, match="before its start date"):
+        map_xds_to_healthri_dcat_dataset(row, default_config)
+
+
+def test_map_sets_temporal_coverage(default_csv_data, default_config):
+    # Act
+    result = map_xds_to_healthri_dcat_dataset(default_csv_data, default_config)
+
+    # Assert
+    assert len(result.temporal_coverage) == 1
+    assert result.temporal_coverage[0].start_date.value == "2026-01-01"
+    assert result.temporal_coverage[0].end_date.value == "2026-12-31"

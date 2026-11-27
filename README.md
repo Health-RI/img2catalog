@@ -100,8 +100,8 @@ To update the records on the FAIR Data Point when rerunning `img2catalog`, suppl
 already in the FDP instead of adding them again, so the FDP stays up to date:
 - a Catalog is found by its title, or given with `-c`; use the same one on every run
 - a Dataset is found by its identifier within the Catalog: the EGA archive URL (e.g.
-  `https://ega-archive.org/datasets/EGAD00001005083`), the XNAT project URL, or for XDS the configured identifier
-  followed by the dataset title (e.g. `https://www.example.com/img-123/hospital-a-ct-2024`)
+  `https://ega-archive.org/datasets/EGAD00001005083`) or the XNAT project URL. XDS datasets get a new UUID as identifier
+  on every run, so they are not found again and a rerun adds them again; see [Configuration XDS](#configuration-xds)
 - a Distribution is found by its format within its Dataset
 
 An updated record keeps the links to its children in the FDP, also to children that are not pushed again, and is
@@ -150,6 +150,14 @@ The XDS (Cross-enterprise Document Sharing) module allows you to ingest metadata
 - CSV file: contains the dataset metadata rows. See `/examples/xds/input_example.csv` for the expected format.
 - Config file (.toml):  defines metadata fields that apply to all datasets (e.g. publisher, contact point, access rights). Base yours on `/examples/xds/example_config.toml`.
 
+Each CSV row becomes one dataset. Its `temporalCoverage` (`DD-MM-YYYY to DD-MM-YYYY`) is set as the temporal coverage of
+the dataset, in ISO 8601 dates. The description and keywords of the datasets come from the configuration.
+
+The XDS input can be serialized to RDF or pushed to an FDP, for example to try out your input and configuration:
+```sh
+img2catalog -c examples/xds/example_config.toml xds --input examples/xds/input_example.csv map-xds rdf
+```
+
 Datasets can be filtered by minimum number of unique individuals, so that small, real-world datasets that are
 not useful for reuse are not submitted to the FDP. Configure the minimum in the `[xds]` section:
 ```toml
@@ -158,18 +166,14 @@ minimum_unique_individuals = 10
 ```
 If not set, no datasets are filtered out.
 
-Each row of the CSV file is a separate dataset (institute, modality and period). When pushing to the FDP, its
-identifier is the `identifier` of the `[dataset]` configuration, followed by a slug of the dataset title, e.g.
-`https://www.example.com/img-123/hospital-a-ct-2024`. Rerunning the push with the SPARQL endpoint supplied updates a
-dataset in the FDP when its identifier is the same, so:
-- Datasets pushed by an earlier version of `img2catalog`, which all had the configured identifier, are not matched.
-  Remove those from the FDP once, or the rerun adds all datasets again next to them.
-- The period is part of the title, because the same institute and modality occur once per period (e.g. Hospital B CT
-  for 2023 and for 2024), and those rows are separate datasets. When the period of a row changes, e.g. because a new
-  export covers a longer period, the row gets a new identifier and is added as a new dataset. To migrate: after the
-  push, remove the dataset with the old period (same institute and modality) from the FDP.
-- Rows with the same identifier, which differ only in characters that the identifier leaves out (like case and
-  punctuation), are refused with an error, as one would overwrite the other.
+Each row of the CSV file is a separate dataset. Its identifier is the `identifier` of the `[dataset]` configuration (the
+prefix, optional) followed by a UUID, e.g. `https://www.example.com/img-123/5b4f7c0e-0f0e-4f4a-9a53-0d7f6f3d2b1c`. The
+CSV file has no identifier column (yet). A UUID is new on every run, so:
+- Rerunning the push adds all datasets again, also when the SPARQL endpoint is supplied: the datasets in the FDP
+  cannot be found by their identifier, so they are not updated. Remove the earlier datasets from the FDP first when
+  rerunning with the same export.
+- Datasets pushed by an earlier version of `img2catalog`, which got an identifier from the title of the dataset, are
+  not matched either.
 
 
 

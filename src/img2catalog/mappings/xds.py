@@ -1,6 +1,6 @@
-import re
+import uuid
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, Optional
 
 from pandas import Series
 from pydantic import AnyHttpUrl
@@ -22,6 +22,25 @@ def format_temporal_coverage(temporal_coverage: str) -> PeriodOfTime:
     return PeriodOfTime(
         start_date=LiteralField(value=start_date.strftime(date_fmt)),
         end_date=LiteralField(value=end_date.strftime(date_fmt)),
+    )
+
+
+def format_temporal_coverage_iso(temporal_coverage: str) -> PeriodOfTime:
+    """Format 'DD-MM-YYYY to DD-MM-YYYY' into a PeriodOfTime with ISO 8601 (xsd:date) dates.
+
+    This is the value that is set on the dataset, as opposed to :func:`format_temporal_coverage`
+    which keeps the day-first notation that is used in the dataset title.
+    """
+    period = format_temporal_coverage(temporal_coverage)
+    date_fmt = "%d-%m-%Y"
+    start_date = datetime.strptime(period.start_date.value, date_fmt).date()
+    end_date = datetime.strptime(period.end_date.value, date_fmt).date()
+    if end_date < start_date:
+        raise ValueError(f"The end date of temporal coverage '{temporal_coverage}' is before its start date")
+
+    return PeriodOfTime(
+        start_date=LiteralField(value=start_date.isoformat(), datatype="xsd:date"),
+        end_date=LiteralField(value=end_date.isoformat(), datatype="xsd:date"),
     )
 
 
@@ -51,32 +70,16 @@ def format_title(data) -> str:
     return f"{institute} - {modality} - {formatted_date_range}"
 
 
-def format_identifier(identifier_base: str, title: str) -> str:
-    """Build a dataset identifier from the configured base and the dataset title.
+def format_identifier(prefix: Optional[str] = None) -> str:
+    """Build a dataset identifier from a prefix and a UUID.
 
-    Each row of an XDS export is a separate dataset (institute, modality and period), so each needs its own
-    identifier, which stays the same when the export is processed again. The FDP output finds the dataset to update by
-    this identifier.
+    The result is `<prefix>/<uuid>`, so that every dataset has an identifier of its own. Without a prefix, the UUID
+    is used as is. The UUID is new on every call: the same row gets another identifier when processed again.
     """
-    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
-    return f"{identifier_base.rstrip('/')}/{slug}"
-
-
-def ensure_unique_identifiers(datasets: List[HRIDataset]) -> None:
-    """Refuse datasets that get the same identifier, as the FDP would take them for one dataset.
-
-    The identifier is made from the title, so titles that only differ in characters that are left out of the
-    identifier (like punctuation and case), or rows that are repeated, would overwrite each other in the FDP.
-    """
-    titles_per_identifier: Dict[str, str] = {}
-    for dataset in datasets:
-        identifier, title = dataset.identifier.value, dataset.title[0].value
-        if identifier in titles_per_identifier:
-            raise ValueError(
-                f"The XDS rows '{titles_per_identifier[identifier]}' and '{title}' get the same dataset identifier "
-                f"'{identifier}', so one would overwrite the other. Make their institute, modality or period differ."
-            )
-        titles_per_identifier[identifier] = title
+    suffix = str(uuid.uuid4())
+    if not prefix:
+        return suffix
+    return f"{prefix.rstrip('/')}/{suffix}"
 
 
 def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
@@ -89,9 +92,12 @@ def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
 
     dataset_keywords = [LiteralField(value=keyword) for keyword in dataset_config["keyword"]]
 
+    dataset_identifier = format_identifier(dataset_config.get("identifier"))
+    temporal_coverage = format_temporal_coverage_iso(row["temporalCoverage"])
+
     dataset_applicable_legislation = [AnyHttpUrl(url) for url in dataset_config["applicable_legislation"]]
 
-    publisher_identifiers = [LiteralField(value=identifier) for identifier in publisher_config["identifier"]]
+    publisher_identifiers = [LiteralField(value=value) for value in publisher_config["identifier"]]
 
     # Initialize Health-RI Models
     publisher = HRIAgent(
@@ -108,10 +114,7 @@ def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
 
     return HRIDataset(
         # MANDATORY DCAT FIELDS
-        # The title (institute, modality and period) is what makes a row a separate dataset: the same institute and
-        # modality occur once per period, e.g. Hospital B CT for 2023 and for 2024 in examples/xds/input_example.csv.
-        # Leaving the period out would give those rows the same identifier, so one would overwrite the other.
-        identifier=LiteralField(value=format_identifier(dataset_config["identifier"], dataset_formatted_title)),
+        identifier=LiteralField(value=dataset_identifier),
         title=[LiteralField(value=dataset_formatted_title)],
         description=[LiteralField(value=dataset_config["description"])],
         publisher=publisher,
@@ -121,6 +124,7 @@ def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
         access_rights=AccessRights(URIRef(dataset_config["access_rights"])),
         creator=[publisher],
         applicable_legislation=dataset_applicable_legislation,
+        temporal_coverage=[temporal_coverage],
         # CSV FIELDS
         number_of_unique_individuals=int(row["numberOfUniqueIndividuals"]),
         number_of_records=int(row["numberOfRecords"]),

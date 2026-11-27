@@ -163,26 +163,18 @@ def test_ega_updates_given_catalog_and_keeps_its_other_datasets(fdp, default_ega
     assert_fdp_consistent(fdp)
 
 
-def test_xds_pushes_example_datasets_with_contact_points(fdp, isolated_cli_runner, tmp_path):
+def test_xds_pushes_example_datasets_with_contact_points(fdp, isolated_cli_runner):
     # Arrange: XDS has no Catalog, so its datasets go into a given catalog
     catalog = existing_catalog(fdp)
     example_csv = EXAMPLES / "xds" / "input_example.csv"
-    changed_csv = tmp_path / "changed.csv"
-    # The same rows, but the first dataset (Hospital A, CT, 2024) now has another number of records
-    changed_csv.write_text(example_csv.read_text().replace(",11052,", ",12345,"))
+    args = ["-c", str(EXAMPLES / "xds" / "example_config.toml"), "xds", "--input", str(example_csv), "map-xds"]
 
-    def args(csv):
-        return ["-c", str(EXAMPLES / "xds" / "example_config.toml"), "xds", "--input", str(csv), "map-xds"]
+    # Act
+    run(isolated_cli_runner, args + FDP_ARGS + ["-c", str(catalog)])
 
-    # Act: push, change a number in the CSV, and push again
-    run(isolated_cli_runner, args(example_csv) + FDP_ARGS + ["-c", str(catalog)])
-    first = dict(fdp.records)
-    run(isolated_cli_runner, args(changed_csv) + FDP_ARGS + ["-c", str(catalog)])
-
-    # Assert: one Dataset per row of the example CSV, updated on the rerun
+    # Assert: one Dataset per row of the example CSV
     datasets = list(fdp.of_type("dataset"))
     assert len(datasets) == 4
-    assert set(fdp.records) == set(first)
     assert list(fdp.of_type("catalog")) == [catalog]
     titles = {str(fdp.records[d].value(d, DCTERMS.title)) for d in datasets}
     assert titles == {
@@ -193,8 +185,19 @@ def test_xds_pushes_example_datasets_with_contact_points(fdp, isolated_cli_runne
     }
     for dataset in datasets:
         assert_contact_point(fdp, dataset)
-    numbers = [str(o) for d in datasets for o in fdp.records[d].objects(d, None) if str(o) in ("11052", "12345")]
-    assert numbers == ["12345"], "the rerun did not update the dataset with the changed number of records"
+    assert_fdp_consistent(fdp)
+
+
+def test_xds_rerun_adds_the_datasets_again(fdp, isolated_cli_runner):
+    """The identifier is a prefix and a new UUID on every run, so the FDP output cannot find a dataset again."""
+    catalog = existing_catalog(fdp)
+    example_csv = EXAMPLES / "xds" / "input_example.csv"
+    args = ["-c", str(EXAMPLES / "xds" / "example_config.toml"), "xds", "--input", str(example_csv), "map-xds"]
+
+    run(isolated_cli_runner, args + FDP_ARGS + ["-c", str(catalog)])
+    run(isolated_cli_runner, args + FDP_ARGS + ["-c", str(catalog)])
+
+    assert len(list(fdp.of_type("dataset"))) == 8
     assert_fdp_consistent(fdp)
 
 

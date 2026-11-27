@@ -3,7 +3,6 @@
 
 [dataset]
 identifier = "https://www.example.com/img-123"
-title = "Example Imaging Dataset Title"
 description = "This is imaging data description"
 theme = ["http://publications.europa.eu/resource/authority/data-theme/HEAL"]
 keyword = ["list", "of", "key", "words"]
