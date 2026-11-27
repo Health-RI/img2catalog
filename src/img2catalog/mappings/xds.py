@@ -33,12 +33,15 @@ def format_temporal_coverage_iso(temporal_coverage: str) -> PeriodOfTime:
     """
     period = format_temporal_coverage(temporal_coverage)
     date_fmt = "%d-%m-%Y"
+    start_date = datetime.strptime(period.start_date.value, date_fmt).date()
+    end_date = datetime.strptime(period.end_date.value, date_fmt).date()
+    if end_date < start_date:
+        raise ValueError(f"The end date of temporal coverage '{temporal_coverage}' is before its start date")
 
-    def to_iso(literal: LiteralField) -> LiteralField:
-        iso_date = datetime.strptime(literal.value, date_fmt).date().isoformat()
-        return LiteralField(value=iso_date, datatype="xsd:date")
-
-    return PeriodOfTime(start_date=to_iso(period.start_date), end_date=to_iso(period.end_date))
+    return PeriodOfTime(
+        start_date=LiteralField(value=start_date.isoformat(), datatype="xsd:date"),
+        end_date=LiteralField(value=end_date.isoformat(), datatype="xsd:date"),
+    )
 
 
 def format_date(start_date: str, end_date: str):

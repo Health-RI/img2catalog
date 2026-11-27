@@ -100,8 +100,8 @@ To update the records on the FAIR Data Point when rerunning `img2catalog`, suppl
 already in the FDP instead of adding them again, so the FDP stays up to date:
 - a Catalog is found by its title, or given with `-c`; use the same one on every run
 - a Dataset is found by its identifier within the Catalog: the EGA archive URL (e.g.
-  `https://ega-archive.org/datasets/EGAD00001005083`), the XNAT project URL, or for XDS the configured identifier
-  followed by the dataset title (e.g. `https://www.example.com/img-123/hospital-a-ct-2024`)
+  `https://ega-archive.org/datasets/EGAD00001005083`) or the XNAT project URL. XDS datasets get a new UUID as identifier
+  on every run, so they are not found again and a rerun adds them again; see [Configuration XDS](#configuration-xds)
 - a Distribution is found by its format within its Dataset
 
 An updated record keeps the links to its children in the FDP, also to children that are not pushed again, and is

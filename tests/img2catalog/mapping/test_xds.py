@@ -152,6 +152,25 @@ def test_format_temporal_coverage_iso_raises_on_malformed_value():
         format_temporal_coverage_iso("2022 until 2023")
 
 
+def test_format_temporal_coverage_iso_raises_when_end_is_before_start():
+    with pytest.raises(ValueError, match="before its start date"):
+        format_temporal_coverage_iso("31-12-2024 to 01-01-2024")
+
+
+def test_format_temporal_coverage_iso_accepts_a_single_day():
+    result = format_temporal_coverage_iso("01-01-2024 to 01-01-2024")
+
+    assert result.start_date.value == result.end_date.value == "2024-01-01"
+
+
+def test_map_raises_on_reversed_temporal_coverage(default_csv_data, default_config):
+    row = default_csv_data.copy()
+    row["temporalCoverage"] = "31-12-2026 to 01-01-2026"
+
+    with pytest.raises(ValueError, match="before its start date"):
+        map_xds_to_healthri_dcat_dataset(row, default_config)
+
+
 def test_map_sets_temporal_coverage(default_csv_data, default_config):
     # Act
     result = map_xds_to_healthri_dcat_dataset(default_csv_data, default_config)
