@@ -73,7 +73,7 @@ def test_absent_and_empty_cells_are_left_out():
 
     result = map_columns_to_properties(row, mapping, HRIDataset)
 
-    assert result == {"rights": "x"}
+    assert result == {"rights": LiteralField(value="x")}
 
 
 def test_validate_accepts_scalar_list_and_vocabulary_properties():
