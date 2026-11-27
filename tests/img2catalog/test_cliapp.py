@@ -4,7 +4,7 @@ from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pandas as pd
 import pytest
-from rdflib import DCAT, RDF, Graph, URIRef
+from rdflib import DCAT, DCTERMS, RDF, Graph, URIRef
 
 from img2catalog.cli_app import cli_click, load_img2catalog_configuration
 from img2catalog.const import (
@@ -439,3 +439,122 @@ def test_xds_cli_rdf_output(isolated_cli_runner, xds_csv_example):
     graph = Graph().parse(data=result.output, format="turtle")
     assert len(list(graph.subjects(RDF.type, DCAT.Dataset))) == 4
     assert len(list(graph.objects(None, DCAT.startDate))) == 4
+
+
+def _xds_config_with_mapping(tmp_path, mapping_toml):
+    """Copy the XDS test configuration, with the given text in its [xds] section."""
+    source = pathlib.Path(__file__).parent / "examples" / "xds" / "example-config.toml"
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(source.read_text().replace("[xds]", "[xds]\n" + mapping_toml, 1))
+    return str(config_path)
+
+
+def _write_mapped_xds_csv(path):
+    pd.DataFrame(
+        {
+            "instituteName": ["Hospital A", "Hospital B"],
+            "numberOfUniqueIndividuals": [5041, 6543],
+            "numberOfRecords": [11052, 8436],
+            "minTypicalAge": [16, 21],
+            "maxTypicalAge": [89, 92],
+            "temporalCoverage": ["01-01-2024 to 31-12-2024"] * 2,
+            "modality": ["CT", "MR"],
+            "Beschrijving": ["Scans of Hospital A", None],
+            "Trefwoorden": ["ct;thorax", "mr"],
+            "Dataset ID": ["ds-a", "ds-b"],
+        }
+    ).to_csv(path, index=False)
+    return str(path)
+
+
+def test_xds_cli_applies_column_mapping(isolated_cli_runner, tmp_path):
+    mapping = '"Beschrijving" = "description"\n"Trefwoorden" = "keyword"\n"Dataset ID" = "identifier"\n'
+    config_path = _xds_config_with_mapping(tmp_path, "[xds.column_mapping]\n" + mapping)
+    csv_path = _write_mapped_xds_csv(tmp_path / "mapped.csv")
+
+    result = isolated_cli_runner.invoke(
+        cli_click, ["--config", config_path, "xds", "--input", csv_path, "map-xds", "rdf"]
+    )
+
+    assert result.exit_code == 0, result.output
+    graph = Graph().parse(data=result.output, format="turtle")
+    identifiers = {str(o) for o in graph.objects(None, DCTERMS.identifier) if str(o).startswith("https://www.example")}
+    assert identifiers == {"https://www.example.com/img-123/ds-a", "https://www.example.com/img-123/ds-b"}
+    descriptions = {str(o) for o in graph.objects(None, DCTERMS.description)}
+    assert descriptions == {"Scans of Hospital A", "This is imaging data description"}
+    keywords = {str(o) for o in graph.objects(None, DCAT.keyword)}
+    assert keywords == {"ct", "thorax", "mr"}
+
+
+def test_xds_cli_refuses_unknown_property_in_column_mapping(isolated_cli_runner, tmp_path):
+    config_path = _xds_config_with_mapping(tmp_path, '[xds.column_mapping]\n"Beschrijving" = "descriptoin"\n')
+    csv_path = _write_mapped_xds_csv(tmp_path / "mapped.csv")
+
+    result = isolated_cli_runner.invoke(
+        cli_click, ["--config", config_path, "xds", "--input", csv_path, "map-xds", "rdf"]
+    )
+
+    assert result.exit_code == 1
+    assert "Invalid [xds.column_mapping]" in result.output
+    assert "'descriptoin'" in result.output
+
+
+def test_xds_cli_reports_row_with_invalid_mapped_value(isolated_cli_runner, tmp_path):
+    config_path = _xds_config_with_mapping(tmp_path, '[xds.column_mapping]\n"Beschrijving" = "number_of_records"\n')
+    csv_path = _write_mapped_xds_csv(tmp_path / "mapped.csv")
+
+    result = isolated_cli_runner.invoke(
+        cli_click, ["--config", config_path, "xds", "--input", csv_path, "map-xds", "rdf"]
+    )
+
+    assert result.exit_code == 1
+    assert "Line 2 of the XDS file" in result.output
+
+
+def test_xds_cli_skips_mapped_column_that_is_not_in_the_file(isolated_cli_runner, tmp_path, xds_csv_example):
+    config_path = _xds_config_with_mapping(tmp_path, '[xds.column_mapping]\n"Not in the file" = "description"\n')
+
+    result = isolated_cli_runner.invoke(
+        cli_click, ["--config", config_path, "xds", "--input", xds_csv_example, "map-xds", "rdf"]
+    )
+
+    assert result.exit_code == 0, result.output
+
+
+def test_xds_cli_refuses_rows_with_the_same_mapped_identifier(isolated_cli_runner, tmp_path):
+    config_path = _xds_config_with_mapping(tmp_path, '[xds.column_mapping]\n"Dataset ID" = "identifier"\n')
+    csv_path = tmp_path / "clash.csv"
+    csv_path.write_text(
+        "instituteName,numberOfUniqueIndividuals,numberOfRecords,minTypicalAge,maxTypicalAge,temporalCoverage,"
+        "modality,Dataset ID\n"
+        "Hospital A,5041,11052,16,89,01-01-2024 to 31-12-2024,CT,ds-1\n"
+        "Hospital B,6543,8436,21,92,01-01-2024 to 31-12-2024,MR,ds-1\n"
+    )
+
+    result = isolated_cli_runner.invoke(
+        cli_click, ["--config", config_path, "xds", "--input", str(csv_path), "map-xds", "rdf"]
+    )
+
+    assert result.exit_code == 1
+    assert "get the same dataset identifier" in result.output
+
+
+@pytest.mark.parametrize(
+    ("settings", "message"),
+    [
+        ('column_mapping = "description"', "[xds.column_mapping] in the configuration: it must be a table"),
+        ("list_separator = 5", "list_separator in [xds]"),
+        ('list_separator = ""', "list_separator in [xds]"),
+    ],
+)
+def test_xds_cli_refuses_malformed_settings_without_traceback(isolated_cli_runner, tmp_path, settings, message):
+    config_path = _xds_config_with_mapping(tmp_path, settings + "\n")
+    csv_path = _write_mapped_xds_csv(tmp_path / "mapped.csv")
+
+    result = isolated_cli_runner.invoke(
+        cli_click, ["--config", config_path, "xds", "--input", csv_path, "map-xds", "rdf"]
+    )
+
+    assert result.exit_code == 1
+    assert message in result.output
+    assert isinstance(result.exception, SystemExit)

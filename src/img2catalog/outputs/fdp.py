@@ -64,6 +64,23 @@ def is_duplicate_dataset_error(error: Exception) -> bool:
     return isinstance(error, ValueError) and DUPLICATE_DATASET_MESSAGE in str(error)
 
 
+def escape_sparql_string(text: str) -> str:
+    """Escape text for use inside a double-quoted SPARQL string literal.
+
+    fairclient puts the identifier it looks up between double quotes in its query as it is. An identifier from the input
+    (e.g. a column of an XDS file) could otherwise end the string and change the query.
+    """
+    return (
+        text.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t")
+        .replace("\b", "\\b")
+        .replace("\f", "\\f")
+    )
+
+
 def get_identifier_value(identifier: Union[str, LiteralField, None]) -> Optional[str]:
     """Return the text of a Dataset identifier, which is matched to the identifiers of the datasets in the FDP.
 
@@ -279,7 +296,7 @@ class FDPOutput:
         try:
             fdp_uri = None
             if self.sparqlclient and identifier:
-                found = self.sparqlclient.find_subject(identifier, catalog_uri)
+                found = self.sparqlclient.find_subject(escape_sparql_string(identifier), catalog_uri)
                 fdp_uri = self.check_fdp_record_uri(found) if found else None
             return self.push_record("dataset", graph, dataset["uri"], fdp_uri)
         except Exception as e:

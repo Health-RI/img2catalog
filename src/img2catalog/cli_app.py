@@ -40,7 +40,11 @@ from img2catalog.mappings.ega import (
     map_ega_to_healthri_dcat_dataset,
     map_ega_to_healthri_dcat_distributions,
 )
-from img2catalog.mappings.xds import map_xds_to_healthri_dcat_dataset
+from img2catalog.mappings.xds import (
+    check_column_mapping,
+    ensure_unique_identifiers,
+    map_xds_to_healthri_dcat_dataset,
+)
 from img2catalog.mappings.xnat import map_xnat_to_healthriv2
 from img2catalog.outputs.fdp import FDPError, FDPOutput
 from img2catalog.outputs.rdf import RDFOutput
@@ -366,6 +370,7 @@ def input_xds(ctx: click.Context, input: Path):
     """Extract metadata from an XDS CSV file."""
     config = ctx.obj["config"]
     csv_rows = read_csv(input)
+    check_column_mapping(csv_rows, config)
     csv_rows = filter_by_unique_individuals(csv_rows, config)
     ctx.obj["unmapped_objects"] = {"dataset": csv_rows}
 
@@ -382,8 +387,16 @@ def mapping_xds(ctx: click.Context):
 
     datasets = []
     for _i, row in unmapped_objects["dataset"].iterrows():
-        dataset = map_xds_to_healthri_dcat_dataset(row, config)
+        try:
+            dataset = map_xds_to_healthri_dcat_dataset(row, config)
+        except ValueError as e:
+            raise click.ClickException(str(e)) from e
         datasets.append({"uri": URIRef(f"http://img2catalog.internal/dataset/{uuid.uuid4()}"), "model_object": dataset})
+
+    try:
+        ensure_unique_identifiers([dataset["model_object"] for dataset in datasets])
+    except ValueError as e:
+        raise click.ClickException(str(e)) from e
 
     ctx.obj["mapped_objects"] = {"dataset": datasets}
 

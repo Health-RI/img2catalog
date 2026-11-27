@@ -1,10 +1,10 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fairclient.fdpclient import FDPClient
-from rdflib import DCTERMS, URIRef
+from rdflib import DCTERMS, Graph, URIRef
 
-from img2catalog.outputs.fdp import FDPCatalogError, FDPOutput, FDPPushError
+from img2catalog.outputs.fdp import FDPCatalogError, FDPOutput, FDPPushError, escape_sparql_string
 
 
 @patch.object(FDPOutput, "push_record", return_value=URIRef("http://fdp.example.com/dataset/1"))
@@ -83,3 +83,33 @@ def test_fdp_no_catalog_uri(mock_fdp_client, mock_dataset):
 
     with pytest.raises(FDPCatalogError, match="No catalog URI set to push to"):
         fdp_output.push_to_fdp(mapped_objects)
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("https://example.com/ds-1", "https://example.com/ds-1"),
+        ('a" . ?s ?p ?o', 'a\\" . ?s ?p ?o'),
+        ("back\\slash", "back\\\\slash"),
+        ("two\nlines\r\tand tab", "two\\nlines\\r\\tand tab"),
+    ],
+)
+def test_escape_sparql_string(text, expected):
+    assert escape_sparql_string(text) == expected
+
+
+@patch.object(FDPClient, "__init__", return_value=None)
+def test_push_dataset_looks_up_an_escaped_identifier(mock_fdp_client):
+    """An identifier from the input must not be able to end the string literal in the query for the dataset."""
+    fdp_output = FDPOutput({}, fdp="http://localhost", fdp_username=None, fdp_password=None)
+    fdp_output.sparqlclient = MagicMock()
+    fdp_output.sparqlclient.find_subject.return_value = None
+    fdp_output.push_record = MagicMock()
+    model_object = MagicMock(identifier='ds-1" . ?subject ?p ?o #')
+    model_object.to_graph.return_value = Graph()
+    dataset = {"uri": URIRef("http://img2catalog.internal/dataset/1"), "model_object": model_object}
+    catalog = URIRef("http://example.com/catalog")
+
+    fdp_output.push_dataset(dataset, catalog)
+
+    fdp_output.sparqlclient.find_subject.assert_called_once_with('ds-1\\" . ?subject ?p ?o #', catalog)

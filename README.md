@@ -153,6 +153,42 @@ The XDS (Cross-enterprise Document Sharing) module allows you to ingest metadata
 Each CSV row becomes one dataset. Its `temporalCoverage` (`DD-MM-YYYY to DD-MM-YYYY`) is set as the temporal coverage of
 the dataset, in ISO 8601 dates. The description and keywords of the datasets come from the configuration.
 
+#### Mapping columns to properties
+
+Any column of the CSV file can be mapped to a property of the Health-RI dataset, by listing it in the `[xds.column_mapping]`
+section of the configuration as `"column header" = "property"`. For example, to give each dataset its own description,
+keywords and landing page, and a stable identifier:
+```toml
+[xds.column_mapping]
+"description" = "description"
+"keywords" = "keyword"
+"Dataset page" = "landing_page"
+"datasetId" = "identifier"
+```
+- The property is one of the properties of the Health-RI dataset (`description`, `keyword`, `landing_page`, `version`,
+  `language`, ...). Properties that consist of other properties, such as `contact_point` or `publisher`, can only be
+  filled with a URL; `[dataset.publisher]` and `[dataset.contact_point]` in the configuration remain the way to set those
+  in full.
+- What is mapped replaces the value that `img2catalog` would otherwise use, e.g. the `description` from the `[dataset]`
+  configuration. Empty cells, and mapped columns that are not in the CSV file (which gives a warning), leave the
+  configured value as it is. The columns are not mandatory.
+- A property that is a list (like `keyword`) is filled from a cell with the items separated by `;`. Set another
+  separator with `list_separator = "|"` in the `[xds]` section.
+- A property with a fixed set of values (a vocabulary, like `theme`) takes the URI of a value.
+- Dates are best given as `YYYY-MM-DD`; other notations may be read in another order than you expect.
+- The CSV file is read as text: cells such as `007` or `NA` reach the mapping as they are written, and only empty cells
+  count as empty.
+- A mapping to an unknown property, two columns to one property, or a setting of the wrong type stops the run before
+  anything is pushed. A value that does not fit the property (e.g. text for `number_of_records`) stops it with the line
+  number in the CSV file (the header is line 1).
+- The columns of `numberOfUniqueIndividuals`, `numberOfRecords`, `minTypicalAge` and `maxTypicalAge` are read for the
+  dataset, unless you map another column to the property. The filter on `minimum_unique_individuals` then uses the mapped
+  column.
+- With `identifier` mapped, the identifier of a dataset is the `identifier` of the `[dataset]` configuration (the prefix,
+  optional), followed by the value of the cell. A row with an empty cell gets a UUID instead. A stable identifier lets
+  a rerun with the SPARQL endpoint update the dataset in the FDP, instead of adding it again. Rows with the same
+  identifier are refused with an error, as one would overwrite the other.
+
 The XDS input can be serialized to RDF or pushed to an FDP, for example to try out your input and configuration:
 ```sh
 img2catalog -c examples/xds/example_config.toml xds --input examples/xds/input_example.csv map-xds rdf
@@ -167,8 +203,9 @@ minimum_unique_individuals = 10
 If not set, no datasets are filtered out.
 
 Each row of the CSV file is a separate dataset. Its identifier is the `identifier` of the `[dataset]` configuration (the
-prefix, optional) followed by a UUID, e.g. `https://www.example.com/img-123/5b4f7c0e-0f0e-4f4a-9a53-0d7f6f3d2b1c`. The
-CSV file has no identifier column (yet). A UUID is new on every run, so:
+prefix, optional) followed by a UUID, e.g. `https://www.example.com/img-123/5b4f7c0e-0f0e-4f4a-9a53-0d7f6f3d2b1c`,
+unless the CSV file has a column that is [mapped to `identifier`](#mapping-columns-to-properties). A UUID is new on
+every run, so:
 - Rerunning the push adds all datasets again, also when the SPARQL endpoint is supplied: the datasets in the FDP
   cannot be found by their identifier, so they are not updated. Remove the earlier datasets from the FDP first when
   rerunning with the same export.
