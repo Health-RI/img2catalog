@@ -1,9 +1,7 @@
-import re
 import uuid
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
-import pandas as pd
 from pandas import Series
 from pydantic import AnyHttpUrl
 from rdflib import URIRef
@@ -41,22 +39,6 @@ def format_temporal_coverage_iso(temporal_coverage: str) -> PeriodOfTime:
         return LiteralField(value=iso_date, datatype="xsd:date")
 
     return PeriodOfTime(start_date=to_iso(period.start_date), end_date=to_iso(period.end_date))
-
-
-def _optional_text(row: Series, column: str) -> Optional[str]:
-    """Return the stripped text in an optional column, or None if the column is absent or empty."""
-    if column not in row.index:
-        return None
-    value = row[column]
-    if pd.isna(value):
-        return None
-    text = str(value).strip()
-    return text or None
-
-
-def _split_keywords(text: str) -> List[str]:
-    """Split a keyword cell on semicolons or commas, dropping empty items."""
-    return [keyword.strip() for keyword in re.split(r"[;,]", text) if keyword.strip()]
 
 
 def format_date(start_date: str, end_date: str):
@@ -105,12 +87,8 @@ def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
 
     dataset_themes = [DatasetTheme(URIRef(theme)) for theme in dataset_config["theme"]]
 
-    # Optional CSV columns take precedence over the configuration
-    keywords_cell = _optional_text(row, "keywords")
-    keyword_values = _split_keywords(keywords_cell) if keywords_cell else dataset_config.get("keyword", [])
-    dataset_keywords = [LiteralField(value=keyword) for keyword in keyword_values]
+    dataset_keywords = [LiteralField(value=keyword) for keyword in dataset_config["keyword"]]
 
-    description = _optional_text(row, "description") or dataset_config.get("description")
     dataset_identifier = format_identifier(dataset_config.get("identifier"))
     temporal_coverage = format_temporal_coverage_iso(row["temporalCoverage"])
 
@@ -135,7 +113,7 @@ def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
         # MANDATORY DCAT FIELDS
         identifier=LiteralField(value=dataset_identifier),
         title=[LiteralField(value=dataset_formatted_title)],
-        description=[LiteralField(value=description)],
+        description=[LiteralField(value=dataset_config["description"])],
         publisher=publisher,
         contact_point=contact_point,
         theme=dataset_themes,

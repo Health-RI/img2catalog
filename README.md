@@ -150,10 +150,8 @@ The XDS (Cross-enterprise Document Sharing) module allows you to ingest metadata
 - CSV file: contains the dataset metadata rows. See `/examples/xds/input_example.csv` for the expected format.
 - Config file (.toml):  defines metadata fields that apply to all datasets (e.g. publisher, contact point, access rights). Base yours on `/examples/xds/example_config.toml`.
 
-Each CSV row becomes one dataset. Besides the columns in `/examples/xds/input_example.csv` that are always needed:
-- `temporalCoverage` (`DD-MM-YYYY to DD-MM-YYYY`): set as the temporal coverage of the dataset, in ISO 8601 dates.
-- `description` and `keywords` (optional columns): description and keywords (separated by `;` or `,`) of the dataset.
-  When absent or empty for a row, the `description` and `keyword` values from the configuration are used.
+Each CSV row becomes one dataset. Its `temporalCoverage` (`DD-MM-YYYY to DD-MM-YYYY`) is set as the temporal coverage of
+the dataset, in ISO 8601 dates. The description and keywords of the datasets come from the configuration.
 
 The XDS input can be serialized to RDF or pushed to an FDP, for example to try out your input and configuration:
 ```sh

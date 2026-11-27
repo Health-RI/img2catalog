@@ -160,31 +160,3 @@ def test_map_sets_temporal_coverage(default_csv_data, default_config):
     assert len(result.temporal_coverage) == 1
     assert result.temporal_coverage[0].start_date.value == "2026-01-01"
     assert result.temporal_coverage[0].end_date.value == "2026-12-31"
-
-
-def test_map_row_description_and_keywords_override_config(default_csv_data, default_config):
-    # Arrange
-    row = default_csv_data.copy()
-    row["description"] = "Row description"
-    row["keywords"] = "ct; thorax,  radiology"
-
-    # Act
-    result = map_xds_to_healthri_dcat_dataset(row, default_config)
-
-    # Assert
-    assert [d.value for d in result.description] == ["Row description"]
-    assert [k.value for k in result.keyword] == ["ct", "thorax", "radiology"]
-
-
-def test_map_falls_back_to_config_description_and_keywords(default_csv_data, default_config):
-    # Arrange
-    row = default_csv_data.copy()
-    row["description"] = float("nan")
-    row["keywords"] = "  "
-
-    # Act
-    result = map_xds_to_healthri_dcat_dataset(row, default_config)
-
-    # Assert
-    assert [d.value for d in result.description] == ["This is imaging data description"]
-    assert [k.value for k in result.keyword] == ["list", "of", "key", "words"]
