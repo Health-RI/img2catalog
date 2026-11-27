@@ -340,3 +340,17 @@ def test_map_keeps_leading_zeros_of_mapped_identifier(default_csv_data, default_
     result = map_xds_to_healthri_dcat_dataset(row, default_config)
 
     assert result.identifier.value == "https://www.example.com/img-123/007"
+
+
+def test_map_fills_rights_from_text_and_from_a_url(default_csv_data, default_config):
+    default_config["xds"] = {"column_mapping": {"Rights": "rights"}}
+    text_row = default_csv_data.copy()
+    text_row["Rights"] = "Research use only"
+    url_row = default_csv_data.copy()
+    url_row["Rights"] = "https://example.com/license"
+
+    from_text = map_xds_to_healthri_dcat_dataset(text_row, default_config)
+    from_url = map_xds_to_healthri_dcat_dataset(url_row, default_config)
+
+    assert from_text.rights.value == "Research use only"
+    assert str(from_url.rights) == "https://example.com/license"

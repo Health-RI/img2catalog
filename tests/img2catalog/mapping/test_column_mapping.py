@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 from rdflib import URIRef
+from sempyro import LiteralField
 from sempyro.hri_dcat import DatasetTheme, HRIDataset
 
 from img2catalog.mappings.column_mapping import (
@@ -25,7 +26,7 @@ def test_list_property_is_split_on_the_default_separator():
 
     result = map_columns_to_properties(row, {"Keywords": "keyword"}, HRIDataset)
 
-    assert result == {"keyword": ["ct", "radiology", "thorax"]}
+    assert result == {"keyword": [LiteralField(value=v) for v in ("ct", "radiology", "thorax")]}
 
 
 def test_list_property_is_split_on_the_given_separator():
@@ -33,7 +34,7 @@ def test_list_property_is_split_on_the_given_separator():
 
     result = map_columns_to_properties(row, {"Keywords": "keyword"}, HRIDataset, list_separator="|")
 
-    assert result == {"keyword": ["ct, radiology", "thorax"]}
+    assert result == {"keyword": [LiteralField(value="ct, radiology"), LiteralField(value="thorax")]}
 
 
 def test_single_value_in_list_property_becomes_a_list():
@@ -98,3 +99,28 @@ def test_validate_refuses_two_columns_for_one_property():
 
 def test_validate_accepts_empty_mapping():
     validate_column_mapping({}, HRIDataset)
+
+
+def test_property_with_literal_or_url_gets_a_literal_for_text():
+    row = pd.Series({"Rights": "Research use only"})
+
+    result = map_columns_to_properties(row, {"Rights": "rights"}, HRIDataset)
+
+    assert result == {"rights": LiteralField(value="Research use only")}
+
+
+def test_property_with_literal_or_url_keeps_a_url_as_a_url():
+    row = pd.Series({"Rights": "https://example.com/license"})
+
+    result = map_columns_to_properties(row, {"Rights": "rights"}, HRIDataset)
+
+    assert result == {"rights": "https://example.com/license"}
+
+
+def test_property_with_number_or_literal_still_refuses_text():
+    """A number property must not take any text as a literal."""
+    row = pd.Series({"Records": "many"})
+
+    result = map_columns_to_properties(row, {"Records": "number_of_records"}, HRIDataset)
+
+    assert result == {"number_of_records": "many"}  # refused by the dataset, which names the line (see test_xds)

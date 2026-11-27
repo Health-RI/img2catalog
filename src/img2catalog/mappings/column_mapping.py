@@ -12,17 +12,21 @@ vocabulary (an enumeration) are looked up, and the model class itself converts t
 """
 
 import logging
+from datetime import date, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Type, Union, get_args, get_origin
+from typing import Any, Dict, List, Tuple, Type, Union, get_args, get_origin
 
 import pandas as pd
-from pydantic import BaseModel
+from pydantic import AnyHttpUrl, BaseModel
 from rdflib import URIRef
 from sempyro import LiteralField
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_LIST_SEPARATOR = ";"
+
+# Types of which the model class reads a number, date or text from plain text itself
+TEXT_READING_TYPES = (str, int, float, date, datetime)
 
 
 class ColumnMappingError(ValueError):
@@ -55,11 +59,9 @@ def _is_enum(member: Any) -> bool:
     return isinstance(member, type) and issubclass(member, Enum)
 
 
-def _property_info(model: Type[BaseModel], property_name: str) -> Tuple[bool, Optional[Type[Enum]]]:
-    """Return whether the property is a list, and its vocabulary (enumeration), if it has one."""
-    is_list, members = _members(model.model_fields[property_name].annotation)
-    vocabulary = next((m for m in members if _is_enum(m)), None)
-    return is_list, vocabulary
+def _property_info(model: Type[BaseModel], property_name: str) -> Tuple[bool, List[Any]]:
+    """Return whether the property is a list, and the types that one value (or list item) can have."""
+    return _members(model.model_fields[property_name].annotation)
 
 
 def validate_column_mapping(column_mapping: Dict[str, str], model: Type[BaseModel]) -> None:
@@ -91,15 +93,30 @@ def validate_column_mapping(column_mapping: Dict[str, str], model: Type[BaseMode
         columns_per_property[property_name] = column
 
 
-def _convert(value: str, vocabulary: Optional[Type[Enum]]) -> Any:
-    if vocabulary is None:
-        return value
-    try:
-        return vocabulary(URIRef(value))
-    except ValueError as e:
-        allowed = ", ".join(str(member.value) for member in vocabulary)
-        # repr() escapes control characters in the text of the cell, which would otherwise reach the terminal as is
-        raise ValueError(f"{value!r} is not one of: {allowed}") from e
+def _looks_like_url(text: str) -> bool:
+    return text.lower().startswith(("http://", "https://"))
+
+
+def _convert(value: str, members: List[Any]) -> Any:
+    """Convert the text of a cell to a value that the property accepts.
+
+    Values of a vocabulary (an enumeration) are looked up by their URI. A property that holds a literal and nothing
+    that can read plain text (e.g. rights, which is a literal or a URL) gets a literal for text, and the URL as it is.
+    The model class converts the rest (numbers, dates, URLs) and refuses what does not fit.
+    """
+    vocabulary = next((m for m in members if _is_enum(m)), None)
+    if vocabulary is not None:
+        try:
+            return vocabulary(URIRef(value))
+        except ValueError as e:
+            allowed = ", ".join(str(member.value) for member in vocabulary)
+            # repr() escapes control characters in the text of the cell, which would otherwise reach the terminal as is
+            raise ValueError(f"{value!r} is not one of: {allowed}") from e
+    if LiteralField in members and not any(m in TEXT_READING_TYPES for m in members):
+        if AnyHttpUrl in members and _looks_like_url(value):
+            return value
+        return LiteralField(value=value)
+    return value
 
 
 def map_columns_to_properties(
@@ -141,14 +158,14 @@ def map_columns_to_properties(
         text = str(row[column]).strip()
         if not text:
             continue
-        is_list, vocabulary = _property_info(model, property_name)
+        is_list, members = _property_info(model, property_name)
         try:
             if is_list:
                 properties[property_name] = [
-                    _convert(item.strip(), vocabulary) for item in text.split(list_separator) if item.strip()
+                    _convert(item.strip(), members) for item in text.split(list_separator) if item.strip()
                 ]
             else:
-                properties[property_name] = _convert(text, vocabulary)
+                properties[property_name] = _convert(text, members)
         except ValueError as e:
             raise ValueError(f"Column '{column}' (property '{property_name}'): {e}") from e
     return properties
