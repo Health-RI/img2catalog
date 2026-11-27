@@ -179,3 +179,88 @@ def test_map_sets_temporal_coverage(default_csv_data, default_config):
     assert len(result.temporal_coverage) == 1
     assert result.temporal_coverage[0].start_date.value == "2026-01-01"
     assert result.temporal_coverage[0].end_date.value == "2026-12-31"
+
+
+def test_map_applies_mapped_columns_over_the_configuration(default_csv_data, default_config):
+    # Arrange
+    row = default_csv_data.copy()
+    row["Beschrijving"] = "Row description"
+    row["Trefwoorden"] = "ct; thorax"
+    default_config["xds"] = {"column_mapping": {"Beschrijving": "description", "Trefwoorden": "keyword"}}
+
+    # Act
+    result = map_xds_to_healthri_dcat_dataset(row, default_config)
+
+    # Assert
+    assert [d.value for d in result.description] == ["Row description"]
+    assert [k.value for k in result.keyword] == ["ct", "thorax"]
+
+
+def test_map_keeps_configuration_when_mapped_cell_is_empty(default_csv_data, default_config):
+    row = default_csv_data.copy()
+    row["Beschrijving"] = float("nan")
+    default_config["xds"] = {"column_mapping": {"Beschrijving": "description"}}
+
+    result = map_xds_to_healthri_dcat_dataset(row, default_config)
+
+    assert [d.value for d in result.description] == ["This is imaging data description"]
+
+
+def test_map_uses_mapped_list_separator(default_csv_data, default_config):
+    row = default_csv_data.copy()
+    row["Trefwoorden"] = "ct, scan|thorax"
+    default_config["xds"] = {"column_mapping": {"Trefwoorden": "keyword"}, "list_separator": "|"}
+
+    result = map_xds_to_healthri_dcat_dataset(row, default_config)
+
+    assert [k.value for k in result.keyword] == ["ct, scan", "thorax"]
+
+
+def test_map_fills_properties_that_have_no_default(default_csv_data, default_config):
+    row = default_csv_data.copy()
+    row["Pagina"] = "https://example.com/page"
+    row["Versie"] = "2.0"
+    default_config["xds"] = {"column_mapping": {"Pagina": "landing_page", "Versie": "version"}}
+
+    result = map_xds_to_healthri_dcat_dataset(row, default_config)
+
+    assert [str(page) for page in result.landing_page] == ["https://example.com/page"]
+    assert result.version.value == "2.0"
+
+
+def test_map_uses_mapped_identifier_after_the_prefix(default_csv_data, default_config):
+    row = default_csv_data.copy()
+    row["Dataset ID"] = "ds-1"
+    default_config["xds"] = {"column_mapping": {"Dataset ID": "identifier"}}
+
+    first = map_xds_to_healthri_dcat_dataset(row, default_config)
+    second = map_xds_to_healthri_dcat_dataset(row, default_config)
+
+    assert first.identifier.value == second.identifier.value == "https://www.example.com/img-123/ds-1"
+
+
+def test_map_empty_mapped_identifier_falls_back_to_a_uuid(default_csv_data, default_config):
+    row = default_csv_data.copy()
+    row["Dataset ID"] = ""
+    default_config["xds"] = {"column_mapping": {"Dataset ID": "identifier"}}
+
+    result = map_xds_to_healthri_dcat_dataset(row, default_config)
+
+    prefix, _, suffix = result.identifier.value.rpartition("/")
+    assert prefix == "https://www.example.com/img-123"
+    assert str(uuid.UUID(suffix)) == suffix
+
+
+def test_map_reports_row_for_invalid_mapped_value(default_csv_data, default_config):
+    row = default_csv_data.copy()
+    row.name = 7
+    row["Records"] = "many"
+    default_config["xds"] = {"column_mapping": {"Records": "number_of_records"}}
+
+    with pytest.raises(ValueError, match="Row 7 of the XDS file"):
+        map_xds_to_healthri_dcat_dataset(row, default_config)
+
+
+def test_format_identifier_uses_given_identifier_after_prefix():
+    assert format_identifier("https://www.example.com/img-123/", "ds-1") == "https://www.example.com/img-123/ds-1"
+    assert format_identifier(None, "ds-1") == "ds-1"

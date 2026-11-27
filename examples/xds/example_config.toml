@@ -1,6 +1,18 @@
 [xds]
 # minimum_unique_individuals = 10
 
+# Map columns of the CSV file to properties of the dataset: "column header" = "property".
+# The properties are those of the Health-RI dataset (e.g. description, keyword, landing_page, version, language).
+# What is mapped replaces the value for that property from this configuration. Empty cells and columns that are
+# not in the CSV file leave the value from the configuration as it is.
+[xds.column_mapping]
+"description" = "description"
+"keywords" = "keyword"
+# "datasetId" = "identifier"  # a stable identifier per row, so that a rerun updates the dataset in the FDP
+
+# Separates the items in a cell for a property that is a list, like keyword. Default is ";"
+# list_separator = ";"
+
 [dataset]
 identifier = "https://www.example.com/img-123"
 description = "This is imaging data description"
