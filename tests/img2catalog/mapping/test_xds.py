@@ -6,7 +6,6 @@ from sempyro.hri_dcat import HRIDataset
 from sempyro.time import PeriodOfTime
 
 from img2catalog.mappings.xds import (
-    ensure_unique_identifiers,
     format_date,
     format_identifier,
     format_temporal_coverage,
@@ -97,30 +96,18 @@ def test_map_xds_to_healthri_dcat_dataset_raises_on_missing_field(missing_csv_da
         map_xds_to_healthri_dcat_dataset(missing_csv_data, default_config)
 
 
-@pytest.mark.parametrize(
-    ("prefix", "identifier", "expected"),
-    [
-        ("https://www.example.com/img-123", "ds-1", "https://www.example.com/img-123/ds-1"),
-        ("https://www.example.com/img/", "ds-1", "https://www.example.com/img/ds-1"),
-        (None, "ds-1", "ds-1"),
-        ("", "ds-1", "ds-1"),
-    ],
-)
-def test_format_identifier_with_given_identifier(prefix, identifier, expected):
-    assert format_identifier(prefix, identifier) == expected
-
-
-@pytest.mark.parametrize("identifier", [None, ""])
-def test_format_identifier_uses_uuid_without_identifier(identifier):
-    result = format_identifier("https://www.example.com/img-123/", identifier)
+@pytest.mark.parametrize("prefix", ["https://www.example.com/img-123", "https://www.example.com/img-123/"])
+def test_format_identifier_is_prefix_followed_by_uuid(prefix):
+    result = format_identifier(prefix)
 
     base, _, suffix = result.rpartition("/")
     assert base == "https://www.example.com/img-123"
     assert str(uuid.UUID(suffix)) == suffix
 
 
-def test_format_identifier_without_prefix_and_identifier_is_a_uuid():
-    result = format_identifier(None)
+@pytest.mark.parametrize("prefix", [None, ""])
+def test_format_identifier_without_prefix_is_a_uuid(prefix):
+    result = format_identifier(prefix)
 
     assert str(uuid.UUID(result)) == result
 
@@ -129,30 +116,8 @@ def test_format_identifier_generates_a_new_uuid_each_time():
     assert format_identifier("https://www.example.com/img-123") != format_identifier("https://www.example.com/img-123")
 
 
-def test_ensure_unique_identifiers_refuses_rows_with_the_same_identifier(default_csv_data, default_config):
-    """Rows with the same value in the identifier column would overwrite each other in the FDP."""
-    first_row = default_csv_data.copy()
-    first_row["identifier"] = "ds-1"
-    other_row = default_csv_data.copy()
-    other_row["modality"] = "MR"
-    other_row["identifier"] = "ds-1"
-    datasets = [map_xds_to_healthri_dcat_dataset(row, default_config) for row in (first_row, other_row)]
-
-    with pytest.raises(ValueError, match="same dataset identifier") as error:
-        ensure_unique_identifiers(datasets)
-
-    assert "Amsterdam Hospital - CT - 2026" in str(error.value)
-    assert "Amsterdam Hospital - MR - 2026" in str(error.value)
-
-
-def test_ensure_unique_identifiers_accepts_generated_identifiers(default_csv_data, default_config):
-    datasets = [map_xds_to_healthri_dcat_dataset(default_csv_data, default_config) for _ in range(2)]
-
-    ensure_unique_identifiers(datasets)
-
-
 def test_map_xds_gives_each_row_its_own_generated_identifier(default_csv_data, default_config):
-    """Without identifier column, every row gets an identifier of its own: the prefix followed by a UUID."""
+    """Every dataset gets an identifier of its own: the configured prefix followed by a UUID."""
     datasets = [map_xds_to_healthri_dcat_dataset(default_csv_data, default_config) for _ in range(2)]
     identifiers = [dataset.identifier.value for dataset in datasets]
 
@@ -161,6 +126,14 @@ def test_map_xds_gives_each_row_its_own_generated_identifier(default_csv_data, d
         prefix, _, suffix = identifier.rpartition("/")
         assert prefix == "https://www.example.com/img-123"
         assert str(uuid.UUID(suffix)) == suffix
+
+
+def test_map_xds_without_configured_prefix_uses_a_uuid(default_csv_data, default_config):
+    del default_config["dataset"]["identifier"]
+
+    result = map_xds_to_healthri_dcat_dataset(default_csv_data, default_config)
+
+    assert str(uuid.UUID(result.identifier.value)) == result.identifier.value
 
 
 def test_format_temporal_coverage_iso_returns_xsd_dates():
@@ -187,56 +160,6 @@ def test_map_sets_temporal_coverage(default_csv_data, default_config):
     assert len(result.temporal_coverage) == 1
     assert result.temporal_coverage[0].start_date.value == "2026-01-01"
     assert result.temporal_coverage[0].end_date.value == "2026-12-31"
-
-
-def test_map_uses_prefix_and_identifier_column(default_csv_data, default_config):
-    # Arrange
-    row = default_csv_data.copy()
-    row["identifier"] = "dataset-1"
-
-    # Act
-    result = map_xds_to_healthri_dcat_dataset(row, default_config)
-
-    # Assert
-    assert result.identifier.value == "https://www.example.com/img-123/dataset-1"
-
-
-def test_map_same_identifier_column_gives_same_identifier(default_csv_data, default_config):
-    """A given identifier is stable, so the FDP output can find the dataset again when rerunning."""
-    row = default_csv_data.copy()
-    row["identifier"] = "dataset-1"
-
-    first = map_xds_to_healthri_dcat_dataset(row, default_config)
-    second = map_xds_to_healthri_dcat_dataset(row, default_config)
-
-    assert first.identifier.value == second.identifier.value
-
-
-def test_map_empty_identifier_cell_gets_uuid(default_csv_data, default_config):
-    # Arrange
-    row = default_csv_data.copy()
-    row["identifier"] = float("nan")
-
-    # Act
-    result = map_xds_to_healthri_dcat_dataset(row, default_config)
-
-    # Assert
-    prefix, _, suffix = result.identifier.value.rpartition("/")
-    assert prefix == "https://www.example.com/img-123"
-    assert str(uuid.UUID(suffix)) == suffix
-
-
-def test_map_without_configured_prefix_uses_identifier_as_is(default_csv_data, default_config):
-    # Arrange
-    row = default_csv_data.copy()
-    row["identifier"] = "dataset-1"
-    del default_config["dataset"]["identifier"]
-
-    # Act
-    result = map_xds_to_healthri_dcat_dataset(row, default_config)
-
-    # Assert
-    assert result.identifier.value == "dataset-1"
 
 
 def test_map_row_description_and_keywords_override_config(default_csv_data, default_config):

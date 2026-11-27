@@ -85,35 +85,16 @@ def format_title(data) -> str:
     return f"{institute} - {modality} - {formatted_date_range}"
 
 
-def format_identifier(prefix: Optional[str], identifier: Optional[str] = None) -> str:
-    """Build a dataset identifier from a prefix and, optionally, a given identifier.
+def format_identifier(prefix: Optional[str] = None) -> str:
+    """Build a dataset identifier from a prefix and a UUID.
 
-    The result is `<prefix>/<identifier>`. When no identifier is given, a UUID takes its place, so that every
-    dataset has an identifier of its own. Without a prefix, the identifier (or UUID) is used as is.
-
-    A generated UUID is new on every run. To make the FDP output find (and update) a dataset again when
-    rerunning, give the dataset an identifier in the `identifier` column of the CSV file.
+    The result is `<prefix>/<uuid>`, so that every dataset has an identifier of its own. Without a prefix, the UUID
+    is used as is. The UUID is new on every call: the same row gets another identifier when processed again.
     """
-    suffix = identifier or str(uuid.uuid4())
+    suffix = str(uuid.uuid4())
     if not prefix:
         return suffix
     return f"{prefix.rstrip('/')}/{suffix}"
-
-
-def ensure_unique_identifiers(datasets: List[HRIDataset]) -> None:
-    """Refuse datasets that get the same identifier, as the FDP would take them for one dataset.
-
-    Generated identifiers are unique, so this only happens when rows have the same value in the `identifier` column.
-    """
-    titles_per_identifier: Dict[str, str] = {}
-    for dataset in datasets:
-        identifier, title = dataset.identifier.value, dataset.title[0].value
-        if identifier in titles_per_identifier:
-            raise ValueError(
-                f"The XDS rows '{titles_per_identifier[identifier]}' and '{title}' get the same dataset identifier "
-                f"'{identifier}', so one would overwrite the other. Give them different identifiers."
-            )
-        titles_per_identifier[identifier] = title
 
 
 def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
@@ -130,7 +111,7 @@ def map_xds_to_healthri_dcat_dataset(row: Series, config: Dict) -> HRIDataset:
     dataset_keywords = [LiteralField(value=keyword) for keyword in keyword_values]
 
     description = _optional_text(row, "description") or dataset_config.get("description")
-    dataset_identifier = format_identifier(dataset_config.get("identifier"), _optional_text(row, "identifier"))
+    dataset_identifier = format_identifier(dataset_config.get("identifier"))
     temporal_coverage = format_temporal_coverage_iso(row["temporalCoverage"])
 
     dataset_applicable_legislation = [AnyHttpUrl(url) for url in dataset_config["applicable_legislation"]]

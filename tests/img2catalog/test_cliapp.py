@@ -355,16 +355,11 @@ def test_xds_cli(mock_fdp_client, mock_fdp_output, isolated_cli_runner, xds_csv_
     mock_fdp_output.assert_called_once()
 
 
-def _write_xds_csv(path, institutes, identifiers=None):
-    """Write an XDS CSV export with a CT row, for the period of 2024, per institute.
-
-    The rows get the given values in the `identifier` column, if any.
-    """
+def _write_xds_csv(path, institutes):
+    """Write an XDS CSV export with a CT row, for the period of 2024, per institute."""
     rows = len(institutes)
-    columns = {"identifier": identifiers} if identifiers is not None else {}
     pd.DataFrame(
         {
-            **columns,
             "instituteName": institutes,
             "numberOfUniqueIndividuals": [5041] * rows,
             "numberOfRecords": [11052] * rows,
@@ -390,20 +385,8 @@ def _run_xds_to_fdp(runner, csv_path):
 
 
 @patch("img2catalog.cli_app.FDPOutput")
-def test_xds_cli_refuses_rows_with_the_same_identifier(mock_fdp_output, isolated_cli_runner, tmp_path):
-    """Rows that get the same identifier would overwrite each other in the FDP, so the run stops before the push."""
-    csv_path = _write_xds_csv(tmp_path / "clash.csv", ["Hospital A", "Hospital B"], identifiers=["ds-1", "ds-1"])
-
-    result = _run_xds_to_fdp(isolated_cli_runner, csv_path)
-
-    assert result.exit_code == 1
-    assert "get the same dataset identifier" in result.output
-    mock_fdp_output.assert_not_called()
-
-
-@patch("img2catalog.cli_app.FDPOutput")
 def test_xds_cli_gives_each_row_its_own_generated_identifier(mock_fdp_output, isolated_cli_runner, tmp_path):
-    """Without identifier column, each row gets the configured prefix followed by a UUID of its own."""
+    """Each row gets the configured prefix followed by a UUID of its own."""
     csv_path = _write_xds_csv(tmp_path / "distinct.csv", ["Hospital A", "Hospital B"])
 
     result = _run_xds_to_fdp(isolated_cli_runner, csv_path)
@@ -416,20 +399,6 @@ def test_xds_cli_gives_each_row_its_own_generated_identifier(mock_fdp_output, is
         prefix, _, suffix = identifier.rpartition("/")
         assert prefix == "https://www.example.com/img-123"
         assert str(uuid.UUID(suffix)) == suffix
-
-
-@patch("img2catalog.cli_app.FDPOutput")
-def test_xds_cli_uses_identifier_column(mock_fdp_output, isolated_cli_runner, tmp_path):
-    csv_path = _write_xds_csv(tmp_path / "given.csv", ["Hospital A", "Hospital B"], identifiers=["ds-a", "ds-b"])
-
-    result = _run_xds_to_fdp(isolated_cli_runner, csv_path)
-
-    assert result.exit_code == 0, result.output
-    pushed = mock_fdp_output.return_value.push_to_fdp.call_args.args[0]["dataset"]
-    assert [dataset["model_object"].identifier.value for dataset in pushed] == [
-        "https://www.example.com/img-123/ds-a",
-        "https://www.example.com/img-123/ds-b",
-    ]
 
 
 @patch("xnat.connect")
